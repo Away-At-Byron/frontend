@@ -1,0 +1,21 @@
+# Auto-routes PR reviews to the module owner (dev-plan ownership matrix).
+# Replace the GitHub handles before the first PR.
+
+# Infra / foundation / DB / CI — Dev A
+/src/db/                @nith-intent
+/src/lib/               @nith-intent
+/.github/               @nith-intent
+/docs/                  @nith-intent
+
+# Transactional core — Dev B
+/src/modules/bookings/  @nith-intent
+/src/modules/payments/  @nith-intent
+/src/modules/invoices/  @nith-intent
+
+# UI / design system / config modules — Dev C
+/src/components/        @nith-intent
+/src/styles/            @nith-intent
+/src/modules/contacts/  @nith-intent
+
+# Everything else: any maintainer
+*                       @nith-intent

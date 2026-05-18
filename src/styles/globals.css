@@ -1,0 +1,137 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────────────────
+ * Away At Byron Bay — PMS design tokens
+ * Direction: Editorial Sunrise. Single source of truth for every screen.
+ * Ported verbatim from the approved design bundle (system/tokens.css).
+ * ──────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ── Brand palette ──────────────────────────────────────── */
+  --linen:        #FBF8F3;   /* canvas */
+  --shell:        #FBEFE8;   /* secondary surface (warm) */
+  --shell-deep:   #F6DDD0;   /* sunrise blush */
+  --paper:        #FFFFFF;   /* card */
+  --mist:         #E8F1EE;   /* secondary surface (cool) */
+
+  --teal:         #9DC9C4;   /* primary */
+  --teal-deep:    #6E9B97;
+  --teal-ink:     #3D5C5A;
+
+  --terra:        #C77E63;   /* accent */
+  --terra-deep:   #A8624B;
+  --apricot:      #E8B79E;
+
+  --ink:          #1F2A2A;   /* primary text */
+  --ink-soft:     #5A4A3A;   /* secondary text */
+  --ink-mute:     #A89274;   /* tertiary / meta */
+  --ink-faint:    rgba(31,42,42,.55);
+
+  --sand:         #E6D4B7;
+  --rattan:       #A89274;
+
+  --line:         rgba(31,42,42,.08);
+  --line-soft:    rgba(31,42,42,.05);
+  --line-strong:  rgba(31,42,42,.14);
+
+  /* ── Functional / status ────────────────────────────────── */
+  --ok-bg:        rgba(157,201,196,.32);
+  --ok-fg:        #3D5C5A;
+  --warn-bg:      rgba(232,183,158,.45);
+  --warn-fg:      #A8624B;
+  --bad-bg:       rgba(199,126,99,.18);
+  --bad-fg:       #A8624B;
+  --info-bg:      rgba(110,155,151,.18);
+  --info-fg:      #3D5C5A;
+
+  /* ── Tracking ───────────────────────────────────────────── */
+  --tight: -0.025em;
+  --normal: -0.005em;
+  --tracked: .14em;
+  --tracked-wide: .18em;
+
+  /* ── Spacing scale (4 base) ─────────────────────────────── */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px; --s-5: 20px;
+  --s-6: 24px; --s-7: 32px; --s-8: 40px; --s-9: 56px; --s-10: 72px;
+
+  /* ── Radii ──────────────────────────────────────────────── */
+  --r-1: 6px; --r-2: 10px; --r-3: 14px; --r-4: 18px; --r-5: 24px;
+  --r-pill: 999px;
+
+  /* ── Elevation ──────────────────────────────────────────── */
+  --shadow-1: 0 1px 0 rgba(31,42,42,.04);
+  --shadow-2: 0 1px 0 rgba(31,42,42,.04), 0 6px 14px -10px rgba(31,42,42,.18);
+  --shadow-3: 0 1px 0 rgba(31,42,42,.04), 0 12px 28px -16px rgba(31,42,42,.22);
+  --shadow-pop: 0 18px 40px -18px rgba(31,42,42,.32);
+}
+
+/* Map design tokens into Tailwind v4 theme so utilities like bg-teal,
+ * text-ink, rounded-r3, shadow-2 work alongside raw var() usage. */
+@theme inline {
+  --color-linen: var(--linen);
+  --color-shell: var(--shell);
+  --color-shell-deep: var(--shell-deep);
+  --color-paper: var(--paper);
+  --color-mist: var(--mist);
+  --color-teal: var(--teal);
+  --color-teal-deep: var(--teal-deep);
+  --color-teal-ink: var(--teal-ink);
+  --color-terra: var(--terra);
+  --color-terra-deep: var(--terra-deep);
+  --color-apricot: var(--apricot);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-mute: var(--ink-mute);
+  --color-sand: var(--sand);
+  --color-rattan: var(--rattan);
+
+  --radius-r1: var(--r-1);
+  --radius-r2: var(--r-2);
+  --radius-r3: var(--r-3);
+  --radius-r4: var(--r-4);
+  --radius-r5: var(--r-5);
+  --radius-pill: var(--r-pill);
+
+  --shadow-e1: var(--shadow-1);
+  --shadow-e2: var(--shadow-2);
+  --shadow-e3: var(--shadow-3);
+  --shadow-pop: var(--shadow-pop);
+
+  --font-display: var(--font-fraunces), "Times New Roman", serif;
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* ── Base ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-sans), -apple-system, system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--linen);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* ── Editorial utility classes (used across every screen) ──── */
+.mono { font-family: var(--font-mono), ui-monospace, monospace; font-weight: 500; }
+.caps {
+  font-family: var(--font-mono), ui-monospace, monospace; font-size: 10px;
+  font-weight: 500; letter-spacing: var(--tracked-wide); text-transform: uppercase;
+}
+.eyebrow {
+  font-family: var(--font-mono), ui-monospace, monospace; font-size: 10px;
+  font-weight: 500; letter-spacing: var(--tracked-wide); text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.display { font-family: var(--font-display), serif; font-weight: 300; letter-spacing: var(--tight); }
+.italic { font-style: italic; }
+.serif-it { font-family: var(--font-display), serif; font-style: italic; font-weight: 400; }
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+button { font-family: inherit; }
+a { color: inherit; text-decoration: none; }

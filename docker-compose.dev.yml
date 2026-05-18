@@ -1,0 +1,38 @@
+# Local developer services ONLY (Postgres + MinIO). `bun db:up` / `bun db:down`.
+# Production stack (app container, Postal, GlitchTip, backups, Dokploy) lives in
+# the `backend` repo. Keep this file thin — it exists so a dev can run the app
+# locally in under a minute, nothing more.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aab-postgres
+    environment:
+      POSTGRES_USER: aab
+      POSTGRES_PASSWORD: aab_local
+      POSTGRES_DB: aab_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aab"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: aab-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: aab
+      MINIO_ROOT_PASSWORD: aab_local_dev_only
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+volumes:
+  postgres_data:
+  minio_data:
