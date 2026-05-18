@@ -122,6 +122,7 @@ function SignInForm() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@awayatbyron.com"
               style={inputStyle}
+              suppressHydrationWarning
             />
           </Field>
           <Field label="Password">
@@ -133,6 +134,7 @@ function SignInForm() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               style={inputStyle}
+              suppressHydrationWarning
             />
           </Field>
 

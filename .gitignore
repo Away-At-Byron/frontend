@@ -24,6 +24,9 @@ bun.lockb
 postgres_data/
 minio_data/
 
+# machine-local compose override (per-dev port remaps etc.)
+docker-compose.local.yml
+
 # misc
 .DS_Store
 *.pem
