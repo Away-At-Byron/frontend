@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { signIn } from "next-auth/react"
 import { Button } from "@/components/ui/primitives"
@@ -22,6 +22,15 @@ function SignInForm() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  // Render the form client-only. Server + first client paint emit the same
+  // placeholder, so password-manager extensions (Keeper etc.) that inject
+  // DOM into the inputs after load can't cause a hydration mismatch.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  if (!mounted) {
+    return <div style={{ minHeight: "100vh", background: "var(--linen)" }} />
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -162,7 +171,7 @@ const inputStyle: React.CSSProperties = {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label style={{ display: "block", marginBottom: 16 }}>
+    <label style={{ display: "block", marginBottom: 16 }} suppressHydrationWarning>
       <span className="caps" style={{ color: "var(--ink-soft)", display: "block", marginBottom: 7 }}>{label}</span>
       {children}
     </label>
