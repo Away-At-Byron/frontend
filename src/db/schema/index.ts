@@ -5,6 +5,7 @@
 export * from "./properties" // Layer 0 — module 2
 export * from "./roles" // Layer 0 — module 3
 export * from "./auth" // Layer 0 — module 1
+export * from "./user-access" // Layer 0 — module 3 (per-user module overrides)
 export * from "./audit" // Layer 0 — cross-cutting
 
 // ── Layer 1 — domain reference data (Stage 2) ──────────────

@@ -6,11 +6,17 @@
  *   bun db:seed
  */
 import bcrypt from "bcryptjs"
-import { eq } from "drizzle-orm"
+import { eq, inArray } from "drizzle-orm"
 import { db, pool } from "../index"
 import { properties, roles, users } from "../schema"
+import { ROLE_NAMES } from "../../lib/modules"
 
-const ROLE_NAMES = ["admin", "manager", "front_desk", "housekeeper", "accounts"]
+// Roles dropped in the move to the 6-group model (ADR-003). Any user still
+// on one of these is remapped before the role is deleted.
+const ROLE_REMAP: Record<string, string> = {
+  front_desk: "staff",
+  accounts: "manager",
+}
 
 const PROPERTIES = [
   { name: "Away at Byron Bay", colour: "#9DC9C4", suburb: "Byron Bay" },
@@ -21,10 +27,33 @@ const PROPERTIES = [
 async function main() {
   console.log("Seeding Layer 0…")
 
-  // Roles
+  // Roles — the 6 groups. Module access per role is a static code map
+  // (src/lib/modules.ts → ROLE_DEFAULTS); roles.permission_set is unused.
   for (const name of ROLE_NAMES) {
-    await db.insert(roles).values({ name }).onConflictDoNothing({ target: roles.name })
+    await db
+      .insert(roles)
+      .values({ name })
+      .onConflictDoNothing({ target: roles.name })
   }
+
+  // Remap any users on a retired role, then drop the retired roles.
+  const all = await db.select().from(roles)
+  const byName = new Map(all.map((r) => [r.name, r]))
+  for (const [from, to] of Object.entries(ROLE_REMAP)) {
+    const fromRole = byName.get(from)
+    const toRole = byName.get(to)
+    if (fromRole && toRole) {
+      await db
+        .update(users)
+        .set({ roleId: toRole.id })
+        .where(eq(users.roleId, fromRole.id))
+    }
+  }
+  const retired = Object.keys(ROLE_REMAP)
+  if (retired.length) {
+    await db.delete(roles).where(inArray(roles.name, retired))
+  }
+
   const roleRows = await db.select().from(roles)
   const adminRole = roleRows.find((r) => r.name === "admin")!
   const mgrRole = roleRows.find((r) => r.name === "manager")!

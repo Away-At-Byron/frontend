@@ -1,9 +1,10 @@
 import "server-only"
 
-import { and, eq, ne } from "drizzle-orm"
-import { users, roles } from "@/db/schema"
+import { eq, inArray } from "drizzle-orm"
+import { users, roles, userModuleAccess } from "@/db/schema"
 import { withTenant } from "@/lib/rls"
 import { ok, err, type ActionResult } from "@/lib/result"
+import { ROLE_NAMES } from "@/lib/modules"
 
 export type UserRow = {
   id: string
@@ -14,15 +15,17 @@ export type UserRow = {
   roleId: string
   roleName: string
   status: "active" | "disabled" | "locked"
+  /** Per-user module override codes; null = no override (full role default). */
+  moduleCodes: string[] | null
 }
 
 export type RoleOption = { id: string; name: string }
 
 /**
  * Users the caller may see. Admin (property_id = null) sees everyone;
- * a property-scoped caller sees only users in their property. Disabled
- * users are hidden (soft delete) — matches the old app's hard-delete UX.
- * Admin-only screen, enforced again at the page and in actions.
+ * a property-scoped caller sees only users in their property. All
+ * statuses are returned (active/locked/disabled) so the screen can
+ * filter by status. Admin-only, enforced again at the page and actions.
  */
 export async function listUsers(): Promise<ActionResult<UserRow[]>> {
   return withTenant(async (tx, ctx) => {
@@ -30,8 +33,8 @@ export async function listUsers(): Promise<ActionResult<UserRow[]>> {
       return err("FORBIDDEN", "Only an admin can manage users.")
     }
     const scope = ctx.propertyId
-      ? and(eq(users.propertyId, ctx.propertyId), ne(users.status, "disabled"))
-      : ne(users.status, "disabled")
+      ? eq(users.propertyId, ctx.propertyId)
+      : undefined
 
     const rows = await tx
       .select({
@@ -49,7 +52,26 @@ export async function listUsers(): Promise<ActionResult<UserRow[]>> {
       .where(scope)
       .orderBy(users.firstName)
 
-    return ok(rows)
+    const ids = rows.map((r) => r.id)
+    const access = ids.length
+      ? await tx
+          .select({
+            userId: userModuleAccess.userId,
+            moduleCode: userModuleAccess.moduleCode,
+          })
+          .from(userModuleAccess)
+          .where(inArray(userModuleAccess.userId, ids))
+      : []
+    const byUser = new Map<string, string[]>()
+    for (const a of access) {
+      const list = byUser.get(a.userId) ?? []
+      list.push(a.moduleCode)
+      byUser.set(a.userId, list)
+    }
+
+    return ok(
+      rows.map((r) => ({ ...r, moduleCodes: byUser.get(r.id) ?? null })),
+    )
   })
 }
 
@@ -61,7 +83,15 @@ export async function listRoles(): Promise<ActionResult<RoleOption[]>> {
     const rows = await tx
       .select({ id: roles.id, name: roles.name })
       .from(roles)
-      .orderBy(roles.name)
-    return ok(rows)
+
+    // Canonical order (admin, manager, staff, …), not auto-sorted by name.
+    // Unknown roles fall to the end, keeping their relative order.
+    const order = ROLE_NAMES as readonly string[]
+    const rank = (n: string) => {
+      const i = order.indexOf(n)
+      return i < 0 ? order.length : i
+    }
+    const sorted = [...rows].sort((a, b) => rank(a.name) - rank(b.name))
+    return ok(sorted)
   })
 }

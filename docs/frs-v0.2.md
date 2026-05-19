@@ -57,7 +57,11 @@ tables), `created_at`, `updated_at`, `created_by`. Money is integer cents.
 Calendar dates use `date` not `timestamp`. Server actions return
 `{ ok:true, data }` or `{ ok:false, error:{ code,message,fields? } }`. Every
 state-changing action writes `audit_log`. Every input parsed by a Zod schema
-shared with the React form.
+shared with the React form. Module 3 "Users + Roles": six roles with a
+static code-owned module default per role, plus admin-set per-user
+overrides (table `user_module_access`) — see ADR-003. Action-level RBAC
+stays static and authoritative (§6.3 AC5 unchanged); module access is the
+UX-visibility/route-reachability layer only.
 
 ## 5. Module index
 

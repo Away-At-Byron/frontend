@@ -9,26 +9,10 @@ import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
-import { Icon, type IconName } from "@/components/ui/icon"
+import { Icon } from "@/components/ui/icon"
 import { Avatar, Button, IconButton } from "@/components/ui/primitives"
+import type { NavEntry } from "@/lib/modules"
 
-type NavEntry = { href: string; label: string; icon: IconName; badge?: number }
-
-const NAV: NavEntry[] = [
-  { href: "/home", label: "Dashboard", icon: "Layout" },
-  { href: "/calendar", label: "Calendar", icon: "Grid" },
-  { href: "/bookings/new", label: "New booking", icon: "Plus" },
-  { href: "/housekeeping", label: "Housekeeping", icon: "Sparkles" },
-]
-const NAV_SECONDARY: NavEntry[] = [
-  { href: "/bookings", label: "Reservations", icon: "Bed" },
-  { href: "/contacts", label: "Guests", icon: "User" },
-  { href: "/messages", label: "Messages", icon: "Message", badge: 3 },
-  { href: "/reports", label: "Reports", icon: "Sparkline" },
-  { href: "/setup", label: "Setup", icon: "Settings" },
-]
-// Admin-only. The /users page redirects non-admins, so only show it to them.
-const NAV_ADMIN: NavEntry[] = [{ href: "/users", label: "Users", icon: "User" }]
 const PROPERTIES = [
   { id: "all", name: "All properties", rooms: 9 },
   { id: "byron", name: "Away at Byron Bay", rooms: 3 },
@@ -38,20 +22,23 @@ const PROPERTIES = [
 
 export function AppShell({
   user,
+  nav,
   children,
 }: {
   user: { name: string; role: string }
+  nav: NavEntry[]
   children: React.ReactNode
 }) {
   const pathname = usePathname()
   const [property, setProperty] = useState(PROPERTIES[0]!)
   const [propOpen, setPropOpen] = useState(false)
-  const secondary =
-    user.role === "admin" ? [...NAV_SECONDARY, ...NAV_ADMIN] : NAV_SECONDARY
+  const today = nav.filter((n) => n.group === "today")
+  const secondary = nav.filter((n) => n.group === "manage")
   const current =
-    [...NAV, ...secondary].find(
+    nav.find(
       (n) => pathname === n.href || pathname.startsWith(n.href + "/"),
-    ) ?? NAV[0]!
+    ) ?? nav[0]
+  const title = current?.label ?? ""
 
   return (
     <div
@@ -149,12 +136,12 @@ export function AppShell({
         {/* Nav */}
         <nav style={{ padding: "14px 10px", display: "flex", flexDirection: "column", gap: 2 }}>
           <div className="caps" style={{ padding: "8px 12px 4px", color: "var(--ink-faint)" }}>Today</div>
-          {NAV.map((n) => (
-            <NavItem key={n.href} item={n} active={current.href === n.href} />
+          {today.map((n) => (
+            <NavItem key={n.href} item={n} active={current?.href === n.href} />
           ))}
           <div className="caps" style={{ padding: "18px 12px 4px", color: "var(--ink-faint)" }}>Manage</div>
           {secondary.map((n) => (
-            <NavItem key={n.href} item={n} active={current.href === n.href} />
+            <NavItem key={n.href} item={n} active={current?.href === n.href} />
           ))}
         </nav>
 
@@ -196,12 +183,12 @@ export function AppShell({
                 lineHeight: 1.05, letterSpacing: "var(--tight)", marginTop: 4,
               }}
             >
-              {current.href === "/home" ? (
+              {current?.href === "/home" ? (
                 <>
                   Good <em style={{ fontStyle: "italic" }}>{partOfDay()}</em>, {user.name.split(" ")[0]}
                 </>
               ) : (
-                current.label
+                title
               )}
             </div>
           </div>

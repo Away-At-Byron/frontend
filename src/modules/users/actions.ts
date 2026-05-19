@@ -2,10 +2,11 @@
 
 import bcrypt from "bcryptjs"
 import { eq } from "drizzle-orm"
-import { users, roles } from "@/db/schema"
+import { users, roles, userModuleAccess } from "@/db/schema"
 import { withTenant, type TenantContext } from "@/lib/rls"
 import { writeAudit } from "@/lib/audit"
 import { ok, err, type ActionResult, type ActionErr } from "@/lib/result"
+import { toggleableModulesForRole, OVERRIDE_NONE } from "@/lib/modules"
 import {
   createUserSchema,
   updateUserSchema,
@@ -14,11 +15,54 @@ import {
 } from "./schemas"
 import type { UserRow } from "./queries"
 
+type Tx = Parameters<Parameters<typeof withTenant>[0]>[0]
+
 function adminOnly(ctx: TenantContext): ActionErr | null {
   if (ctx.role !== "admin") {
     return err("FORBIDDEN", "Only an admin can manage users.")
   }
   return null
+}
+
+/**
+ * Map a submitted module selection to what we store and what we echo back.
+ * `null` moduleCodes = "no override, follow role default". Selecting the
+ * full toggleable set counts as no override; selecting none stores a
+ * sentinel so it stays distinct from "never customised".
+ */
+function resolveModuleSelection(
+  roleName: string,
+  selected: string[],
+): { rows: string[]; moduleCodes: string[] | null } {
+  const toggleable = toggleableModulesForRole(roleName).map(
+    (m) => m.code as string,
+  )
+  if (roleName === "admin" || toggleable.length === 0) {
+    return { rows: [], moduleCodes: null }
+  }
+  const chosen = [...new Set(selected.filter((c) => toggleable.includes(c)))]
+  if (chosen.length === toggleable.length) {
+    return { rows: [], moduleCodes: null }
+  }
+  if (chosen.length === 0) {
+    return { rows: [OVERRIDE_NONE], moduleCodes: [] }
+  }
+  return { rows: chosen, moduleCodes: chosen }
+}
+
+async function persistModules(
+  tx: Tx,
+  userId: string,
+  rows: string[],
+): Promise<void> {
+  await tx
+    .delete(userModuleAccess)
+    .where(eq(userModuleAccess.userId, userId))
+  if (rows.length) {
+    await tx
+      .insert(userModuleAccess)
+      .values(rows.map((moduleCode) => ({ userId, moduleCode })))
+  }
 }
 
 function isUniqueViolation(e: unknown): boolean {
@@ -83,6 +127,9 @@ export async function createUser(
         })
 
       const row = inserted[0]!
+      const sel = resolveModuleSelection(role[0].name, data.modules)
+      await persistModules(tx, row.id, sel.rows)
+
       await writeAudit({
         ctx,
         entityType: "user",
@@ -93,10 +140,11 @@ export async function createUser(
           firstName: row.firstName,
           lastName: row.lastName,
           roleId: row.roleId,
+          modules: sel.moduleCodes,
         },
       })
 
-      return ok({ ...row, roleName: role[0].name })
+      return ok({ ...row, roleName: role[0].name, moduleCodes: sel.moduleCodes })
     } catch (e) {
       if (isUniqueViolation(e)) {
         return err("CONFLICT", "A user with that email already exists.", {
@@ -175,6 +223,9 @@ export async function updateUser(
         })
 
       const row = updated[0]!
+      const sel = resolveModuleSelection(role[0].name, data.modules)
+      await persistModules(tx, userId, sel.rows)
+
       await writeAudit({
         ctx,
         entityType: "user",
@@ -187,10 +238,11 @@ export async function updateUser(
           lastName: row.lastName,
           roleId: row.roleId,
           status: row.status,
+          modules: sel.moduleCodes,
         },
       })
 
-      return ok({ ...row, roleName: role[0].name })
+      return ok({ ...row, roleName: role[0].name, moduleCodes: sel.moduleCodes })
     } catch (e) {
       if (isUniqueViolation(e)) {
         return err("CONFLICT", "A user with that email already exists.", {

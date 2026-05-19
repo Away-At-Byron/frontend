@@ -9,6 +9,10 @@ const phone = z
   .optional()
   .transform((v) => (v ? v : undefined))
 
+// Selected module codes for this user. The server clamps these to the
+// user's role static default, so loose validation here is fine.
+const modules = z.array(z.string()).max(50).default([])
+
 export const createUserSchema = z.object({
   firstName: name,
   lastName: name,
@@ -16,6 +20,7 @@ export const createUserSchema = z.object({
   phone,
   roleId: z.string().uuid("Select a role"),
   password: z.string().min(8, "At least 8 characters").max(200),
+  modules,
 })
 
 export const updateUserSchema = z.object({
@@ -25,6 +30,7 @@ export const updateUserSchema = z.object({
   phone,
   roleId: z.string().uuid("Select a role"),
   status: z.enum(["active", "disabled", "locked"]),
+  modules,
 })
 
 export type CreateUserInput = z.infer<typeof createUserSchema>

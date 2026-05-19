@@ -1,12 +1,15 @@
 "use client"
 
+import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@/components/ui/primitives"
+import { toggleableModulesForRole } from "@/lib/modules"
 import { createUserSchema, type CreateUserInput } from "../schemas"
 import type { RoleOption, UserRow } from "../queries"
 import type { ActionResult } from "@/lib/result"
 import { Modal, Field, inputStyle } from "./modal"
+import { AccessToggles } from "./access-toggles"
 
 export function NewUserModal({
   isOpen,
@@ -24,11 +27,25 @@ export function NewUserModal({
     handleSubmit,
     reset,
     setError,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<CreateUserInput>({
     resolver: zodResolver(createUserSchema),
-    defaultValues: { firstName: "", lastName: "", email: "", phone: "", roleId: "", password: "" },
+    defaultValues: { firstName: "", lastName: "", email: "", phone: "", roleId: "", password: "", modules: [] },
   })
+
+  const roleId = watch("roleId")
+  const roleName = roles.find((r) => r.id === roleId)?.name ?? ""
+  const modules = watch("modules") ?? []
+
+  // New user starts at the role's full static default; admin can untick.
+  useEffect(() => {
+    setValue(
+      "modules",
+      toggleableModulesForRole(roleName).map((m) => m.code),
+    )
+  }, [roleName, setValue])
 
   const close = () => {
     if (isSubmitting) return
@@ -117,6 +134,15 @@ export function NewUserModal({
           </div>
           <Field label="Initial password" error={errors.password?.message}>
             <input type="password" style={inputStyle} {...register("password")} />
+          </Field>
+          <Field label="Module access">
+            <AccessToggles
+              roleName={roleName}
+              selected={modules}
+              onChange={(next) =>
+                setValue("modules", next, { shouldDirty: true })
+              }
+            />
           </Field>
         </div>
 

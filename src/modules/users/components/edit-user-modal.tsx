@@ -7,8 +7,18 @@ import { Avatar, Button } from "@/components/ui/primitives"
 import { updateUserSchema, type UpdateUserInput } from "../schemas"
 import type { RoleOption, UserRow } from "../queries"
 import type { ActionResult } from "@/lib/result"
+import { toggleableModulesForRole } from "@/lib/modules"
 import { Modal, Field, inputStyle } from "./modal"
 import { labelFor } from "./new-user-modal"
+import { AccessToggles } from "./access-toggles"
+
+/** Initial per-user selection: no override => full role default. */
+function initialModules(u: UserRow): string[] {
+  const t = toggleableModulesForRole(u.roleName).map((m) => m.code as string)
+  return u.moduleCodes == null
+    ? t
+    : t.filter((c) => u.moduleCodes!.includes(c))
+}
 
 export function EditUserModal({
   isOpen,
@@ -31,6 +41,8 @@ export function EditUserModal({
     handleSubmit,
     reset,
     setError,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<UpdateUserInput>({
     resolver: zodResolver(updateUserSchema),
@@ -46,9 +58,25 @@ export function EditUserModal({
         phone: user.phone ?? "",
         roleId: user.roleId,
         status: user.status,
+        modules: initialModules(user),
       })
     }
   }, [user, reset])
+
+  const roleId = watch("roleId")
+  const roleName = roles.find((r) => r.id === roleId)?.name ?? ""
+  const modules = watch("modules") ?? []
+
+  // Switching this user to a different role resets access to that role's
+  // full static default (its old selection no longer applies).
+  useEffect(() => {
+    if (user && roleName && roleName !== user.roleName) {
+      setValue(
+        "modules",
+        toggleableModulesForRole(roleName).map((m) => m.code),
+      )
+    }
+  }, [roleName, user, setValue])
 
   if (!user) return null
 
@@ -148,6 +176,15 @@ export function EditUserModal({
               <option value="locked">Locked</option>
               <option value="disabled">Disabled</option>
             </select>
+          </Field>
+          <Field label="Module access">
+            <AccessToggles
+              roleName={roleName}
+              selected={modules}
+              onChange={(next) =>
+                setValue("modules", next, { shouldDirty: true })
+              }
+            />
           </Field>
         </div>
 

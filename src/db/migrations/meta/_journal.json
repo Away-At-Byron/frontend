@@ -8,6 +8,20 @@
       "when": 1779122590173,
       "tag": "0000_auth_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779200000000,
+      "tag": "0001_roles_groups",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779160343761,
+      "tag": "0002_polite_sprite",
+      "breakpoints": true
     }
   ]
 }

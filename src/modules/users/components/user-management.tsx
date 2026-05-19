@@ -29,6 +29,7 @@ export function UserManagement({
     setUsers(initialUsers)
   }
   const [activeTab, setActiveTab] = useState<string>("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all")
   const [searchTerm, setSearchTerm] = useState("")
   const [debounced, setDebounced] = useState("")
   const [newOpen, setNewOpen] = useState(false)
@@ -46,13 +47,15 @@ export function UserManagement({
     const s = debounced.trim().toLowerCase()
     return users.filter((u) => {
       if (activeTab !== "all" && u.roleName !== activeTab) return false
+      if (statusFilter === "active" && u.status !== "active") return false
+      if (statusFilter === "inactive" && u.status === "active") return false
       if (!s) return true
       return (
         `${u.firstName} ${u.lastName}`.toLowerCase().includes(s) ||
         u.email.toLowerCase().includes(s)
       )
     })
-  }, [users, activeTab, debounced])
+  }, [users, activeTab, statusFilter, debounced])
 
   const handleCreate = useCallback(
     async (values: Parameters<typeof createUser>[0]) => {
@@ -74,12 +77,7 @@ export function UserManagement({
       const res = await updateUser(id, values)
       if (res.ok) {
         const roleChanged = before && before.roleId !== res.data.roleId
-        // If a disabled status was set, drop it from the visible list.
-        setUsers((prev) =>
-          res.data.status === "disabled"
-            ? prev.filter((u) => u.id !== id)
-            : prev.map((u) => (u.id === id ? res.data : u)),
-        )
+        setUsers((prev) => prev.map((u) => (u.id === id ? res.data : u)))
         // Self-edit safeguard: changing your own role invalidates your
         // session — sign out (old app behaviour, adapted to Auth.js).
         if (id === currentUserId && roleChanged) {
@@ -105,7 +103,10 @@ export function UserManagement({
       setError(null)
       const res = await disableUser(u.id)
       if (res.ok) {
-        setUsers((prev) => prev.filter((x) => x.id !== u.id))
+        // Keep the row visible as inactive (status filter handles hiding).
+        setUsers((prev) =>
+          prev.map((x) => (x.id === u.id ? { ...x, status: "disabled" } : x)),
+        )
       } else {
         setError(res.error.message)
       }
@@ -141,20 +142,59 @@ export function UserManagement({
         </div>
       )}
 
+      {/* Row 1 — filter by role, full width */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", width: "100%" }}>
+        <span
+          className="caps"
+          style={{ color: "var(--ink-faint)", width: 56, flex: "0 0 56px" }}
+        >
+          Role
+        </span>
+        {tabs.map((t) => (
+          <FilterPill
+            key={t.id}
+            on={activeTab === t.id}
+            count={
+              t.id === "all"
+                ? users.length
+                : users.filter((u) => u.roleName === t.id).length
+            }
+            onClick={() => setActiveTab(t.id)}
+          >
+            {t.label}
+          </FilterPill>
+        ))}
+      </div>
+
+      {/* Row 2 — status filter (start) · search + new user (end) */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {tabs.map((t) => (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span
+            className="caps"
+            style={{ color: "var(--ink-faint)", width: 56, flex: "0 0 56px" }}
+          >
+            Status
+          </span>
+          {(
+            [
+              { id: "all", label: "All" },
+              { id: "active", label: "Active" },
+              { id: "inactive", label: "Inactive" },
+            ] as const
+          ).map((s) => (
             <FilterPill
-              key={t.id}
-              on={activeTab === t.id}
+              key={s.id}
+              on={statusFilter === s.id}
               count={
-                t.id === "all"
+                s.id === "all"
                   ? users.length
-                  : users.filter((u) => u.roleName === t.id).length
+                  : s.id === "active"
+                    ? users.filter((u) => u.status === "active").length
+                    : users.filter((u) => u.status !== "active").length
               }
-              onClick={() => setActiveTab(t.id)}
+              onClick={() => setStatusFilter(s.id)}
             >
-              {t.label}
+              {s.label}
             </FilterPill>
           ))}
         </div>
@@ -164,36 +204,44 @@ export function UserManagement({
             display: "flex",
             alignItems: "center",
             gap: 10,
-            background: "var(--paper)",
-            border: "1px solid var(--line)",
-            borderRadius: "var(--r-pill)",
-            padding: "9px 14px",
-            width: 280,
           }}
         >
-          <Icon name="Search" size={15} />
-          <input
-            placeholder="Search users"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+          <div
             style={{
-              flex: 1,
-              border: "none",
-              outline: "none",
-              background: "transparent",
-              font: "inherit",
-              fontSize: 13,
-              color: "var(--ink)",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              background: "var(--paper)",
+              border: "1px solid var(--line)",
+              borderRadius: "var(--r-pill)",
+              padding: "9px 14px",
+              width: 280,
             }}
-          />
+          >
+            <Icon name="Search" size={15} />
+            <input
+              placeholder="Search users"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                flex: 1,
+                border: "none",
+                outline: "none",
+                background: "transparent",
+                font: "inherit",
+                fontSize: 13,
+                color: "var(--ink)",
+              }}
+            />
+          </div>
+          <Button
+            variant="primary"
+            icon={<Icon name="Plus" size={15} />}
+            onClick={() => setNewOpen(true)}
+          >
+            New user
+          </Button>
         </div>
-        <Button
-          variant="primary"
-          icon={<Icon name="Plus" size={15} />}
-          onClick={() => setNewOpen(true)}
-        >
-          New user
-        </Button>
       </div>
 
       <Card pad={0}>
@@ -255,7 +303,11 @@ export function UserManagement({
                 <Button
                   size="sm"
                   variant="danger"
-                  disabled={deletingId === u.id || u.id === currentUserId}
+                  disabled={
+                    deletingId === u.id ||
+                    u.id === currentUserId ||
+                    u.status === "disabled"
+                  }
                   onClick={() => handleDisable(u)}
                 >
                   {deletingId === u.id ? "..." : "Disable"}
