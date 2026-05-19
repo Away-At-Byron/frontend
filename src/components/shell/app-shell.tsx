@@ -27,6 +27,8 @@ const NAV_SECONDARY: NavEntry[] = [
   { href: "/reports", label: "Reports", icon: "Sparkline" },
   { href: "/setup", label: "Setup", icon: "Settings" },
 ]
+// Admin-only. The /users page redirects non-admins, so only show it to them.
+const NAV_ADMIN: NavEntry[] = [{ href: "/users", label: "Users", icon: "User" }]
 const PROPERTIES = [
   { id: "all", name: "All properties", rooms: 9 },
   { id: "byron", name: "Away at Byron Bay", rooms: 3 },
@@ -44,8 +46,10 @@ export function AppShell({
   const pathname = usePathname()
   const [property, setProperty] = useState(PROPERTIES[0]!)
   const [propOpen, setPropOpen] = useState(false)
+  const secondary =
+    user.role === "admin" ? [...NAV_SECONDARY, ...NAV_ADMIN] : NAV_SECONDARY
   const current =
-    [...NAV, ...NAV_SECONDARY].find(
+    [...NAV, ...secondary].find(
       (n) => pathname === n.href || pathname.startsWith(n.href + "/"),
     ) ?? NAV[0]!
 
@@ -149,7 +153,7 @@ export function AppShell({
             <NavItem key={n.href} item={n} active={current.href === n.href} />
           ))}
           <div className="caps" style={{ padding: "18px 12px 4px", color: "var(--ink-faint)" }}>Manage</div>
-          {NAV_SECONDARY.map((n) => (
+          {secondary.map((n) => (
             <NavItem key={n.href} item={n} active={current.href === n.href} />
           ))}
         </nav>

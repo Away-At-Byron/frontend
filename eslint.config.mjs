@@ -21,6 +21,7 @@ const eslintConfig = [
       "node_modules/**",
       "src/db/migrations/**",
       "docs/**", // copied design-bundle prototypes — reference only, not linted
+      "documentation/**", // ported reference app source — reference only, not linted
       "next-env.d.ts",
     ],
   },

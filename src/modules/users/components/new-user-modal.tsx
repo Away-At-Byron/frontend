@@ -1,0 +1,148 @@
+"use client"
+
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Button } from "@/components/ui/primitives"
+import { createUserSchema, type CreateUserInput } from "../schemas"
+import type { RoleOption, UserRow } from "../queries"
+import type { ActionResult } from "@/lib/result"
+import { Modal, Field, inputStyle } from "./modal"
+
+export function NewUserModal({
+  isOpen,
+  onClose,
+  roles,
+  onSave,
+}: {
+  isOpen: boolean
+  onClose: () => void
+  roles: RoleOption[]
+  onSave: (values: CreateUserInput) => Promise<ActionResult<UserRow>>
+}) {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<CreateUserInput>({
+    resolver: zodResolver(createUserSchema),
+    defaultValues: { firstName: "", lastName: "", email: "", phone: "", roleId: "", password: "" },
+  })
+
+  const close = () => {
+    if (isSubmitting) return
+    reset()
+    onClose()
+  }
+
+  const submit = handleSubmit(async (values) => {
+    const res = await onSave(values)
+    if (res.ok) {
+      reset()
+      onClose()
+      return
+    }
+    const fields = res.error.fields
+    if (fields) {
+      for (const [k, msgs] of Object.entries(fields)) {
+        if (msgs?.[0]) setError(k as keyof CreateUserInput, { message: msgs[0] })
+      }
+    } else {
+      setError("root", { message: res.error.message })
+    }
+  })
+
+  return (
+    <Modal isOpen={isOpen} onClose={close}>
+      <form onSubmit={submit}>
+        <div style={{ padding: "22px 24px 6px" }}>
+          <h2
+            style={{
+              fontFamily: "var(--font-display), serif",
+              fontWeight: 300,
+              fontSize: 24,
+              letterSpacing: "var(--tight)",
+              margin: 0,
+            }}
+          >
+            New user
+          </h2>
+          <p style={{ marginTop: 6, fontSize: 13, color: "var(--ink-soft)" }}>
+            Set their name, email, role, and an initial password.
+          </p>
+        </div>
+
+        <div style={{ padding: "16px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+          {errors.root && (
+            <div
+              style={{
+                padding: "10px 12px",
+                borderRadius: "var(--r-2)",
+                background: "var(--bad-bg)",
+                color: "var(--bad-fg)",
+                fontSize: 13,
+              }}
+            >
+              {errors.root.message}
+            </div>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <Field label="First name" error={errors.firstName?.message}>
+              <input style={inputStyle} {...register("firstName")} />
+            </Field>
+            <Field label="Last name" error={errors.lastName?.message}>
+              <input style={inputStyle} {...register("lastName")} />
+            </Field>
+          </div>
+          <Field label="Email" error={errors.email?.message}>
+            <input type="email" style={inputStyle} {...register("email")} />
+          </Field>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <Field label="Phone (optional)" error={errors.phone?.message}>
+              <input style={inputStyle} {...register("phone")} />
+            </Field>
+            <Field label="Role" error={errors.roleId?.message}>
+              <select style={inputStyle} defaultValue="" {...register("roleId")}>
+                <option value="" disabled>
+                  Select a role
+                </option>
+                {roles.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {labelFor(r.name)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <Field label="Initial password" error={errors.password?.message}>
+            <input type="password" style={inputStyle} {...register("password")} />
+          </Field>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 10,
+            padding: "16px 24px 22px",
+            borderTop: "1px solid var(--line-soft)",
+          }}
+        >
+          <Button variant="ghost" onClick={close} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : "Add user"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+export function labelFor(roleName: string) {
+  return roleName
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
