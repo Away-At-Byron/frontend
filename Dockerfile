@@ -27,11 +27,15 @@ RUN groupadd --system --gid 1001 aab \
  && useradd --system --uid 1001 --gid aab --shell /usr/sbin/nologin aab
 COPY --from=build --chown=aab:aab /app/.next/standalone ./
 COPY --from=build --chown=aab:aab /app/.next/static ./.next/static
-# Drizzle schema + migrations travel with the image so the migrate job in
-# Dokploy's compose can apply them before the app starts.
+# Drizzle schema + migrations + the full build-stage node_modules travel with
+# the image so the migrate job (Dokploy compose) can run `drizzle-kit migrate`
+# against the same dep tree the schema was built against. The standalone runtime
+# already has its own traced node_modules at /app/node_modules; db-migrate is a
+# separate dir so the two never collide.
 COPY --from=build --chown=aab:aab /app/src/db ./db-migrate/src/db
 COPY --from=build --chown=aab:aab /app/drizzle.config.ts ./db-migrate/
-COPY --from=build --chown=aab:aab /app/node_modules/drizzle-kit ./db-migrate/node_modules/drizzle-kit
+COPY --from=build --chown=aab:aab /app/node_modules ./db-migrate/node_modules
+COPY --from=build --chown=aab:aab /app/package.json ./db-migrate/package.json
 USER aab
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=4s --start-period=20s --retries=3 \
