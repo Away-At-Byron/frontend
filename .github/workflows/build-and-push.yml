@@ -43,16 +43,19 @@ jobs:
       - id: meta
         name: Compute tags
         run: |
+          # GHCR image references must be lowercase
+          OWNER="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          IMAGE="ghcr.io/${OWNER}/frontend"
           SHORT_SHA=$(git rev-parse --short HEAD)
-          echo "sha_tag=ghcr.io/${{ github.repository_owner }}/frontend:sha-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
-          TAGS="ghcr.io/${{ github.repository_owner }}/frontend:sha-${SHORT_SHA}"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "sha_tag=${IMAGE}:sha-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          TAGS="${IMAGE}:sha-${SHORT_SHA}"
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            TAGS="${TAGS},ghcr.io/${{ github.repository_owner }}/frontend:dev"
+            TAGS="${TAGS},${IMAGE}:dev"
           fi
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF#refs/tags/}"
-            TAGS="${TAGS},ghcr.io/${{ github.repository_owner }}/frontend:prod"
-            TAGS="${TAGS},ghcr.io/${{ github.repository_owner }}/frontend:${VERSION}"
+            TAGS="${TAGS},${IMAGE}:prod,${IMAGE}:${VERSION}"
           fi
           echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
 
