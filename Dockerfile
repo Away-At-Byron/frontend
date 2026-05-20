@@ -28,13 +28,14 @@ RUN groupadd --system --gid 1001 aab \
  && mkdir -p /home/aab/.cache && chown -R aab:aab /home/aab
 COPY --from=build --chown=aab:aab /app/.next/standalone ./
 COPY --from=build --chown=aab:aab /app/.next/static ./.next/static
-# Drizzle schema + migrations + the full build-stage node_modules travel with
-# the image so the migrate job (Dokploy compose) can run `drizzle-kit migrate`
-# against the same dep tree the schema was built against. The standalone runtime
-# already has its own traced node_modules at /app/node_modules; db-migrate is a
-# separate dir so the two never collide.
-COPY --from=build --chown=aab:aab /app/src/db ./db-migrate/src/db
-COPY --from=build --chown=aab:aab /app/drizzle.config.ts ./db-migrate/
+# db-migrate ships the full source + build-stage node_modules + tsconfig so
+# Dokploy compose jobs can run drizzle-kit migrate AND one-shot scripts like
+# the seed (which imports src/lib/modules etc.). The standalone runtime keeps
+# its own traced node_modules at /app/node_modules; db-migrate is a separate
+# directory so the two never collide.
+COPY --from=build --chown=aab:aab /app/src ./db-migrate/src
+COPY --from=build --chown=aab:aab /app/drizzle.config.ts ./db-migrate/drizzle.config.ts
+COPY --from=build --chown=aab:aab /app/tsconfig.json ./db-migrate/tsconfig.json
 COPY --from=build --chown=aab:aab /app/node_modules ./db-migrate/node_modules
 COPY --from=build --chown=aab:aab /app/package.json ./db-migrate/package.json
 USER aab
