@@ -9,7 +9,7 @@ export * from "./user-access" // Layer 0 — module 3 (per-user module overrides
 export * from "./audit" // Layer 0 — cross-cutting
 
 // ── Layer 1 — domain reference data (Stage 2) ──────────────
-// export * from "./contacts"        // module 4
+export * from "./contacts" // module 4
 // export * from "./room-types"      // module 5
 // export * from "./rooms"           // module 6
 // export * from "./common-areas"    // module 7

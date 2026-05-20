@@ -20,7 +20,7 @@ export const users = pgTable("users", {
     .notNull()
     .references(() => roles.id),
   propertyId: uuid("property_id").references(() => properties.id), // null = admin
-  contactId: uuid("contact_id"), // FK added in 0001
+  contactId: uuid("contact_id"), // FK → contacts.id in migration 0003
   status: userStatus("status").notNull().default("active"),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

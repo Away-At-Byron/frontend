@@ -41,7 +41,7 @@ export const MODULES: ModuleDef[] = [
   { code: "dashboard", label: "Dashboard", alwaysOn: true },
   { code: "calendar", label: "Calendar" },
   { code: "bookings", label: "Reservations" },
-  { code: "contacts", label: "Guests" },
+  { code: "contacts", label: "Contacts" },
   { code: "messages", label: "Messages" },
   { code: "housekeeping", label: "Housekeeping" },
   { code: "maintenance", label: "Maintenance" },
@@ -143,7 +143,7 @@ export const NAV_ENTRIES: NavEntry[] = [
   },
   {
     href: "/contacts",
-    label: "Guests",
+    label: "Contacts",
     icon: "User",
     group: "manage",
     module: "contacts",
