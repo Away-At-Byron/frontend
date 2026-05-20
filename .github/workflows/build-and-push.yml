@@ -1,0 +1,116 @@
+name: Build and push image
+
+# Build once, promote across envs. Image tags:
+#   :sha-<short>     immutable, every build
+#   :dev             rolling, follows main
+#   :prod            rolling, follows tagged releases (vX.Y.Z)
+#   :vX.Y.Z          immutable, per release tag
+#
+# Dokploy redeploys when its webhook fires. Each env (dev/prod) has a separate
+# webhook URL stored as a repo secret: DOKPLOY_WEBHOOK_DEV / DOKPLOY_WEBHOOK_PROD.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false  # never cancel a deploy mid-push
+
+permissions:
+  contents: read
+  packages: write             # GHCR push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      sha-tag: ${{ steps.meta.outputs.sha_tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        name: Compute tags
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "sha_tag=ghcr.io/${{ github.repository_owner }}/frontend:sha-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          TAGS="ghcr.io/${{ github.repository_owner }}/frontend:sha-${SHORT_SHA}"
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            TAGS="${TAGS},ghcr.io/${{ github.repository_owner }}/frontend:dev"
+          fi
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+            TAGS="${TAGS},ghcr.io/${{ github.repository_owner }}/frontend:prod"
+            TAGS="${TAGS},ghcr.io/${{ github.repository_owner }}/frontend:${VERSION}"
+          fi
+          echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
+
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          provenance: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+
+      - name: Trivy scan (HIGH+CRITICAL, non-blocking on first pass)
+        uses: aquasecurity/trivy-action@0.28.0
+        continue-on-error: true
+        with:
+          image-ref: ${{ steps.meta.outputs.sha_tag }}
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+
+  deploy-dev:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: dev
+    env:
+      DOKPLOY_WEBHOOK_DEV: ${{ secrets.DOKPLOY_WEBHOOK_DEV }}
+    steps:
+      - name: Trigger Dokploy redeploy (dev)
+        run: |
+          if [ -z "$DOKPLOY_WEBHOOK_DEV" ]; then
+            echo "::warning::DOKPLOY_WEBHOOK_DEV not set; skipping redeploy. Add the secret after the dev Dokploy app exists."
+            exit 0
+          fi
+          curl -fsS -X POST "$DOKPLOY_WEBHOOK_DEV" \
+            -H "Content-Type: application/json" --max-time 30
+
+  deploy-prod:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment:
+      name: prod
+      url: http://pms.187-77-151-209.sslip.io
+    env:
+      DOKPLOY_WEBHOOK_PROD: ${{ secrets.DOKPLOY_WEBHOOK_PROD }}
+    steps:
+      - name: Trigger Dokploy redeploy (prod)
+        run: |
+          if [ -z "$DOKPLOY_WEBHOOK_PROD" ]; then
+            echo "::warning::DOKPLOY_WEBHOOK_PROD not set; skipping redeploy."
+            exit 0
+          fi
+          curl -fsS -X POST "$DOKPLOY_WEBHOOK_PROD" \
+            -H "Content-Type: application/json" --max-time 30

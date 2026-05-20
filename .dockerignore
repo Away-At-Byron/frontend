@@ -1,0 +1,16 @@
+.git
+.github
+.next
+node_modules
+docs
+docker-compose*.yml
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+.DS_Store
+README.md
+CLAUDE.md
+coverage
+postgres_data
+minio_data
