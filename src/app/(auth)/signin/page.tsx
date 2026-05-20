@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useState } from "react"
+import { Suspense, useState, useSyncExternalStore } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { signIn } from "next-auth/react"
 import { Button } from "@/components/ui/primitives"
@@ -26,8 +26,10 @@ function SignInForm() {
   // Render the form client-only. Server + first client paint emit the same
   // placeholder, so password-manager extensions (Keeper etc.) that inject
   // DOM into the inputs after load can't cause a hydration mismatch.
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  // useSyncExternalStore returns the server snapshot during SSR + first
+  // render, then the client snapshot — no effect needed, no React Compiler
+  // set-state-in-effect violation.
+  const mounted = useSyncExternalStore(subscribeNoop, getTrue, getFalse)
   if (!mounted) {
     return <div style={{ minHeight: "100vh", background: "var(--linen)" }} />
   }
@@ -161,6 +163,13 @@ function SignInForm() {
     </div>
   )
 }
+
+// Stable references for useSyncExternalStore — keeping them at module scope
+// avoids the "snapshot is not the same after re-render" warning React fires
+// when these come from useCallback inside the component.
+const subscribeNoop = () => () => {}
+const getTrue = () => true
+const getFalse = () => false
 
 const inputStyle: React.CSSProperties = {
   width: "100%", height: 46, padding: "0 14px", fontSize: 14,
