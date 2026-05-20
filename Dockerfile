@@ -24,7 +24,8 @@ FROM oven/bun:1-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
 RUN groupadd --system --gid 1001 aab \
- && useradd --system --uid 1001 --gid aab --shell /usr/sbin/nologin aab
+ && useradd --system --uid 1001 --gid aab --shell /usr/sbin/nologin --create-home --home-dir /home/aab aab \
+ && mkdir -p /home/aab/.cache && chown -R aab:aab /home/aab
 COPY --from=build --chown=aab:aab /app/.next/standalone ./
 COPY --from=build --chown=aab:aab /app/.next/static ./.next/static
 # Drizzle schema + migrations + the full build-stage node_modules travel with

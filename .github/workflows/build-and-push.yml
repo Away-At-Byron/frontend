@@ -96,7 +96,9 @@ jobs:
             echo "::warning::DOKPLOY_WEBHOOK_DEV not set; skipping redeploy. Add the secret after the dev Dokploy app exists."
             exit 0
           fi
-          curl -fsS -X POST "$DOKPLOY_WEBHOOK_DEV" \
+          # -k: Dokploy is on sslip.io self-signed cert until the real domain
+          # lands + LE cert issues. Drop -k after the domain swap.
+          curl -fsSk -X POST "$DOKPLOY_WEBHOOK_DEV" \
             -H "Content-Type: application/json" --max-time 30
 
   deploy-prod:
@@ -115,5 +117,6 @@ jobs:
             echo "::warning::DOKPLOY_WEBHOOK_PROD not set; skipping redeploy."
             exit 0
           fi
-          curl -fsS -X POST "$DOKPLOY_WEBHOOK_PROD" \
+          # -k: see comment in deploy-dev. Drop after real domain swap.
+          curl -fsSk -X POST "$DOKPLOY_WEBHOOK_PROD" \
             -H "Content-Type: application/json" --max-time 30
