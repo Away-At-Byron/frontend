@@ -23,8 +23,8 @@ RUN bun run build
 FROM oven/bun:1-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
-RUN addgroup --system --gid 1001 aab \
- && adduser --system --uid 1001 aab
+RUN groupadd --system --gid 1001 aab \
+ && useradd --system --uid 1001 --gid aab --shell /usr/sbin/nologin aab
 COPY --from=build --chown=aab:aab /app/.next/standalone ./
 COPY --from=build --chown=aab:aab /app/.next/static ./.next/static
 # Drizzle schema + migrations travel with the image so the migrate job in
