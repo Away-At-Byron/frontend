@@ -131,18 +131,31 @@ contradicts the "obvious to accommodation staff" product rule.
    success it burns the code (sets `otp`, `otp_expires_at`, `otp_attempts`
    to null/0) and stamps `last_login_at`.
 
-**Storage.** Three new columns on `users` (migration `0004_users_otp`):
-`otp text`, `otp_expires_at timestamptz`, `otp_attempts int not null
-default 0`. **The OTP is stored in plain text by product decision** — the
-10-minute TTL and the attempts cap bound the blast radius, and adding a
-hash buys little against an attacker who already has `SELECT` on `users`.
-This is the one deliberate divergence from defence-in-depth.
+**Storage.** A shared `auth_otps` table (migration `0006_auth_otps`,
+schema `src/db/schema/auth-otps.ts`) holds every OTP for both identity
+types. Polymorphic `subject_type` + `subject_id`; one outstanding code
+per identity enforced by a partial unique index on `(subject_type,
+subject_id) where consumed_at is null`. Issue is a transaction:
+mark the prior unconsumed row consumed, insert the fresh row — so the
+table doubles as history of every sign-in attempt. The earlier column-on-
+`users` design (`0004_users_otp`) was reverted in `0006_auth_otps` after
+we added the contact portal and wanted one place to look. **The OTP is
+stored in plain text by product decision** — the 10-minute TTL and the
+attempts cap bound the blast radius, and adding a hash buys little
+against an attacker who already has `SELECT` on the table. This is the
+one deliberate divergence from defence-in-depth, and is now more
+visible: every historical attempt sits in `auth_otps.code` until a
+retention job (TBD) prunes the table.
 
-**Limits.**
+**Limits.** Enforced in `src/lib/otp.ts` (single helper used by both
+providers and both signin actions):
 - OTP TTL: **10 minutes** from issue.
-- Attempts: **5** wrong codes invalidate the current OTP (the row stays;
-  the next `requestOtp` call resets the counter and issues a new code).
-- Codes are single-use — cleared on the first successful verify.
+- Attempts: **5** wrong codes consume the row (the user must request a new
+  code to try again).
+- Codes are single-use — `consumed_at` is set on the first successful
+  verify.
+- A new issue automatically consumes the prior unconsumed row, so only
+  the latest code is valid.
 
 **Session length (supersedes §6.1 AC2's 12-hour sliding rule):**
 - Remember-me **on** → 30-day sliding JWT.
@@ -151,14 +164,14 @@ This is the one deliberate divergence from defence-in-depth.
   per-request expiry is enforced by `token.exp` in the `jwt` callback.
 
 **Consequences.**
-- v1 dev runs `EMAIL_TRANSPORT=console`, so OTPs print to stdout. Production
-  uses Postal once the comms module lands; `sendEmail` throws for the SMTP
-  branch until then.
+- v1 dev defaults to `EMAIL_TRANSPORT=console` (OTPs to stdout). SMTP is
+  now implemented (`nodemailer`) — set `EMAIL_TRANSPORT=smtp` plus the
+  `SMTP_*` env vars to send through Postal/Gmail/SES/etc.
 - The OTP plain-text choice is a deliberate, recorded risk acceptance —
   revisit if/when the user base grows past the three-property internal team.
-- No new tables and no new auth tokens; the pending-2FA state lives in the
-  user row, and the browser carries email+password between steps. No
-  separate "trust this device" cookie in v1.
+  A retention/prune job for old `auth_otps` rows is a follow-up.
+- The browser carries email+password between steps; no separate
+  pending-2FA cookie. No "trust this device" cookie in v1.
 - TOTP and per-device trust are deferred. Re-open this ADR if Jenny wants
   to drop email round-trips for power users.
 
@@ -185,23 +198,26 @@ required by the storage layer.
   under the 5-attempt cap, burn on success).
 - The JWT carries a `subjectType: "user" | "contact"` claim. The
   `(staff)` layout redirects `subjectType === "contact"` to
-  `/portal/dashboard`; the `(portal)` layout redirects `subjectType ===
-  "user"` to `/home`. The portal sign-in page is public; the dashboard
-  enforces a contact session itself.
+  `/portal/dashboard`; the `portal/` layout redirects `subjectType ===
+  "user"` to `/home`. Staff lives in a `(staff)` route group (no URL
+  prefix); the portal lives at the literal `/portal/*` path segment so
+  the two sign-in pages don't both resolve to `/signin`. The portal
+  sign-in page is public; the dashboard enforces a contact session itself.
 - Session length: contacts get the **1-day** short window only. No
   remember-me — re-auth daily is reasonable for the contact use case and
   keeps the surface small.
 
-**Schema delta on `contacts`** (migration `0005_contacts_portal`):
+**Schema delta on `contacts`** (migration `0005_contacts_portal`,
+followed by `0006_auth_otps` which dropped the per-row OTP columns):
 - `portal_enabled boolean not null default false` — admins opt in per
   contact. Default OFF so the guest address book is never silently a list
   of logins.
-- `otp text`, `otp_expires_at timestamptz`, `otp_attempts int not null
-  default 0`, `last_login_at timestamptz` — same shape and rules as
-  ADR-004's users 2FA.
+- `last_login_at timestamptz` — stamped on successful verify.
 - `unique index contacts_email_lower_unique on lower(email) where email
   is not null` — login lookup needs email→contact to be 1:1. Partial
   index because `contacts.email` is nullable (most guest rows).
+- OTP state lives in the shared `auth_otps` table (`subject_type='contact'`),
+  not on the contacts row — see ADR-004's "Storage" section.
 
 **Anti-enumeration.** `requestContactOtp` returns the same `{ ok: true }`
 shape whether or not the email matches a portal-enabled contact. The OTP

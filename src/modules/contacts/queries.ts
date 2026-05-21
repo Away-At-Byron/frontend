@@ -30,6 +30,7 @@ function mapRow(
     marketingOptIn: boolean
     returningGuest: boolean
     isVip: boolean
+    portalEnabled: boolean
     groupName: string | null
     notes: string | null
     addressStreet: string | null
@@ -70,6 +71,7 @@ export async function listContacts(): Promise<ActionResult<ContactRow[]>> {
           marketingOptIn: contacts.marketingOptIn,
           returningGuest: contacts.returningGuest,
           isVip: contacts.isVip,
+          portalEnabled: contacts.portalEnabled,
           groupName: contacts.groupName,
           notes: contacts.notes,
           addressStreet: contacts.addressStreet,

@@ -43,6 +43,13 @@
       "when": 1779336303815,
       "tag": "0005_contacts_portal",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779338995125,
+      "tag": "0006_auth_otps",
+      "breakpoints": true
     }
   ]
 }

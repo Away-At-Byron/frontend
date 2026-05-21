@@ -69,10 +69,6 @@ export const contacts = pgTable(
      * silently a list of logins. Admins flip per row in the Contacts UI.
      */
     portalEnabled: boolean("portal_enabled").notNull().default(false),
-    /** OTP-only sign-in (ADR-005). Same fields as users 2FA, plain text. */
-    otp: text("otp"),
-    otpExpiresAt: timestamp("otp_expires_at", { withTimezone: true }),
-    otpAttempts: integer("otp_attempts").notNull().default(0),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
   },
   (t) => [

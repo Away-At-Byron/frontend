@@ -1,10 +1,11 @@
 import NextAuth, { type DefaultSession } from "next-auth"
 import Credentials from "next-auth/providers/credentials"
-import { and, eq, gt } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import bcrypt from "bcryptjs"
 import { z } from "zod"
 import { db } from "@/db"
 import { contacts, users, roles } from "@/db/schema"
+import { verifyOtp } from "@/lib/otp"
 
 export type SubjectType = "user" | "contact"
 
@@ -21,9 +22,7 @@ declare module "next-auth" {
 
 const SHORT_SESSION_SEC = 24 * 60 * 60 // 1 day
 const LONG_SESSION_SEC = 30 * 24 * 60 * 60 // 30 days
-const MAX_OTP_ATTEMPTS = 5
 
-// Staff: email + password + emailed OTP + remember-me (ADR-004).
 const staffSignInSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
@@ -31,16 +30,12 @@ const staffSignInSchema = z.object({
   rememberMe: z.enum(["true", "false"]).default("false"),
 })
 
-// Contact portal: email + emailed OTP only (ADR-005). No password,
-// no remember-me — short session always.
 const contactSignInSchema = z.object({
   email: z.string().email(),
   otp: z.string().regex(/^\d{6}$/),
 })
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  // Cookie lives long enough to support remember-me; per-token expiry is set
-  // in the jwt callback based on subjectType + the user's choice.
   session: { strategy: "jwt", maxAge: LONG_SESSION_SEC },
   trustHost: true,
   pages: { signIn: "/signin" },
@@ -62,9 +57,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             passwordHash: users.passwordHash,
             status: users.status,
             propertyId: users.propertyId,
-            otp: users.otp,
-            otpExpiresAt: users.otpExpiresAt,
-            otpAttempts: users.otpAttempts,
             roleName: roles.name,
           })
           .from(users)
@@ -73,33 +65,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           .limit(1)
 
         const u = row[0]
+        // Always run bcrypt to keep "no such user" timing-indistinguishable
+        // from "wrong password" (FRS §6.1 AC4).
         const hash = u?.passwordHash ?? "$2a$10$invalidinvalidinvalidinvalidinvalidinvalidinv"
         const passwordOk = await bcrypt.compare(parsed.data.password, hash)
         if (!u || u.status !== "active" || !passwordOk) return null
 
-        const now = new Date()
-        const otpFresh =
-          !!u.otp && !!u.otpExpiresAt && u.otpExpiresAt > now && u.otpAttempts < MAX_OTP_ATTEMPTS
-        const otpMatches = otpFresh && u.otp === parsed.data.otp
-        if (!otpMatches) {
-          if (otpFresh) {
-            await db
-              .update(users)
-              .set({ otpAttempts: u.otpAttempts + 1, updatedAt: now })
-              .where(and(eq(users.id, u.id), gt(users.otpExpiresAt!, now)))
-          }
-          return null
-        }
+        const otpOk = await verifyOtp("user", u.id, parsed.data.otp)
+        if (!otpOk) return null
 
         await db
           .update(users)
-          .set({
-            otp: null,
-            otpExpiresAt: null,
-            otpAttempts: 0,
-            lastLoginAt: now,
-            updatedAt: now,
-          })
+          .set({ lastLoginAt: new Date(), updatedAt: new Date() })
           .where(eq(users.id, u.id))
 
         return {
@@ -130,9 +107,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             lastName: contacts.lastName,
             propertyId: contacts.propertyId,
             portalEnabled: contacts.portalEnabled,
-            otp: contacts.otp,
-            otpExpiresAt: contacts.otpExpiresAt,
-            otpAttempts: contacts.otpAttempts,
           })
           .from(contacts)
           .where(eq(contacts.email, emailLower))
@@ -141,29 +115,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const c = row[0]
         if (!c || !c.portalEnabled || !c.email) return null
 
-        const now = new Date()
-        const otpFresh =
-          !!c.otp && !!c.otpExpiresAt && c.otpExpiresAt > now && c.otpAttempts < MAX_OTP_ATTEMPTS
-        const otpMatches = otpFresh && c.otp === parsed.data.otp
-        if (!otpMatches) {
-          if (otpFresh) {
-            await db
-              .update(contacts)
-              .set({ otpAttempts: c.otpAttempts + 1, updatedAt: now })
-              .where(and(eq(contacts.id, c.id), gt(contacts.otpExpiresAt!, now)))
-          }
-          return null
-        }
+        const otpOk = await verifyOtp("contact", c.id, parsed.data.otp)
+        if (!otpOk) return null
 
         await db
           .update(contacts)
-          .set({
-            otp: null,
-            otpExpiresAt: null,
-            otpAttempts: 0,
-            lastLoginAt: now,
-            updatedAt: now,
-          })
+          .set({ lastLoginAt: new Date(), updatedAt: new Date() })
           .where(eq(contacts.id, c.id))
 
         return {
@@ -187,7 +144,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.subjectType = (user as { subjectType: SubjectType }).subjectType
         token.rememberMe = (user as { rememberMe?: boolean }).rememberMe === true
       }
-      // Contacts get short session (no remember-me); staff respect their choice.
       const window =
         token.subjectType === "contact"
           ? SHORT_SESSION_SEC

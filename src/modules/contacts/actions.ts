@@ -76,6 +76,7 @@ async function fetchContactRow(
       marketingOptIn: contacts.marketingOptIn,
       returningGuest: contacts.returningGuest,
       isVip: contacts.isVip,
+      portalEnabled: contacts.portalEnabled,
       groupName: contacts.groupName,
       notes: contacts.notes,
       addressStreet: contacts.addressStreet,
@@ -151,6 +152,7 @@ export async function createContact(
             notes: data.notes ?? null,
             returningGuest: data.returningGuest,
             isVip: data.isVip,
+            portalEnabled: data.portalEnabled,
           })
           .returning({ id: contacts.id })
 
@@ -227,6 +229,7 @@ export async function updateContact(
             notes: data.notes ?? null,
             returningGuest: data.returningGuest,
             isVip: data.isVip,
+            portalEnabled: data.portalEnabled,
             updatedAt: new Date(),
           })
           .where(scope)

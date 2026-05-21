@@ -41,6 +41,7 @@ const contactFields = {
   notes: z.string().trim().max(4000).optional().transform((v) => (v ? v : undefined)),
   returningGuest: z.boolean().default(false),
   isVip: z.boolean().default(false),
+  portalEnabled: z.boolean().default(false),
   propertyId: z.string().uuid().optional(),
 }
 

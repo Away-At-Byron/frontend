@@ -95,6 +95,11 @@ export function ContactFormFields({
         VIP
       </label>
 
+      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5 }}>
+        <input type="checkbox" {...register("portalEnabled")} />
+        Allow portal login
+      </label>
+
       <Field label="Group name" error={errors.groupName?.message}>
         <input {...register("groupName")} style={inputStyle} />
       </Field>

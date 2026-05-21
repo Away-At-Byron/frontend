@@ -17,6 +17,7 @@ export type ContactRow = {
   marketingOptIn: boolean
   returningGuest: boolean
   isVip: boolean
+  portalEnabled: boolean
   groupName: string | null
   notes: string | null
   addressStreet: string | null

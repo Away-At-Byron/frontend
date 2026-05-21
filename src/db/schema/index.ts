@@ -5,6 +5,7 @@
 export * from "./properties" // Layer 0 — module 2
 export * from "./roles" // Layer 0 — module 3
 export * from "./auth" // Layer 0 — module 1
+export * from "./auth-otps" // Layer 0 — module 1 (shared OTP store)
 export * from "./user-access" // Layer 0 — module 3 (per-user module overrides)
 export * from "./audit" // Layer 0 — cross-cutting
 
