@@ -7,8 +7,10 @@ import {
   date,
   char,
   integer,
+  timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core"
+import { sql } from "drizzle-orm"
 import { tenantCols } from "./_helpers"
 import { properties } from "./properties"
 
@@ -62,6 +64,16 @@ export const contacts = pgTable(
     returningGuest: boolean("returning_guest").notNull().default(false),
     /** Supports VIP filter in the contacts UI until tier rules live on bookings. */
     isVip: boolean("is_vip").notNull().default(false),
+    /**
+     * Portal access opt-in. OFF by default so the guest address book is not
+     * silently a list of logins. Admins flip per row in the Contacts UI.
+     */
+    portalEnabled: boolean("portal_enabled").notNull().default(false),
+    /** OTP-only sign-in (ADR-005). Same fields as users 2FA, plain text. */
+    otp: text("otp"),
+    otpExpiresAt: timestamp("otp_expires_at", { withTimezone: true }),
+    otpAttempts: integer("otp_attempts").notNull().default(0),
+    lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
   },
   (t) => [
     uniqueIndex("contacts_property_client_number").on(
@@ -69,6 +81,11 @@ export const contacts = pgTable(
       t.clientNumber,
     ),
     uniqueIndex("contacts_property_client_seq").on(t.propertyId, t.clientSeq),
+    // Email is the sign-in identifier; one address can only map to one row.
+    // Partial unique on lower(email) since email is nullable.
+    uniqueIndex("contacts_email_lower_unique")
+      .on(sql`lower(${t.email})`)
+      .where(sql`${t.email} is not null`),
   ],
 )
 

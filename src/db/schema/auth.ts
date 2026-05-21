@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, uuid, text, timestamp, integer, pgEnum } from "drizzle-orm/pg-core"
 import { properties } from "./properties"
 import { roles } from "./roles"
 
@@ -22,6 +22,12 @@ export const users = pgTable("users", {
   propertyId: uuid("property_id").references(() => properties.id), // null = admin
   contactId: uuid("contact_id"), // FK → contacts.id in migration 0003
   status: userStatus("status").notNull().default("active"),
+  // 2FA: 6-digit code emailed on sign-in. Cleared after successful verify
+  // or when the row is locked out. Plain text by product decision —
+  // short TTL (10 min) bounds the blast radius.
+  otp: text("otp"),
+  otpExpiresAt: timestamp("otp_expires_at", { withTimezone: true }),
+  otpAttempts: integer("otp_attempts").notNull().default(0),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

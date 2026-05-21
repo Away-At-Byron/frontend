@@ -5,43 +5,38 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { signIn } from "next-auth/react"
 import { Button } from "@/components/ui/primitives"
 import { Icon } from "@/components/ui/icon"
-import { RoomArt } from "@/components/ui/room-art"
-import { requestOtp } from "./actions"
+import { requestContactOtp } from "./actions"
 
-export default function SignInPage() {
+export default function PortalSignInPage() {
   return (
     <Suspense fallback={<div style={{ minHeight: "100vh", background: "var(--linen)" }} />}>
-      <SignInForm />
+      <PortalSignInForm />
     </Suspense>
   )
 }
 
-type Step = "credentials" | "otp"
+type Step = "email" | "otp"
 
-function SignInForm() {
+function PortalSignInForm() {
   const router = useRouter()
   const params = useSearchParams()
-  const [step, setStep] = useState<Step>("credentials")
+  const [step, setStep] = useState<Step>("email")
   const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [rememberMe, setRememberMe] = useState(false)
   const [otp, setOtp] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  // See parent comment: render client-only so password-manager DOM
-  // injection can't trigger a hydration mismatch.
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
   if (!mounted) {
     return <div style={{ minHeight: "100vh", background: "var(--linen)" }} />
   }
 
-  async function onSubmitCredentials(e: React.FormEvent) {
+  async function onSubmitEmail(e: React.FormEvent) {
     e.preventDefault()
     setBusy(true)
     setError(null)
-    const res = await requestOtp({ email: email.trim().toLowerCase(), password })
+    const res = await requestContactOtp({ email: email.trim().toLowerCase() })
     setBusy(false)
     if (!res.ok) {
       setError(res.error.message)
@@ -54,11 +49,9 @@ function SignInForm() {
     e.preventDefault()
     setBusy(true)
     setError(null)
-    const res = await signIn("credentials", {
+    const res = await signIn("contact-otp", {
       email: email.trim().toLowerCase(),
-      password,
       otp: otp.trim(),
-      rememberMe: rememberMe ? "true" : "false",
       redirect: false,
     })
     setBusy(false)
@@ -66,14 +59,14 @@ function SignInForm() {
       setError("That code didn't work. Try again or request a new one.")
       return
     }
-    router.push(params.get("callbackUrl") ?? "/home")
+    router.push(params.get("callbackUrl") ?? "/portal/dashboard")
     router.refresh()
   }
 
   async function onResend() {
     setBusy(true)
     setError(null)
-    const res = await requestOtp({ email: email.trim().toLowerCase(), password })
+    const res = await requestContactOtp({ email: email.trim().toLowerCase() })
     setBusy(false)
     if (!res.ok) {
       setError(res.error.message)
@@ -83,26 +76,24 @@ function SignInForm() {
   }
 
   function onBack() {
-    setStep("credentials")
+    setStep("email")
     setOtp("")
     setError(null)
   }
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "var(--linen)" }}>
-      {/* Editorial brand panel */}
-      <div
-        style={{
-          flex: "1 1 50%", position: "relative", display: "flex",
-          flexDirection: "column", justifyContent: "space-between", padding: 48,
-          background: "var(--shell)", overflow: "hidden",
-        }}
-        className="auth-brand"
-      >
-        <div style={{ position: "absolute", inset: 0, opacity: 0.5 }}>
-          <RoomArt palette="warm" />
-        </div>
-        <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 12 }}>
+    <div
+      style={{
+        display: "flex",
+        minHeight: "100vh",
+        background: "var(--linen)",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 32,
+      }}
+    >
+      <div style={{ width: "100%", maxWidth: 420 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 32 }}>
           <div
             style={{
               width: 40, height: 40, borderRadius: "50%", background: "var(--ink)",
@@ -115,36 +106,22 @@ function SignInForm() {
           </div>
           <div className="caps" style={{ color: "var(--ink-soft)" }}>Away at Byron Bay</div>
         </div>
-        <div style={{ position: "relative" }}>
-          <div className="caps" style={{ color: "var(--ink-faint)", marginBottom: 12 }}>Property management</div>
-          <h1
-            style={{
-              fontFamily: "var(--font-display), serif", fontWeight: 300, fontSize: 48,
-              lineHeight: 1.05, letterSpacing: "var(--tight)", maxWidth: 460, margin: 0,
-            }}
-          >
-            One calm place to run <em style={{ fontStyle: "italic" }}>every</em> guesthouse.
-          </h1>
-          <p style={{ marginTop: 16, fontSize: 14.5, color: "var(--ink-soft)", maxWidth: 420, lineHeight: 1.6 }}>
-            Bookings, housekeeping, and the night audit, for Byron Bay, Shirley Lane and
-            Unwind, in a single sign-in.
-          </p>
-        </div>
-      </div>
 
-      {/* Form */}
-      <div style={{ flex: "1 1 50%", display: "flex", alignItems: "center", justifyContent: "center", padding: 32 }}>
-        {step === "credentials" ? (
-          <form onSubmit={onSubmitCredentials} style={{ width: "100%", maxWidth: 380 }}>
-            <div className="caps" style={{ color: "var(--ink-faint)" }}>Welcome back</div>
+        {step === "email" ? (
+          <form onSubmit={onSubmitEmail}>
+            <div className="caps" style={{ color: "var(--ink-faint)" }}>Portal</div>
             <h2
               style={{
                 fontFamily: "var(--font-display), serif", fontWeight: 300, fontSize: 32,
-                letterSpacing: "var(--tight)", margin: "8px 0 28px",
+                letterSpacing: "var(--tight)", margin: "8px 0 16px",
               }}
             >
               Sign in
             </h2>
+            <p style={{ color: "var(--ink-soft)", fontSize: 13.5, lineHeight: 1.55, margin: "0 0 22px" }}>
+              Enter the email your contact is registered under. We'll email a
+              6-digit code to sign you in.
+            </p>
 
             {error && <ErrorBanner message={error} />}
 
@@ -155,51 +132,19 @@ function SignInForm() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@awayatbyron.com"
+                placeholder="you@example.com"
                 style={inputStyle}
                 suppressHydrationWarning
               />
             </Field>
-            <Field label="Password">
-              <input
-                type="password"
-                required
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                style={inputStyle}
-                suppressHydrationWarning
-              />
-            </Field>
-
-            <label
-              style={{
-                display: "flex", alignItems: "center", gap: 9,
-                marginBottom: 18, fontSize: 13, color: "var(--ink-soft)",
-                cursor: "pointer", userSelect: "none",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                style={{ width: 15, height: 15, accentColor: "var(--ink)" }}
-              />
-              Keep me signed in for 30 days
-            </label>
 
             <Button type="submit" variant="primary" size="lg" disabled={busy} style={{ width: "100%", marginTop: 8 }}>
-              {busy ? "Checking…" : "Continue"}
+              {busy ? "Sending…" : "Send me a code"}
             </Button>
-
-            <p style={{ marginTop: 18, fontSize: 12.5, color: "var(--ink-faint)", textAlign: "center" }}>
-              Trouble signing in? Ask an admin to reset your access.
-            </p>
           </form>
         ) : (
-          <form onSubmit={onSubmitOtp} style={{ width: "100%", maxWidth: 380 }}>
-            <div className="caps" style={{ color: "var(--ink-faint)" }}>Two-step sign in</div>
+          <form onSubmit={onSubmitOtp}>
+            <div className="caps" style={{ color: "var(--ink-faint)" }}>Portal</div>
             <h2
               style={{
                 fontFamily: "var(--font-display), serif", fontWeight: 300, fontSize: 32,
@@ -209,8 +154,8 @@ function SignInForm() {
               Enter your code
             </h2>
             <p style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 22px", lineHeight: 1.55 }}>
-              We emailed a 6-digit code to <strong style={{ color: "var(--ink)" }}>{email}</strong>.
-              It expires in 10 minutes.
+              If <strong style={{ color: "var(--ink)" }}>{email}</strong> is in our system, we just
+              emailed a 6-digit code. It expires in 10 minutes.
             </p>
 
             {error && <ErrorBanner message={error} />}
@@ -247,8 +192,6 @@ function SignInForm() {
           </form>
         )}
       </div>
-
-      <style>{`@media (max-width: 880px){ .auth-brand{ display:none !important } }`}</style>
     </div>
   )
 }
