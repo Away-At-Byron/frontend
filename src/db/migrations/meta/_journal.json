@@ -22,6 +22,41 @@
       "when": 1779160343761,
       "tag": "0002_polite_sprite",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779300000000,
+      "tag": "0003_contacts",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779335236262,
+      "tag": "0004_users_otp",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779336303815,
+      "tag": "0005_contacts_portal",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779338995125,
+      "tag": "0006_auth_otps",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779400000000,
+      "tag": "0007_contacts_comm_pref",
+      "breakpoints": true
     }
   ]
 }

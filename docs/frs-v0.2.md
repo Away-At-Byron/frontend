@@ -92,6 +92,15 @@ the test cases (CLAUDE.md rule 8). When implementing a module, read its §6.x
 section, its `docs/schema.md` tables, and its Stage in
 `docs/development-plan.md`.
 
+**In-repo overrides to module specs:**
+- §6.1 Auth — see ADR-004. Sign-in is two-step (email + password →
+  emailed 6-digit OTP). "Remember me" replaces the 12h sliding session
+  with 30 days (checked) / 1 day (unchecked).
+- §6.1 Auth (contacts) — see ADR-005. Contacts have a separate sign-in
+  at `/portal/*` with OTP-only authentication (no password). Same Auth.js
+  setup, JWT carries `subjectType: "user" | "contact"`. Contact access is
+  opt-in per contact (`contacts.portal_enabled`).
+
 **Out of scope for v1:** channel sync, Stripe real processing, Monitored
 Triggers FSM, Tariff Manager visual calendar, POS Lite, multi-currency,
 Xero export, SMS automation.

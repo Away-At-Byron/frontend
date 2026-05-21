@@ -10,6 +10,8 @@ export default async function StaffLayout({
 }) {
   const session = await auth()
   if (!session?.user) redirect("/signin")
+  // Contacts sign in via /portal/signin and never see staff routes.
+  if (session.user.subjectType === "contact") redirect("/portal/dashboard")
 
   const role = session.user.role ?? "other"
   const allowed = await getAllowedModules(session.user.id, role)
