@@ -9,7 +9,7 @@ const optionalText = z
   .transform((v) => (v ? v : undefined))
 
 export const contactTypeSchema = z.enum(["guest", "housekeeper", "contractor"])
-export const communicationPreferenceSchema = z.enum(["email", "sms"])
+export const communicationPreferenceSchema = z.enum(["email", "sms", "both", "none"])
 
 const contactFields = {
   contactType: contactTypeSchema.default("guest"),

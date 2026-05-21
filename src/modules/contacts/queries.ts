@@ -26,7 +26,7 @@ function mapRow(
     email: string | null
     phone: string | null
     birthday: Date | null
-    communicationPreference: "email" | "sms"
+    communicationPreference: "email" | "sms" | "both" | "none"
     marketingOptIn: boolean
     returningGuest: boolean
     isVip: boolean

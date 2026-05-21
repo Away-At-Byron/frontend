@@ -21,10 +21,12 @@ export const contactTypeEnum = pgEnum("contact_type", [
   "contractor",
 ])
 
-/** Lucid: Communication Preference (Email, SMS) */
+/** Lucid: Communication Preference (Email, SMS, Both, None) */
 export const communicationPreferenceEnum = pgEnum("communication_preference", [
   "email",
   "sms",
+  "both",
+  "none",
 ])
 
 /**

@@ -13,7 +13,7 @@ export type ContactRow = {
   email: string | null
   phone: string | null
   birthday: string | null
-  communicationPreference: "email" | "sms"
+  communicationPreference: "email" | "sms" | "both" | "none"
   marketingOptIn: boolean
   returningGuest: boolean
   isVip: boolean

@@ -218,17 +218,42 @@ export function ContactManagement({
               {birthdayRows.length} guest{birthdayRows.length === 1 ? "" : "s"}
             </div>
           </div>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", flex: 1 }}>
-            {birthdayRows.slice(0, 8).map((c) => (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", flex: 1 }}>
+            {birthdayRows.map((c) => (
               <div
                 key={c.id}
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, minWidth: 72 }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  width: "fit-content",
+                  paddingLeft: 4,
+                  paddingRight: 12,
+                  paddingTop: 4,
+                  paddingBottom: 4,
+                  background: "var(--shell)",
+                  border: "1px solid var(--line)",
+                  borderRadius: "var(--r-pill)",
+                }}
               >
-                <Avatar name={`${c.firstName} ${c.lastName}`} size={44} tint="teal" />
-                <span style={{ fontSize: 11, textAlign: "center", color: "var(--ink-soft)" }}>
-                  {c.firstName.split(" ")[0]}
-                  <br />
-                  {c.birthday}
+                <Avatar name={`${c.firstName} ${c.lastName}`} size={32} tint="teal" />
+                <span style={{ display: "inline-flex", flexDirection: "column", lineHeight: 1.2 }}>
+                  <span style={{ fontSize: 13, color: "var(--ink)", whiteSpace: "nowrap" }}>
+                    {c.firstName} {c.lastName}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: "var(--ink-soft)",
+                      whiteSpace: "nowrap",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <span aria-hidden>🎂</span>
+                    {c.birthday}
+                  </span>
                 </span>
               </div>
             ))}

@@ -77,6 +77,8 @@ export function ContactFormFields({
         >
           <option value="email">Email</option>
           <option value="sms">SMS</option>
+          <option value="both">Both</option>
+          <option value="none">None</option>
         </select>
       </Field>
 
