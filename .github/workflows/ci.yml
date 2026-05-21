@@ -1,16 +1,37 @@
 name: CI
 
+# One workflow, four gated stages:
+#   1. ci         — typecheck + lint + migrate + test + build (always for PR + main)
+#   2. build      — needs ci → docker build & push to GHCR (main pushes + v* tags)
+#   3. deploy-dev — needs build → fire Dokploy webhook (main pushes only)
+#   4. deploy-prod— needs build → fire Dokploy webhook (v* tags only; gated env)
+#
+# Image tags:
+#   :sha-<short>   immutable, every push
+#   :dev           rolling, follows main
+#   :prod          rolling, follows tagged releases
+#   :vX.Y.Z        immutable, per release tag
+
 on:
   pull_request:
   push:
     branches: [main]
+    tags: ['v*.*.*']
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false  # never cancel a deploy mid-push
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
-  check:
+  ci:
+    # PRs + main pushes run the test suite. Tag pushes skip — the commit
+    # already passed CI when it was on main; tagging just rebuilds.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -39,3 +60,121 @@ jobs:
       - run: bun drizzle:migrate
       - run: bun test
       - run: bun run build
+
+  build:
+    needs: [ci]
+    # Build runs when:
+    #   - main push: needs ci=success
+    #   - tag v* push: ci was skipped, must allow via needs.ci.result==skipped
+    # Never on PRs (no image needed, no GHCR push permissions).
+    if: |
+      always() &&
+      (needs.ci.result == 'success' || needs.ci.result == 'skipped') &&
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      sha-tag: ${{ steps.meta.outputs.sha_tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        name: Compute tags
+        run: |
+          OWNER="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          IMAGE="ghcr.io/${OWNER}/frontend"
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "sha_tag=${IMAGE}:sha-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          TAGS="${IMAGE}:sha-${SHORT_SHA}"
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            TAGS="${TAGS},${IMAGE}:dev"
+          fi
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+            TAGS="${TAGS},${IMAGE}:prod,${IMAGE}:${VERSION}"
+          fi
+          echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
+
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          provenance: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+
+      # Two scans: CRITICAL blocks the build; HIGH is reported but doesn't
+      # gate (bun:1-slim base carries known HIGH CVEs we can't fix from our
+      # side). Revisit HIGH-blocking when bun upstream patches.
+      - name: Trivy scan (CRITICAL — blocks)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ steps.meta.outputs.sha_tag }}
+          format: table
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+          trivyignores: .trivyignore
+
+      - name: Trivy scan (HIGH — informational)
+        uses: aquasecurity/trivy-action@v0.36.0
+        continue-on-error: true
+        with:
+          image-ref: ${{ steps.meta.outputs.sha_tag }}
+          format: table
+          severity: HIGH
+          ignore-unfixed: true
+          trivyignores: .trivyignore
+
+  deploy-dev:
+    needs: [build]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: dev
+      url: http://dev.pms.187-77-151-209.sslip.io
+    env:
+      DOKPLOY_WEBHOOK_DEV: ${{ secrets.DOKPLOY_WEBHOOK_DEV }}
+    steps:
+      - name: Trigger Dokploy redeploy (dev)
+        run: |
+          if [ -z "$DOKPLOY_WEBHOOK_DEV" ]; then
+            echo "::warning::DOKPLOY_WEBHOOK_DEV not set; skipping redeploy."
+            exit 0
+          fi
+          # -k: Dokploy on sslip.io self-signed cert until real domain swap.
+          curl -fsSk -X POST "$DOKPLOY_WEBHOOK_DEV" \
+            -H "Content-Type: application/json" --max-time 30
+
+  deploy-prod:
+    needs: [build]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment:
+      name: prod
+      url: http://pms.187-77-151-209.sslip.io
+    env:
+      DOKPLOY_WEBHOOK_PROD: ${{ secrets.DOKPLOY_WEBHOOK_PROD }}
+    steps:
+      - name: Trigger Dokploy redeploy (prod)
+        run: |
+          if [ -z "$DOKPLOY_WEBHOOK_PROD" ]; then
+            echo "::warning::DOKPLOY_WEBHOOK_PROD not set; skipping redeploy."
+            exit 0
+          fi
+          curl -fsSk -X POST "$DOKPLOY_WEBHOOK_PROD" \
+            -H "Content-Type: application/json" --max-time 30

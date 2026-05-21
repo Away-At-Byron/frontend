@@ -1,0 +1,30 @@
+# Trivy ignore list — must include a justification for every line.
+# Reviewed: 2026-05-20
+#
+# Why these CVEs are suppressed:
+# Both are Go stdlib CVEs in the Go runtime that was used to compile the
+# esbuild binaries shipped inside @esbuild/* and @esbuild-kit/* Node packages.
+# Those binaries live under:
+#   db-migrate/node_modules/@esbuild/linux-x64/bin/esbuild
+#   db-migrate/node_modules/@esbuild-kit/core-utils/node_modules/esbuild/bin/esbuild
+#
+# They run at BUILD time only (TypeScript transpilation, bundling). In the
+# runtime image they are never executed:
+#   - The Next.js standalone runtime at /app uses the build's output, not esbuild
+#   - The drizzle-kit migrate runner at /app/db-migrate calls `drizzle-kit
+#     migrate` which uses esbuild to parse drizzle.config.ts ONCE per deploy,
+#     and the resulting process never accepts network traffic (no HTTP, no TLS)
+#
+# The vulnerabilities:
+#   CVE-2024-24790 — net/netip IPv4-mapped IPv6 misbehaviour. esbuild does
+#                    not use net/netip in any code path we invoke.
+#   CVE-2025-68121 — crypto/tls cert validation during TLS resumption.
+#                    esbuild does not perform TLS in our invocation.
+#
+# Action items if anything changes:
+#   - If drizzle-kit gains a feature that opens network connections, remove
+#     this ignore and either prune the esbuild binaries (need to switch
+#     drizzle.config.ts → .mjs first) or pin a fixed Go-runtime esbuild.
+#   - Re-review on next esbuild major version bump.
+CVE-2024-24790
+CVE-2025-68121
