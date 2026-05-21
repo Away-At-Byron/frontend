@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Avatar, Button } from "@/components/ui/primitives"
 import { updateUserSchema, type UpdateUserInput } from "../schemas"
@@ -42,7 +42,7 @@ export function EditUserModal({
     reset,
     setError,
     setValue,
-    watch,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<UpdateUserInput>({
     resolver: zodResolver(updateUserSchema),
@@ -63,9 +63,9 @@ export function EditUserModal({
     }
   }, [user, reset])
 
-  const roleId = watch("roleId")
+  const roleId = useWatch({ control, name: "roleId" })
   const roleName = roles.find((r) => r.id === roleId)?.name ?? ""
-  const modules = watch("modules") ?? []
+  const modules = useWatch({ control, name: "modules" }) ?? []
 
   // Switching this user to a different role resets access to that role's
   // full static default (its old selection no longer applies).

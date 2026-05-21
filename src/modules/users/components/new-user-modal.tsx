@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@/components/ui/primitives"
 import { toggleableModulesForRole } from "@/lib/modules"
@@ -28,16 +28,16 @@ export function NewUserModal({
     reset,
     setError,
     setValue,
-    watch,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<CreateUserInput>({
     resolver: zodResolver(createUserSchema),
     defaultValues: { firstName: "", lastName: "", email: "", phone: "", roleId: "", password: "", modules: [] },
   })
 
-  const roleId = watch("roleId")
+  const roleId = useWatch({ control, name: "roleId" })
   const roleName = roles.find((r) => r.id === roleId)?.name ?? ""
-  const modules = watch("modules") ?? []
+  const modules = useWatch({ control, name: "modules" }) ?? []
 
   // New user starts at the role's full static default; admin can untick.
   useEffect(() => {
