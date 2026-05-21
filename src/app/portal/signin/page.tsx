@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useState } from "react"
+import { Suspense, useState, useSyncExternalStore } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { signIn } from "next-auth/react"
 import { Button } from "@/components/ui/primitives"
@@ -26,8 +26,10 @@ function PortalSignInForm() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  // useSyncExternalStore returns the server snapshot during SSR + first
+  // render, then the client snapshot — no effect needed, no React Compiler
+  // set-state-in-effect violation.
+  const mounted = useSyncExternalStore(subscribeNoop, getTrue, getFalse)
   if (!mounted) {
     return <div style={{ minHeight: "100vh", background: "var(--linen)" }} />
   }
@@ -119,8 +121,8 @@ function PortalSignInForm() {
               Sign in
             </h2>
             <p style={{ color: "var(--ink-soft)", fontSize: 13.5, lineHeight: 1.55, margin: "0 0 22px" }}>
-              Enter the email your contact is registered under. We'll email a
-              6-digit code to sign you in.
+              Enter the email your contact is registered under. We&apos;ll email
+              a 6-digit code to sign you in.
             </p>
 
             {error && <ErrorBanner message={error} />}
@@ -195,6 +197,13 @@ function PortalSignInForm() {
     </div>
   )
 }
+
+// Stable references for useSyncExternalStore — keeping them at module scope
+// avoids the "snapshot is not the same after re-render" warning React fires
+// when these come from useCallback inside the component.
+const subscribeNoop = () => () => {}
+const getTrue = () => true
+const getFalse = () => false
 
 function ErrorBanner({ message }: { message: string }) {
   return (

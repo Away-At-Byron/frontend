@@ -12,7 +12,6 @@ import {
 } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 import { tenantCols } from "./_helpers"
-import { properties } from "./properties"
 
 /** Lucid: Contact Type (Guest, Housekeeper, Contractor) */
 export const contactTypeEnum = pgEnum("contact_type", [
