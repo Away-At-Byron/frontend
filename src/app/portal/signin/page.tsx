@@ -38,43 +38,58 @@ function PortalSignInForm() {
     e.preventDefault()
     setBusy(true)
     setError(null)
-    const res = await requestContactOtp({ email: email.trim().toLowerCase() })
-    setBusy(false)
-    if (!res.ok) {
-      setError(res.error.message)
-      return
+    try {
+      const res = await requestContactOtp({ email: email.trim().toLowerCase() })
+      if (!res.ok) {
+        setError(res.error.message)
+        return
+      }
+      setStep("otp")
+    } catch {
+      setError("Connection error. Please try again.")
+    } finally {
+      setBusy(false)
     }
-    setStep("otp")
   }
 
   async function onSubmitOtp(e: React.FormEvent) {
     e.preventDefault()
     setBusy(true)
     setError(null)
-    const res = await signIn("contact-otp", {
-      email: email.trim().toLowerCase(),
-      otp: otp.trim(),
-      redirect: false,
-    })
-    setBusy(false)
-    if (res?.error) {
-      setError("That code didn't work. Try again or request a new one.")
-      return
+    try {
+      const res = await signIn("contact-otp", {
+        email: email.trim().toLowerCase(),
+        otp: otp.trim(),
+        redirect: false,
+      })
+      if (res?.error) {
+        setError("That code didn't work. Try again or request a new one.")
+        return
+      }
+      router.push(params.get("callbackUrl") ?? "/portal/dashboard")
+      router.refresh()
+    } catch {
+      setError("Connection error. Please try again.")
+    } finally {
+      setBusy(false)
     }
-    router.push(params.get("callbackUrl") ?? "/portal/dashboard")
-    router.refresh()
   }
 
   async function onResend() {
     setBusy(true)
     setError(null)
-    const res = await requestContactOtp({ email: email.trim().toLowerCase() })
-    setBusy(false)
-    if (!res.ok) {
-      setError(res.error.message)
-      return
+    try {
+      const res = await requestContactOtp({ email: email.trim().toLowerCase() })
+      if (!res.ok) {
+        setError(res.error.message)
+        return
+      }
+      setOtp("")
+    } catch {
+      setError("Connection error. Please try again.")
+    } finally {
+      setBusy(false)
     }
-    setOtp("")
   }
 
   function onBack() {
