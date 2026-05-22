@@ -35,6 +35,9 @@ function avatarTint(id: string): (typeof AVATAR_TINTS)[number] {
 function roleBg(roleName: string): string {
   if (roleName === "admin") return "var(--shell-deep)";
   if (roleName === "manager") return "var(--mist)";
+  if (roleName === "contractor") return "var(--sand)"; // #E6D4B7
+  if (roleName === "housekeeper") return "var(--rattan)"; // #A89274
+  if (roleName === "other") return "var(--shell)"; // #FBEFE8
   return "var(--paper)";
 }
 
