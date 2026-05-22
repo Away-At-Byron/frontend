@@ -4,6 +4,7 @@ import type { ReactNode } from "react"
 import { Controller, type Control, type UseFormRegister, type FieldErrors } from "react-hook-form"
 import { Field, inputStyle } from "@/modules/users/components/modal"
 import { BirthdayPicker } from "./birthday-picker"
+import { CountrySelect } from "./country-select"
 import type { CreateContactInput } from "../schemas"
 import {
   COMMUNICATION_PREFERENCES,
@@ -172,7 +173,13 @@ export function ContactFormFields({
           </select>
         </Field>
         <Field label="ID country" error={errors.idCountry?.message}>
-          <input {...register("idCountry")} style={inputStyle} />
+          <Controller
+            control={control}
+            name="idCountry"
+            render={({ field }) => (
+              <CountrySelect value={field.value ?? ""} onChange={field.onChange} />
+            )}
+          />
         </Field>
       </TwoCol>
       <Field label="ID number" error={errors.idNumber?.message}>
@@ -235,7 +242,13 @@ export function ContactFormFields({
         </Field>
       </TwoCol>
       <Field label="Country" error={errors.addressCountry?.message}>
-        <input {...register("addressCountry")} style={inputStyle} maxLength={2} placeholder="AU" />
+        <Controller
+          control={control}
+          name="addressCountry"
+          render={({ field }) => (
+            <CountrySelect value={field.value ?? ""} onChange={field.onChange} />
+          )}
+        />
       </Field>
 
       <SectionLabel>Notes</SectionLabel>
