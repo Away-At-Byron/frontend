@@ -66,6 +66,7 @@ export function NewContactModal({
 }) {
   const {
     register,
+    control,
     handleSubmit,
     reset,
     setError,
@@ -120,7 +121,7 @@ export function NewContactModal({
               {errors.root.message}
             </div>
           )}
-          <ContactFormFields register={register} errors={errors} contactTypes={contactTypes} />
+          <ContactFormFields register={register} control={control} errors={errors} contactTypes={contactTypes} />
         </div>
         <div style={{ padding: "14px 24px 22px", display: "flex", justifyContent: "flex-end", gap: 10, borderTop: "1px solid var(--line-soft)" }}>
           <Button variant="ghost" type="button" onClick={close} disabled={isSubmitting}>
@@ -150,6 +151,7 @@ export function EditContactModal({
 }) {
   const {
     register,
+    control,
     handleSubmit,
     setError,
     formState: { errors, isSubmitting },
@@ -238,7 +240,7 @@ export function EditContactModal({
               {errors.root.message}
             </div>
           )}
-          <ContactFormFields register={register} errors={errors} contactTypes={contactTypes} />
+          <ContactFormFields register={register} control={control} errors={errors} contactTypes={contactTypes} />
         </div>
         <div style={{ padding: "14px 24px 22px", display: "flex", justifyContent: "flex-end", gap: 10, borderTop: "1px solid var(--line-soft)" }}>
           <Button variant="ghost" type="button" onClick={close} disabled={isSubmitting}>

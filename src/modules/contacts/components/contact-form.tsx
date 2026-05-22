@@ -1,8 +1,9 @@
 "use client"
 
 import type { ReactNode } from "react"
-import type { UseFormRegister, FieldErrors } from "react-hook-form"
+import { Controller, type Control, type UseFormRegister, type FieldErrors } from "react-hook-form"
 import { Field, inputStyle } from "@/modules/users/components/modal"
+import { BirthdayPicker } from "./birthday-picker"
 import type { CreateContactInput } from "../schemas"
 import {
   COMMUNICATION_PREFERENCES,
@@ -54,10 +55,12 @@ function Check({
 
 export function ContactFormFields({
   register,
+  control,
   errors,
   contactTypes,
 }: {
   register: UseFormRegister<CreateContactInput>
+  control: Control<CreateContactInput>
   errors: FieldErrors<CreateContactInput>
   contactTypes: ContactTypeOption[]
 }) {
@@ -91,8 +94,14 @@ export function ContactFormFields({
         <input {...register("phone")} type="tel" style={inputStyle} autoComplete="tel" />
       </Field>
 
-      <Field label="Birthday (MM-DD)" error={errors.birthday?.message}>
-        <input {...register("birthday")} style={inputStyle} placeholder="MM-DD" maxLength={5} />
+      <Field label="Birthday" error={errors.birthday?.message}>
+        <Controller
+          control={control}
+          name="birthday"
+          render={({ field }) => (
+            <BirthdayPicker value={field.value ?? ""} onChange={field.onChange} />
+          )}
+        />
       </Field>
 
       <TwoCol>
