@@ -14,7 +14,7 @@ export type UserRow = {
   phone: string | null
   roleId: string
   roleName: string
-  status: "active" | "disabled" | "locked"
+  status: "active" | "disabled"
   /** Per-user module override codes; null = no override (full role default). */
   moduleCodes: string[] | null
 }
@@ -24,7 +24,7 @@ export type RoleOption = { id: string; name: string }
 /**
  * Users the caller may see. Admin (property_id = null) sees everyone;
  * a property-scoped caller sees only users in their property. All
- * statuses are returned (active/locked/disabled) so the screen can
+ * statuses are returned (active/disabled) so the screen can
  * filter by status. Admin-only, enforced again at the page and actions.
  */
 export async function listUsers(): Promise<ActionResult<UserRow[]>> {

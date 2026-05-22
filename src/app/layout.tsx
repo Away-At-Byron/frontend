@@ -40,7 +40,10 @@ export default function RootLayout({
       lang="en-AU"
       className={`${inter.variable} ${fraunces.variable} ${jetbrains.variable}`}
     >
-      <body>{children}</body>
+      {/* Browser extensions (e.g. ClickUp) inject attributes onto <body>
+          before React hydrates. suppressHydrationWarning silences that
+          one-level mismatch; real hydration bugs in children still warn. */}
+      <body suppressHydrationWarning>{children}</body>
     </html>
   )
 }

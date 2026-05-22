@@ -173,7 +173,6 @@ export function EditUserModal({
           <Field label="Status" error={errors.status?.message}>
             <select style={inputStyle} {...register("status")}>
               <option value="active">Active</option>
-              <option value="locked">Locked</option>
               <option value="disabled">Disabled</option>
             </select>
           </Field>

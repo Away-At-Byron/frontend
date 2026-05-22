@@ -29,7 +29,7 @@ export const updateUserSchema = z.object({
   email,
   phone,
   roleId: z.string().uuid("Select a role"),
-  status: z.enum(["active", "disabled", "locked"]),
+  status: z.enum(["active", "disabled"]),
   modules,
 })
 

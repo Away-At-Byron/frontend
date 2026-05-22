@@ -42,10 +42,10 @@ describe("createUserSchema", () => {
 
 describe("updateUserSchema", () => {
   test("accepts a valid status", () => {
-    expect(updateUserSchema.safeParse({ ...base, status: "locked" }).success).toBe(true)
+    expect(updateUserSchema.safeParse({ ...base, status: "disabled" }).success).toBe(true)
   })
 
   test("rejects an unknown status", () => {
-    expect(updateUserSchema.safeParse({ ...base, status: "deleted" }).success).toBe(false)
+    expect(updateUserSchema.safeParse({ ...base, status: "locked" }).success).toBe(false)
   })
 })

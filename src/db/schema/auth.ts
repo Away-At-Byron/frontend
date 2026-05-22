@@ -2,7 +2,7 @@ import { pgTable, uuid, text, timestamp, pgEnum } from "drizzle-orm/pg-core"
 import { properties } from "./properties"
 import { roles } from "./roles"
 
-export const userStatus = pgEnum("user_status", ["active", "disabled", "locked"])
+export const userStatus = pgEnum("user_status", ["active", "disabled"])
 
 /**
  * Layer 0. Login accounts. `propertyId` null => admin (cross-property).

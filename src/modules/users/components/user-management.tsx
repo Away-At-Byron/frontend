@@ -292,7 +292,7 @@ export function UserManagement({
                 <Pill tone={u.roleName === "admin" ? "ink" : "neutral"}>{labelFor(u.roleName)}</Pill>
               </span>
               <span>
-                <Pill tone={u.status === "active" ? "ok" : u.status === "locked" ? "warn" : "bad"}>
+                <Pill tone={u.status === "active" ? "ok" : "bad"}>
                   {u.status}
                 </Pill>
               </span>
