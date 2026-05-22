@@ -22,6 +22,22 @@ import { EditUserModal } from "./edit-user-modal";
 const TABLE_GRID =
   "90px minmax(300px, 2.4fr) minmax(180px, 1.6fr) 130px 110px minmax(120px, 1fr) 96px 120px 148px";
 
+// Stable pseudo-random avatar tint per user — same colour on every render.
+const AVATAR_TINTS = ["mist", "teal", "terra", "rattan"] as const
+
+function avatarTint(id: string): (typeof AVATAR_TINTS)[number] {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0
+  return AVATAR_TINTS[Math.abs(h) % AVATAR_TINTS.length]!
+}
+
+/** Role badge background — design tokens, not raw hex. */
+function roleBg(roleName: string): string {
+  if (roleName === "admin") return "var(--shell-deep)"
+  if (roleName === "manager") return "var(--mist)"
+  return "var(--paper)"
+}
+
 /** "14 Aug 2024" — short, day-first (en-AU). */
 function formatDate(value: Date | string | null): string {
   if (!value) return "—";
@@ -418,8 +434,9 @@ export function UserManagement({
                   <span
                     title={u.id}
                     style={{
-                      fontFamily: "var(--font-mono), monospace",
+                      fontFamily: "var(--font-sans), sans-serif",
                       fontSize: 11,
+                      fontWeight: 300,
                       color: "var(--ink-faint)",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -439,7 +456,7 @@ export function UserManagement({
                     <Avatar
                       name={`${u.firstName} ${u.lastName}`}
                       size={36}
-                      tint="shell"
+                      tint={avatarTint(u.id)}
                     />
                     <div
                       style={{
@@ -481,7 +498,10 @@ export function UserManagement({
                     {u.phone ?? "—"}
                   </span>
                   <span>
-                    <Pill tone={u.roleName === "admin" ? "ink" : "neutral"}>
+                    <Pill
+                      tone="neutral"
+                      style={{ background: roleBg(u.roleName) }}
+                    >
                       {labelFor(u.roleName)}
                     </Pill>
                   </span>

@@ -370,7 +370,7 @@ export function ContactManagement({
                 fontSize: 13,
               }}
             >
-              <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11 }}>{c.clientNumber}</span>
+              <span style={{ fontFamily: "var(--font-sans), sans-serif", fontSize: 11, fontWeight: 300 }}>{c.clientNumber}</span>
               <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                   <Avatar name={`${c.firstName} ${c.lastName}`} size={34} tint="shell" />
                   <div style={{ minWidth: 0 }}>
