@@ -20,6 +20,11 @@ const PROPERTIES = [
   { id: "unwind", name: "Unwind Guesthouse", rooms: 3 },
 ];
 
+// Routes not scoped to a single property (e.g. Users spans every property).
+// The topbar shows just the date on these - add an href here to hide the
+// property name on another page.
+const HIDE_PROPERTY_ROUTES = ["/users"];
+
 export function AppShell({
   user,
   nav,
@@ -311,7 +316,9 @@ export function AppShell({
               style={{ color: "var(--ink-faint)", fontSize: 10 }}
               suppressHydrationWarning
             >
-              {todayLabel()} · {property.name}
+              {todayLabel()}
+              {!HIDE_PROPERTY_ROUTES.includes(current?.href ?? "") &&
+                ` · ${property.name}`}
             </div>
             <div
               style={{
