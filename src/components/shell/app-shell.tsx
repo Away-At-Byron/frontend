@@ -25,6 +25,10 @@ const PROPERTIES = [
 // property name on another page.
 const HIDE_PROPERTY_ROUTES = ["/users"];
 
+// Routes whose page renders its own <h1>, so the topbar title would just
+// duplicate it - hide the topbar title (date and controls stay) on these.
+const HIDE_TITLE_ROUTES = ["/users", "/contacts"];
+
 export function AppShell({
   user,
   nav,
@@ -340,29 +344,31 @@ export function AppShell({
               {!HIDE_PROPERTY_ROUTES.includes(current?.href ?? "") &&
                 ` · ${property.name}`}
             </div>
-            <div
-              style={{
-                fontFamily: "var(--font-display), serif",
-                fontWeight: 300,
-                fontSize: 28,
-                lineHeight: 1.05,
-                letterSpacing: "var(--tight)",
-                marginTop: 4,
-              }}
-              suppressHydrationWarning
-            >
-              {current?.href === "/home" ? (
-                <>
-                  Good{" "}
-                  <em style={{ fontStyle: "italic" }} suppressHydrationWarning>
-                    {partOfDay()}
-                  </em>
-                  , {user.name.split(" ")[0]}
-                </>
-              ) : (
-                title
-              )}
-            </div>
+            {!HIDE_TITLE_ROUTES.includes(current?.href ?? "") && (
+              <div
+                style={{
+                  fontFamily: "var(--font-display), serif",
+                  fontWeight: 300,
+                  fontSize: 28,
+                  lineHeight: 1.05,
+                  letterSpacing: "var(--tight)",
+                  marginTop: 4,
+                }}
+                suppressHydrationWarning
+              >
+                {current?.href === "/home" ? (
+                  <>
+                    Good{" "}
+                    <em style={{ fontStyle: "italic" }} suppressHydrationWarning>
+                      {partOfDay()}
+                    </em>
+                    , {user.name.split(" ")[0]}
+                  </>
+                ) : (
+                  title
+                )}
+              </div>
+            )}
           </div>
           <div
             style={{

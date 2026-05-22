@@ -23,19 +23,19 @@ const TABLE_GRID =
   "90px minmax(300px, 2.4fr) minmax(180px, 1.6fr) 130px 110px minmax(120px, 1fr) 96px 120px 148px";
 
 // Stable pseudo-random avatar tint per user — same colour on every render.
-const AVATAR_TINTS = ["mist", "teal", "terra", "rattan"] as const
+const AVATAR_TINTS = ["mist", "teal", "terra", "rattan"] as const;
 
 function avatarTint(id: string): (typeof AVATAR_TINTS)[number] {
-  let h = 0
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0
-  return AVATAR_TINTS[Math.abs(h) % AVATAR_TINTS.length]!
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return AVATAR_TINTS[Math.abs(h) % AVATAR_TINTS.length]!;
 }
 
 /** Role badge background — design tokens, not raw hex. */
 function roleBg(roleName: string): string {
-  if (roleName === "admin") return "var(--shell-deep)"
-  if (roleName === "manager") return "var(--mist)"
-  return "var(--paper)"
+  if (roleName === "admin") return "var(--shell-deep)";
+  if (roleName === "manager") return "var(--mist)";
+  return "var(--paper)";
 }
 
 /** "14 Aug 2024" — short, day-first (en-AU). */
@@ -251,8 +251,8 @@ export function UserManagement({
             maxWidth: 620,
           }}
         >
-          Staff, housekeepers, contractors, admin who have access to the system.
-          Manage roles, permissions and onboarding.
+          {/* Staff, housekeepers, contractors, admin who have access to the system.
+          Manage roles, permissions and onboarding. */}
         </p>
       </div>
 
