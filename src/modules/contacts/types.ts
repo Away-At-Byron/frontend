@@ -1,35 +1,134 @@
-/** Shared contact DTO types — safe to import from client components. */
+/** Shared contact DTO types + enum value/label maps — client-safe. */
 
-export type ContactTier = "new" | "returning" | "vip"
+export const COMMUNICATION_PREFERENCES = [
+  "email",
+  "sms",
+  "both",
+  "none",
+  "unsubscribed",
+] as const
+export type CommunicationPreference = (typeof COMMUNICATION_PREFERENCES)[number]
+export const COMMUNICATION_PREFERENCE_LABELS: Record<CommunicationPreference, string> = {
+  email: "Email",
+  sms: "SMS",
+  both: "Both",
+  none: "None",
+  unsubscribed: "Unsubscribed",
+}
+
+export const CONTACT_ID_TYPES = ["passport", "drivers_license", "national_id"] as const
+export type ContactIdType = (typeof CONTACT_ID_TYPES)[number]
+export const CONTACT_ID_TYPE_LABELS: Record<ContactIdType, string> = {
+  passport: "Passport",
+  drivers_license: "Driver's licence",
+  national_id: "National ID",
+}
+
+export const CONTACT_TIERS = ["bronze", "silver", "gold", "vip"] as const
+export type ContactTier = (typeof CONTACT_TIERS)[number]
+export const CONTACT_TIER_LABELS: Record<ContactTier, string> = {
+  bronze: "Bronze",
+  silver: "Silver",
+  gold: "Gold",
+  vip: "VIP",
+}
+
+export const CONTACT_SOURCES = [
+  "website_direct_booking",
+  "phone_enquiry",
+  "email_sms_enquiry",
+  "referral",
+  "social_media",
+  "ota",
+  "advertising",
+  "events",
+  "email_campaign",
+  "travel_agent",
+  "corporate_account",
+  "group_booking_partner",
+  "other",
+] as const
+export type ContactSource = (typeof CONTACT_SOURCES)[number]
+export const CONTACT_SOURCE_LABELS: Record<ContactSource, string> = {
+  website_direct_booking: "Website Direct Booking",
+  phone_enquiry: "Phone Enquiry",
+  email_sms_enquiry: "Email / SMS Enquiry",
+  referral: "Referral",
+  social_media: "Social Media",
+  ota: "OTA",
+  advertising: "Advertising",
+  events: "Events",
+  email_campaign: "Email Campaign",
+  travel_agent: "Travel Agent",
+  corporate_account: "Corporate Account",
+  group_booking_partner: "Group Booking Partner",
+  other: "Other",
+}
+
+export const GUEST_TYPES = [
+  "leisure",
+  "corporate",
+  "family",
+  "couple",
+  "group",
+  "vip",
+  "event_guest",
+] as const
+export type GuestType = (typeof GUEST_TYPES)[number]
+export const GUEST_TYPE_LABELS: Record<GuestType, string> = {
+  leisure: "Leisure",
+  corporate: "Corporate",
+  family: "Family",
+  couple: "Couple",
+  group: "Group",
+  vip: "VIP",
+  event_guest: "Event Guest",
+}
+
+export type ContactTypeOption = { id: string; name: string }
 
 export type ContactRow = {
   id: string
-  propertyId: string
-  propertyName: string
-  clientNumber: string
-  contactType: "guest" | "housekeeper" | "contractor"
+  contactTypeId: string | null
+  contactTypeName: string | null
   firstName: string
   lastName: string
   email: string | null
   phone: string | null
+  /** Stored "MM-DD"; format for display with formatBirthday. */
   birthday: string | null
-  communicationPreference: "email" | "sms" | "both" | "none"
+  communicationPreference: CommunicationPreference
   marketingOptIn: boolean
   returningGuest: boolean
-  isVip: boolean
   portalEnabled: boolean
-  groupName: string | null
   notes: string | null
   addressStreet: string | null
   addressSuburb: string | null
   addressCity: string | null
+  addressState: string | null
   addressPostcode: string | null
   addressCountry: string | null
   relatedClientId: string | null
   groupId: string | null
-  tier: ContactTier
+  groupName: string | null
+  idType: ContactIdType | null
+  idNumber: string | null
+  idCountry: string | null
+  idVerified: boolean
+  idVerificationDate: string | null
+  firstBookingDate: string | null
+  preferredBookingChannel: string | null
+  otaUser: boolean
+  directBookingGuest: boolean
+  corporateGuest: boolean
+  specialRequests: string | null
+  accessibilityRequirements: string | null
+  lastContactDate: string | null
+  doNotRebook: boolean
+  tier: ContactTier | null
+  source: ContactSource | null
+  guestType: GuestType | null
+  /** Derived from bookings (Booking module); 0 until that module lands. */
   stayCount: number
   lastStayLabel: string | null
 }
-
-export type PropertyOption = { id: string; name: string }

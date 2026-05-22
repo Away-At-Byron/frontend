@@ -4,18 +4,18 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Avatar, Button, Card, FilterPill, IconButton, Pill } from "@/components/ui/primitives"
 import { Icon } from "@/components/ui/icon"
-import type { ContactRow, PropertyOption } from "../types"
-import { birthdaysThisMonth } from "../utils"
+import {
+  type ContactRow,
+  type ContactTier,
+  type ContactTypeOption,
+  CONTACT_TIER_LABELS,
+} from "../types"
+import { birthdaysThisMonth, formatBirthday } from "../utils"
 import { createContact, updateContact } from "../actions"
 import { NewContactModal, EditContactModal } from "./contact-modal"
 import type { CreateContactInput, UpdateContactInput } from "../schemas"
 
-type FilterId =
-  | "all"
-  | "birthdays"
-  | "vip"
-  | "returning"
-  | "in_house"
+type FilterId = "all" | "birthdays" | "vip" | "returning" | "in_house"
 
 const FILTER_LABELS: Record<FilterId, string> = {
   all: "All",
@@ -25,21 +25,16 @@ const FILTER_LABELS: Record<FilterId, string> = {
   in_house: "In-house & upcoming",
 }
 
-function tierTone(tier: ContactRow["tier"]) {
-  if (tier === "vip") return "accent" as const
-  if (tier === "returning") return "ok" as const
-  return "neutral" as const
-}
+const GRID = "1.5fr 1fr 1.2fr 0.9fr 0.5fr 0.7fr 0.7fr 0.8fr 90px"
 
-function tierLabel(tier: ContactRow["tier"]) {
-  if (tier === "vip") return "VIP"
-  if (tier === "returning") return "Returning"
-  return "New"
+function tierTone(tier: ContactTier) {
+  if (tier === "vip") return "accent" as const
+  if (tier === "gold") return "ok" as const
+  return "neutral" as const
 }
 
 function exportCsv(rows: ContactRow[]) {
   const header = [
-    "Client #",
     "First name",
     "Last name",
     "Email",
@@ -51,14 +46,13 @@ function exportCsv(rows: ContactRow[]) {
   ]
   const lines = rows.map((r) =>
     [
-      r.clientNumber,
       r.firstName,
       r.lastName,
       r.email ?? "",
       r.phone ?? "",
-      r.contactType,
-      tierLabel(r.tier),
-      r.birthday ?? "",
+      r.contactTypeName ?? "",
+      r.tier ? CONTACT_TIER_LABELS[r.tier] : "",
+      formatBirthday(r.birthday) ?? "",
       String(r.stayCount),
     ]
       .map((c) => `"${String(c).replace(/"/g, '""')}"`)
@@ -77,12 +71,10 @@ function exportCsv(rows: ContactRow[]) {
 
 export function ContactManagement({
   initialContacts,
-  properties,
-  showPropertyPicker,
+  contactTypes,
 }: {
   initialContacts: ContactRow[]
-  properties: PropertyOption[]
-  showPropertyPicker: boolean
+  contactTypes: ContactTypeOption[]
 }) {
   const router = useRouter()
   const [contacts, setContacts] = useState<ContactRow[]>(initialContacts)
@@ -110,7 +102,7 @@ export function ContactManagement({
     () => ({
       all: contacts.length,
       birthdays: birthdayRows.length,
-      vip: contacts.filter((c) => c.isVip).length,
+      vip: contacts.filter((c) => c.tier === "vip").length,
       returning: contacts.filter((c) => c.returningGuest).length,
       in_house: 0,
     }),
@@ -121,15 +113,14 @@ export function ContactManagement({
     const s = debounced.trim().toLowerCase()
     return contacts.filter((c) => {
       if (activeFilter === "birthdays" && !birthdayRows.some((b) => b.id === c.id)) return false
-      if (activeFilter === "vip" && !c.isVip) return false
+      if (activeFilter === "vip" && c.tier !== "vip") return false
       if (activeFilter === "returning" && !c.returningGuest) return false
       if (activeFilter === "in_house") return false
       if (!s) return true
       return (
         `${c.firstName} ${c.lastName}`.toLowerCase().includes(s) ||
         (c.email?.toLowerCase().includes(s) ?? false) ||
-        (c.phone?.toLowerCase().includes(s) ?? false) ||
-        c.clientNumber.toLowerCase().includes(s)
+        (c.phone?.toLowerCase().includes(s) ?? false)
       )
     })
   }, [contacts, activeFilter, debounced, birthdayRows])
@@ -252,7 +243,7 @@ export function ContactManagement({
                     }}
                   >
                     <span aria-hidden>🎂</span>
-                    {c.birthday}
+                    {formatBirthday(c.birthday)}
                   </span>
                 </span>
               </div>
@@ -334,15 +325,15 @@ export function ContactManagement({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "0.7fr 1.4fr 1.2fr 1fr 0.5fr 0.7fr 0.7fr 0.8fr 100px",
+            gridTemplateColumns: GRID,
             gap: 12,
             padding: "14px 22px",
             borderBottom: "1px solid var(--line-soft)",
           }}
           className="caps"
         >
-          <span style={{ color: "var(--ink-faint)" }}>Client #</span>
           <span style={{ color: "var(--ink-faint)" }}>Name</span>
+          <span style={{ color: "var(--ink-faint)" }}>Type</span>
           <span style={{ color: "var(--ink-faint)" }}>Email</span>
           <span style={{ color: "var(--ink-faint)" }}>Phone</span>
           <span style={{ color: "var(--ink-faint)" }}>Stays</span>
@@ -362,7 +353,7 @@ export function ContactManagement({
               key={c.id}
               style={{
                 display: "grid",
-                gridTemplateColumns: "0.7fr 1.4fr 1.2fr 1fr 0.5fr 0.7fr 0.7fr 0.8fr 100px",
+                gridTemplateColumns: GRID,
                 gap: 12,
                 alignItems: "center",
                 padding: "14px 22px",
@@ -370,28 +361,30 @@ export function ContactManagement({
                 fontSize: 13,
               }}
             >
-              <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11 }}>{c.clientNumber}</span>
               <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                  <Avatar name={`${c.firstName} ${c.lastName}`} size={34} tint="shell" />
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontFamily: "var(--font-display), serif", fontSize: 15.5 }}>
-                      {c.firstName} {c.lastName}
-                    </div>
-                    {showPropertyPicker && (
-                      <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 2 }}>{c.propertyName}
-                      </div>
-                    )}
+                <Avatar name={`${c.firstName} ${c.lastName}`} size={34} tint="shell" />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontFamily: "var(--font-display), serif", fontSize: 15.5 }}>
+                    {c.firstName} {c.lastName}
                   </div>
                 </div>
+              </div>
+              <span style={{ color: "var(--ink-soft)", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {c.contactTypeName ?? "—"}
+              </span>
               <span style={{ color: "var(--ink-soft)", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {c.email ?? "—"}
               </span>
               <span style={{ color: "var(--ink-soft)" }}>{c.phone ?? "—"}</span>
               <span>{c.stayCount}</span>
               <span>
-                <Pill tone={tierTone(c.tier)}>{tierLabel(c.tier)}</Pill>
+                {c.tier ? (
+                  <Pill tone={tierTone(c.tier)}>{CONTACT_TIER_LABELS[c.tier]}</Pill>
+                ) : (
+                  <span style={{ color: "var(--ink-faint)" }}>—</span>
+                )}
               </span>
-              <span style={{ color: "var(--ink-soft)" }}>{c.birthday ?? "—"}</span>
+              <span style={{ color: "var(--ink-soft)" }}>{formatBirthday(c.birthday) ?? "—"}</span>
               <span style={{ color: "var(--ink-soft)" }}>{c.lastStayLabel ?? "—"}</span>
               <div style={{ textAlign: "right" }}>
                 <Button size="sm" variant="ghost" onClick={() => setEditContact(c)}>
@@ -406,16 +399,14 @@ export function ContactManagement({
       <NewContactModal
         isOpen={newOpen}
         onClose={() => setNewOpen(false)}
-        properties={properties}
-        showProperty={showPropertyPicker}
+        contactTypes={contactTypes}
         onSave={handleCreate}
       />
       <EditContactModal
         isOpen={editContact !== null}
         onClose={() => setEditContact(null)}
         contact={editContact}
-        properties={properties}
-        showProperty={showPropertyPicker}
+        contactTypes={contactTypes}
         onSave={handleUpdate}
       />
     </div>

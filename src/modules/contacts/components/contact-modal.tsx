@@ -10,12 +10,12 @@ import {
   type CreateContactInput,
   type UpdateContactInput,
 } from "../schemas"
-import type { ContactRow, PropertyOption } from "../types"
+import type { ContactRow, ContactTypeOption } from "../types"
 import type { ActionResult } from "@/lib/result"
 import { ContactFormFields } from "./contact-form"
 
 const defaults: CreateContactInput = {
-  contactType: "guest",
+  contactTypeId: "",
   firstName: "",
   lastName: "",
   email: "",
@@ -24,29 +24,44 @@ const defaults: CreateContactInput = {
   communicationPreference: "email",
   marketingOptIn: false,
   returningGuest: false,
-  isVip: false,
   portalEnabled: false,
-  groupName: "",
   addressStreet: "",
   addressSuburb: "",
   addressCity: "",
+  addressState: "",
   addressPostcode: "",
   addressCountry: "AU",
   notes: "",
-  propertyId: "",
+  relatedClientId: "",
+  groupId: "",
+  idType: undefined,
+  idNumber: "",
+  idCountry: "",
+  idVerified: false,
+  idVerificationDate: "",
+  firstBookingDate: "",
+  preferredBookingChannel: "",
+  otaUser: false,
+  directBookingGuest: false,
+  corporateGuest: false,
+  specialRequests: "",
+  accessibilityRequirements: "",
+  lastContactDate: "",
+  doNotRebook: false,
+  tier: undefined,
+  source: undefined,
+  guestType: undefined,
 }
 
 export function NewContactModal({
   isOpen,
   onClose,
-  properties,
-  showProperty,
+  contactTypes,
   onSave,
 }: {
   isOpen: boolean
   onClose: () => void
-  properties: PropertyOption[]
-  showProperty: boolean
+  contactTypes: ContactTypeOption[]
   onSave: (values: CreateContactInput) => Promise<ActionResult<ContactRow>>
 }) {
   const {
@@ -105,12 +120,7 @@ export function NewContactModal({
               {errors.root.message}
             </div>
           )}
-          <ContactFormFields
-            register={register}
-            errors={errors}
-            properties={properties}
-            showProperty={showProperty}
-          />
+          <ContactFormFields register={register} errors={errors} contactTypes={contactTypes} />
         </div>
         <div style={{ padding: "14px 24px 22px", display: "flex", justifyContent: "flex-end", gap: 10, borderTop: "1px solid var(--line-soft)" }}>
           <Button variant="ghost" type="button" onClick={close} disabled={isSubmitting}>
@@ -129,15 +139,13 @@ export function EditContactModal({
   isOpen,
   onClose,
   contact,
-  properties,
-  showProperty,
+  contactTypes,
   onSave,
 }: {
   isOpen: boolean
   onClose: () => void
   contact: ContactRow | null
-  properties: PropertyOption[]
-  showProperty: boolean
+  contactTypes: ContactTypeOption[]
   onSave: (id: string, values: UpdateContactInput) => Promise<ActionResult<ContactRow>>
 }) {
   const {
@@ -149,24 +157,42 @@ export function EditContactModal({
     resolver: zodResolver(updateContactSchema),
     values: contact
       ? {
-          contactType: contact.contactType,
+          contactTypeId: contact.contactTypeId ?? "",
           firstName: contact.firstName,
           lastName: contact.lastName,
           email: contact.email ?? "",
           phone: contact.phone ?? "",
-          birthday: "",
+          birthday: contact.birthday ?? "",
           communicationPreference: contact.communicationPreference,
           marketingOptIn: contact.marketingOptIn,
           returningGuest: contact.returningGuest,
-          isVip: contact.isVip,
           portalEnabled: contact.portalEnabled,
-          groupName: contact.groupName ?? "",
           addressStreet: contact.addressStreet ?? "",
           addressSuburb: contact.addressSuburb ?? "",
           addressCity: contact.addressCity ?? "",
+          addressState: contact.addressState ?? "",
           addressPostcode: contact.addressPostcode ?? "",
           addressCountry: contact.addressCountry ?? "AU",
           notes: contact.notes ?? "",
+          relatedClientId: contact.relatedClientId ?? "",
+          groupId: contact.groupId ?? "",
+          idType: contact.idType ?? undefined,
+          idNumber: contact.idNumber ?? "",
+          idCountry: contact.idCountry ?? "",
+          idVerified: contact.idVerified,
+          idVerificationDate: contact.idVerificationDate ?? "",
+          firstBookingDate: contact.firstBookingDate ?? "",
+          preferredBookingChannel: contact.preferredBookingChannel ?? "",
+          otaUser: contact.otaUser,
+          directBookingGuest: contact.directBookingGuest,
+          corporateGuest: contact.corporateGuest,
+          specialRequests: contact.specialRequests ?? "",
+          accessibilityRequirements: contact.accessibilityRequirements ?? "",
+          lastContactDate: contact.lastContactDate ?? "",
+          doNotRebook: contact.doNotRebook,
+          tier: contact.tier ?? undefined,
+          source: contact.source ?? undefined,
+          guestType: contact.guestType ?? undefined,
         }
       : undefined,
   })
@@ -202,7 +228,9 @@ export function EditContactModal({
           <h2 style={{ fontFamily: "var(--font-display), serif", fontWeight: 300, fontSize: 24, margin: 0 }}>
             Edit {contact.firstName} {contact.lastName}
           </h2>
-          <p style={{ marginTop: 6, fontSize: 13, color: "var(--ink-soft)" }}>{contact.clientNumber}</p>
+          {contact.contactTypeName && (
+            <p style={{ marginTop: 6, fontSize: 13, color: "var(--ink-soft)" }}>{contact.contactTypeName}</p>
+          )}
         </div>
         <div style={{ padding: "16px 24px", display: "flex", flexDirection: "column", gap: 14, maxHeight: "60vh", overflowY: "auto" }}>
           {errors.root && (
@@ -210,12 +238,7 @@ export function EditContactModal({
               {errors.root.message}
             </div>
           )}
-          <ContactFormFields
-            register={register}
-            errors={errors}
-            properties={properties}
-            showProperty={showProperty}
-          />
+          <ContactFormFields register={register} errors={errors} contactTypes={contactTypes} />
         </div>
         <div style={{ padding: "14px 24px 22px", display: "flex", justifyContent: "flex-end", gap: 10, borderTop: "1px solid var(--line-soft)" }}>
           <Button variant="ghost" type="button" onClick={close} disabled={isSubmitting}>

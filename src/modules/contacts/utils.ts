@@ -1,33 +1,21 @@
-import type { ContactRow, ContactTier } from "./types"
+import type { ContactRow } from "./types"
 
-export function tierFor(row: {
-  isVip: boolean
-  returningGuest: boolean
-}): ContactTier {
-  if (row.isVip) return "vip"
-  if (row.returningGuest) return "returning"
-  return "new"
-}
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+]
 
-export function formatBirthday(d: Date | null): string | null {
-  if (!d) return null
-  const months = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-  ]
-  return `${String(d.getDate()).padStart(2, "0")} ${months[d.getMonth()]}`
+/** "11-21" -> "21 Nov". Birthdays are stored day + month only, no year. */
+export function formatBirthday(md: string | null | undefined): string | null {
+  if (!md) return null
+  const [mm, dd] = md.split("-")
+  const monthIdx = Number(mm) - 1
+  if (!dd || monthIdx < 0 || monthIdx > 11) return null
+  return `${dd} ${MONTHS[monthIdx]}`
 }
 
 /** Contacts with a birthday in the current calendar month. */
 export function birthdaysThisMonth(rows: ContactRow[], now = new Date()): ContactRow[] {
-  const months = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-  ]
-  const current = months[now.getMonth()]
-  return rows.filter((r) => {
-    if (!r.birthday) return false
-    const parts = r.birthday.split(" ")
-    return parts.length >= 2 && parts[1] === current
-  })
+  const currentMonth = String(now.getMonth() + 1).padStart(2, "0")
+  return rows.filter((r) => r.birthday?.slice(0, 2) === currentMonth)
 }

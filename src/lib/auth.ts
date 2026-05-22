@@ -105,7 +105,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             email: contacts.email,
             firstName: contacts.firstName,
             lastName: contacts.lastName,
-            propertyId: contacts.propertyId,
             portalEnabled: contacts.portalEnabled,
           })
           .from(contacts)
@@ -128,7 +127,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           email: c.email,
           name: `${c.firstName} ${c.lastName}`,
           role: "contact",
-          propertyId: c.propertyId,
+          // Contacts are global (ADR-006) — no property scope on the session.
+          propertyId: null,
           subjectType: "contact" as const,
           rememberMe: false,
         }

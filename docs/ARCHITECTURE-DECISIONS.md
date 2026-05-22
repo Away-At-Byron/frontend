@@ -245,3 +245,53 @@ sign-in form.
 - Rate limiting on `requestContactOtp` is **not in v1**. Worth adding
   before the portal sees external traffic; track when the first real
   contact feature lands.
+
+---
+
+## ADR-006 — Contacts are global; not property-scoped
+
+**Date:** 2026-05-22 · **Status:** Accepted
+
+**Context.** CLAUDE.md rule 3 requires every tenanted table to carry
+`property_id NOT NULL` with an RLS gate. The original `contacts` table
+followed that (`0003_contacts`). On review against the FRS, the client
+confirmed a contact is one person who can transact across all three
+properties, so a per-property contact row is wrong: it forces duplicate
+records for the same guest and a fake "client number" sequence per
+property. A `bookings` table (a later module) links a property to a
+contact; that join is where the property association belongs.
+
+**Decision.** `contacts` becomes a **global** table — not tenanted.
+
+- Dropped from `contacts`: `property_id` (+ the `contacts_property_*`
+  unique indexes and the property FK), `client_seq`, `client_number`
+  (the per-property `G-1107` ref and its `nextClientNumber` generator),
+  `booking_id`, `group_name`, `is_vip`.
+- `contact_type` (enum) becomes `contact_type_id` — a FK to a new global,
+  admin-managed `contact_types` catalogue (Settings area). Old enum rows
+  backfill to "Guest - Standard Direct".
+- New global `groups` table for group bookings; `contacts.group_id` FKs
+  to it. "Primary" vs "Standard" group member is encoded in the contact
+  type, not a column.
+- `birthday` changes from `date` to `char(5)` "MM-DD" — day + month only.
+- New identity (`id_type`/`id_number`/`id_country`/`id_verified`/
+  `id_verification_date`) and booking-profile columns; `tier` is now a
+  stored enum (`bronze/silver/gold/vip`) replacing the derived
+  `new/returning/vip` logic.
+- Government ID fields are guests only. Because `contact_type` is now a
+  FK (not an enum), this can't be a DB `CHECK` — it is enforced in the
+  contacts server actions (`assertGuestForId`).
+
+**Consequences.**
+- `contacts` is the **one deliberate exception** to CLAUDE.md rule 3.
+  It has no `property_id`, no RLS policy, no `tenantCols`. Every other
+  Layer 1+ table still follows the rule.
+- `withTenant` still wraps contacts queries — for the permission gate and
+  audit context — but no property GUC is required for them.
+- A contact portal session has no property (`propertyId: null` in
+  `auth.ts`), since contacts are global.
+- Migrations: `0007_contacts_comm_pref` (enum values `both/none/
+  unsubscribed`) and `0009_contacts_restructure` (everything above).
+- `Stay Number`, `Returning Guest`, and `Average Stay Duration` are
+  derived from `bookings` and computed when that module lands — see the
+  contacts module README.

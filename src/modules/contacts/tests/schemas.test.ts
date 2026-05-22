@@ -6,21 +6,43 @@ describe("createContactSchema", () => {
     const res = createContactSchema.safeParse({
       firstName: "",
       lastName: "Smith",
-      contactType: "guest",
     })
     expect(res.success).toBe(false)
   })
 
-  test("accepts a minimal guest", () => {
+  test("accepts a minimal contact", () => {
     const res = createContactSchema.safeParse({
       firstName: "Alex",
       lastName: "Rivera",
-      contactType: "guest",
       communicationPreference: "email",
-      marketingOptIn: false,
-      returningGuest: false,
-      isVip: false,
     })
     expect(res.success).toBe(true)
+  })
+
+  test("accepts the new communication preference values", () => {
+    for (const pref of ["both", "none", "unsubscribed"]) {
+      const res = createContactSchema.safeParse({
+        firstName: "Alex",
+        lastName: "Rivera",
+        communicationPreference: pref,
+      })
+      expect(res.success).toBe(true)
+    }
+  })
+
+  test("accepts a valid MM-DD birthday and rejects a full date", () => {
+    const ok = createContactSchema.safeParse({
+      firstName: "Alex",
+      lastName: "Rivera",
+      birthday: "11-21",
+    })
+    expect(ok.success).toBe(true)
+
+    const bad = createContactSchema.safeParse({
+      firstName: "Alex",
+      lastName: "Rivera",
+      birthday: "1990-11-21",
+    })
+    expect(bad.success).toBe(false)
   })
 })

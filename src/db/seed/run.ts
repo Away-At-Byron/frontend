@@ -12,7 +12,7 @@ loadEnvFiles();
 import bcrypt from "bcryptjs";
 import { eq, inArray } from "drizzle-orm";
 import { db, pool } from "../index";
-import { properties, roles, users, contacts } from "../schema";
+import { properties, roles, users, contacts, contactTypes } from "../schema";
 import { ROLE_NAMES } from "../../lib/modules";
 
 // Roles dropped in the move to the 6-group model (ADR-003). Any user still
@@ -121,61 +121,58 @@ async function main() {
   console.log("Seeded users (password: Away123!):");
   for (const u of seedUsers) console.log(`  ${u.email}`);
 
-  // Layer 1 — sample contacts per property (Lucid fields, not mockup names).
-  const now = new Date();
-  const month = now.getMonth();
-  for (const p of propRows) {
-    const existing = await db
-      .select({ id: contacts.id })
-      .from(contacts)
-      .where(eq(contacts.propertyId, p.id))
+  // Layer 1 — sample contacts. Contacts are global, not property-scoped
+  // (ADR-006). contact_types is seeded by migration 0009_contacts_restructure.
+  const existingContacts = await db
+    .select({ id: contacts.id })
+    .from(contacts)
+    .limit(1);
+  if (existingContacts.length === 0) {
+    const stdType = await db
+      .select({ id: contactTypes.id })
+      .from(contactTypes)
+      .where(eq(contactTypes.name, "Guest - Standard Direct"))
       .limit(1);
-    if (existing.length > 0) continue;
+    const contactTypeId = stdType[0]?.id ?? null;
+    const month = String(new Date().getMonth() + 1).padStart(2, "0");
 
     const samples = [
       {
-        clientNumber: "G-1001",
-        clientSeq: 1,
         firstName: "Sample",
         lastName: "Guest",
-        email: `guest1@${p.name.replace(/\s+/g, "").toLowerCase()}.local`,
+        email: "guest1@awayatbyron.local",
         phone: "+61 400 000 001",
         returningGuest: true,
-        isVip: false,
-        birthday: new Date(now.getFullYear(), month, 12),
+        tier: "silver" as const,
+        birthday: `${month}-12`,
       },
       {
-        clientNumber: "G-1002",
-        clientSeq: 2,
         firstName: "VIP",
         lastName: "Guest",
-        email: `vip@${p.name.replace(/\s+/g, "").toLowerCase()}.local`,
+        email: "vip@awayatbyron.local",
         returningGuest: true,
-        isVip: true,
-        birthday: new Date(1990, month, 20),
+        tier: "vip" as const,
+        birthday: `${month}-20`,
       },
       {
-        clientNumber: "G-1003",
-        clientSeq: 3,
         firstName: "New",
         lastName: "Guest",
-        email: `new@${p.name.replace(/\s+/g, "").toLowerCase()}.local`,
+        email: "new@awayatbyron.local",
         returningGuest: false,
-        isVip: false,
+        tier: "bronze" as const,
       },
     ];
     for (const s of samples) {
       await db.insert(contacts).values({
-        propertyId: p.id,
-        contactType: "guest",
+        contactTypeId,
         communicationPreference: "email",
         marketingOptIn: false,
         addressCountry: "AU",
         ...s,
       });
     }
+    console.log("Seeded sample contacts.");
   }
-  console.log("Seeded sample contacts per property.");
 
   await pool.end();
 }

@@ -1,13 +1,11 @@
 /**
- * Contacts (FRS §6.4) — unified people record (guests, staff links, contractors).
+ * Contacts (FRS §6.4) — unified people record. Global, not property-scoped
+ * (ADR-006).
  */
 import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import { assertModuleAccess } from "@/lib/access"
-import {
-  listContacts,
-  listPropertiesForContacts,
-} from "@/modules/contacts/queries"
+import { listContacts, listContactTypes } from "@/modules/contacts/queries"
 import { ContactManagement } from "@/modules/contacts/components/contact-management"
 
 export default async function ContactsPage() {
@@ -15,16 +13,16 @@ export default async function ContactsPage() {
   const session = await auth()
   if (!session?.user) redirect("/signin")
 
-  const [contactsRes, propsRes] = await Promise.all([
+  const [contactsRes, typesRes] = await Promise.all([
     listContacts(),
-    listPropertiesForContacts(),
+    listContactTypes(),
   ])
 
-  if (!contactsRes.ok || !propsRes.ok) {
+  if (!contactsRes.ok || !typesRes.ok) {
     const message = !contactsRes.ok
       ? contactsRes.error.message
-      : !propsRes.ok
-        ? propsRes.error.message
+      : !typesRes.ok
+        ? typesRes.error.message
         : ""
     return (
       <div style={{ padding: "40px 32px", color: "var(--ink-soft)" }}>
@@ -36,8 +34,7 @@ export default async function ContactsPage() {
   return (
     <ContactManagement
       initialContacts={contactsRes.data}
-      properties={propsRes.data}
-      showPropertyPicker={session.user.propertyId === null}
+      contactTypes={typesRes.data}
     />
   )
 }

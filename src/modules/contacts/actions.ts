@@ -1,8 +1,8 @@
 "use server"
 
-import { eq, and, max } from "drizzle-orm"
-import { contacts, properties } from "@/db/schema"
-import { withTenant, withPermission, type TenantContext } from "@/lib/rls"
+import { eq } from "drizzle-orm"
+import { contacts, contactTypes, groups } from "@/db/schema"
+import { withTenant, withPermission } from "@/lib/rls"
 import { writeAudit } from "@/lib/audit"
 import { ok, err, type ActionResult } from "@/lib/result"
 import {
@@ -13,40 +13,9 @@ import {
 } from "./schemas"
 import { CONTACT_PERMISSIONS } from "./permissions"
 import type { ContactRow } from "./types"
-import { formatBirthday, tierFor } from "./utils"
+import { contactSelection, mapContactRow } from "./queries"
 
 type Tx = Parameters<Parameters<typeof withTenant>[0]>[0]
-
-function parseBirthday(value: string | undefined): Date | null {
-  if (!value) return null
-  const d = new Date(value)
-  return Number.isNaN(d.getTime()) ? null : d
-}
-
-function resolvePropertyId(
-  ctx: TenantContext,
-  inputPropertyId: string | undefined,
-): ActionResult<{ propertyId: string }> {
-  if (ctx.propertyId) return ok({ propertyId: ctx.propertyId })
-  if (!inputPropertyId) {
-    return err("VALIDATION", "Select a property for this contact.", {
-      propertyId: ["Required"],
-    })
-  }
-  return ok({ propertyId: inputPropertyId })
-}
-
-async function nextClientNumber(
-  tx: Tx,
-  propertyId: string,
-): Promise<{ clientNumber: string; clientSeq: number }> {
-  const row = await tx
-    .select({ seq: max(contacts.clientSeq) })
-    .from(contacts)
-    .where(eq(contacts.propertyId, propertyId))
-  const clientSeq = Number(row[0]?.seq ?? 0) + 1
-  return { clientSeq, clientNumber: `G-${1000 + clientSeq}` }
-}
 
 function isUniqueViolation(e: unknown): boolean {
   return (
@@ -56,51 +25,86 @@ function isUniqueViolation(e: unknown): boolean {
   )
 }
 
-async function fetchContactRow(
+/**
+ * Government ID fields are guests only. `contact_type` is now a FK, so this
+ * can't be a DB CHECK — enforce it here by reading the type name. Returns an
+ * error result if `idType` is set on a non-guest type.
+ */
+async function assertGuestForId(
   tx: Tx,
-  id: string,
-): Promise<ContactRow | null> {
-  const rows = await tx
-    .select({
-      id: contacts.id,
-      propertyId: contacts.propertyId,
-      propertyName: properties.name,
-      clientNumber: contacts.clientNumber,
-      contactType: contacts.contactType,
-      firstName: contacts.firstName,
-      lastName: contacts.lastName,
-      email: contacts.email,
-      phone: contacts.phone,
-      birthday: contacts.birthday,
-      communicationPreference: contacts.communicationPreference,
-      marketingOptIn: contacts.marketingOptIn,
-      returningGuest: contacts.returningGuest,
-      isVip: contacts.isVip,
-      portalEnabled: contacts.portalEnabled,
-      groupName: contacts.groupName,
-      notes: contacts.notes,
-      addressStreet: contacts.addressStreet,
-      addressSuburb: contacts.addressSuburb,
-      addressCity: contacts.addressCity,
-      addressPostcode: contacts.addressPostcode,
-      addressCountry: contacts.addressCountry,
-      relatedClientId: contacts.relatedClientId,
-      groupId: contacts.groupId,
+  contactTypeId: string | undefined,
+  idType: string | undefined,
+): Promise<ActionResult<true>> {
+  if (!idType) return ok(true)
+  if (!contactTypeId) {
+    return err("VALIDATION", "ID details are for guest contacts only.", {
+      idType: ["Set a guest contact type first"],
     })
+  }
+  const rows = await tx
+    .select({ name: contactTypes.name })
+    .from(contactTypes)
+    .where(eq(contactTypes.id, contactTypeId))
+    .limit(1)
+  if (!rows[0]?.name.startsWith("Guest")) {
+    return err("VALIDATION", "ID details are for guest contacts only.", {
+      idType: ["Only guest contacts can hold ID details"],
+    })
+  }
+  return ok(true)
+}
+
+async function fetchContactRow(tx: Tx, id: string): Promise<ContactRow | null> {
+  const rows = await tx
+    .select(contactSelection)
     .from(contacts)
-    .innerJoin(properties, eq(contacts.propertyId, properties.id))
+    .leftJoin(contactTypes, eq(contacts.contactTypeId, contactTypes.id))
+    .leftJoin(groups, eq(contacts.groupId, groups.id))
     .where(eq(contacts.id, id))
     .limit(1)
-
   const r = rows[0]
-  if (!r) return null
+  return r ? mapContactRow(r) : null
+}
 
+/** Column values shared by create + update, derived from validated input. */
+function contactValues(data: CreateContactInput) {
   return {
-    ...r,
-    birthday: formatBirthday(r.birthday),
-    tier: tierFor(r),
-    stayCount: 0,
-    lastStayLabel: null,
+    contactTypeId: data.contactTypeId ?? null,
+    firstName: data.firstName,
+    lastName: data.lastName,
+    email: data.email ?? null,
+    phone: data.phone ?? null,
+    addressStreet: data.addressStreet ?? null,
+    addressSuburb: data.addressSuburb ?? null,
+    addressCity: data.addressCity ?? null,
+    addressState: data.addressState ?? null,
+    addressPostcode: data.addressPostcode ?? null,
+    addressCountry: data.addressCountry ?? "AU",
+    birthday: data.birthday ?? null,
+    communicationPreference: data.communicationPreference,
+    marketingOptIn: data.marketingOptIn,
+    relatedClientId: data.relatedClientId ?? null,
+    groupId: data.groupId ?? null,
+    notes: data.notes ?? null,
+    returningGuest: data.returningGuest,
+    idType: data.idType ?? null,
+    idNumber: data.idNumber ?? null,
+    idCountry: data.idCountry ?? null,
+    idVerified: data.idVerified,
+    idVerificationDate: data.idVerificationDate ?? null,
+    firstBookingDate: data.firstBookingDate ?? null,
+    preferredBookingChannel: data.preferredBookingChannel ?? null,
+    otaUser: data.otaUser,
+    directBookingGuest: data.directBookingGuest,
+    corporateGuest: data.corporateGuest,
+    specialRequests: data.specialRequests ?? null,
+    accessibilityRequirements: data.accessibilityRequirements ?? null,
+    lastContactDate: data.lastContactDate ?? null,
+    doNotRebook: data.doNotRebook,
+    tier: data.tier ?? null,
+    source: data.source ?? null,
+    guestType: data.guestType ?? null,
+    portalEnabled: data.portalEnabled,
   }
 }
 
@@ -119,41 +123,13 @@ export async function createContact(
       }
       const data = parsed.data
 
-      const prop = resolvePropertyId(ctx, data.propertyId)
-      if (!prop.ok) return prop
-      const propertyId = prop.data.propertyId
-
-      const { clientNumber, clientSeq } = await nextClientNumber(tx, propertyId)
+      const guestCheck = await assertGuestForId(tx, data.contactTypeId, data.idType)
+      if (!guestCheck.ok) return guestCheck
 
       try {
         const inserted = await tx
           .insert(contacts)
-          .values({
-            propertyId,
-            createdBy: ctx.userId,
-            clientNumber,
-            clientSeq,
-            contactType: data.contactType,
-            firstName: data.firstName,
-            lastName: data.lastName,
-            email: data.email ?? null,
-            phone: data.phone ?? null,
-            addressStreet: data.addressStreet ?? null,
-            addressSuburb: data.addressSuburb ?? null,
-            addressCity: data.addressCity ?? null,
-            addressPostcode: data.addressPostcode ?? null,
-            addressCountry: data.addressCountry ?? "AU",
-            birthday: parseBirthday(data.birthday),
-            communicationPreference: data.communicationPreference,
-            marketingOptIn: data.marketingOptIn,
-            relatedClientId: data.relatedClientId ?? null,
-            groupId: data.groupId ?? null,
-            groupName: data.groupName ?? null,
-            notes: data.notes ?? null,
-            returningGuest: data.returningGuest,
-            isVip: data.isVip,
-            portalEnabled: data.portalEnabled,
-          })
+          .values({ ...contactValues(data), createdBy: ctx.userId })
           .returning({ id: contacts.id })
 
         const id = inserted[0]!.id
@@ -165,13 +141,13 @@ export async function createContact(
           entityType: "contact",
           entityId: id,
           action: "create",
-          newValue: { clientNumber, firstName: data.firstName, lastName: data.lastName },
+          newValue: { firstName: data.firstName, lastName: data.lastName },
         })
 
         return ok(row)
       } catch (e) {
         if (isUniqueViolation(e)) {
-          return err("CONFLICT", "Could not assign a client number. Try again.")
+          return err("CONFLICT", "A contact with that email already exists.")
         }
         return err("INTERNAL", "Could not create the contact.")
       }
@@ -195,44 +171,21 @@ export async function updateContact(
       }
       const data = parsed.data
 
-      const scope = ctx.propertyId
-        ? and(eq(contacts.id, contactId), eq(contacts.propertyId, ctx.propertyId))
-        : eq(contacts.id, contactId)
+      const guestCheck = await assertGuestForId(tx, data.contactTypeId, data.idType)
+      if (!guestCheck.ok) return guestCheck
 
       const existing = await tx
-        .select({ id: contacts.id, clientNumber: contacts.clientNumber })
+        .select({ id: contacts.id })
         .from(contacts)
-        .where(scope)
+        .where(eq(contacts.id, contactId))
         .limit(1)
       if (!existing[0]) return err("NOT_FOUND", "That contact no longer exists.")
 
       try {
         await tx
           .update(contacts)
-          .set({
-            contactType: data.contactType,
-            firstName: data.firstName,
-            lastName: data.lastName,
-            email: data.email ?? null,
-            phone: data.phone ?? null,
-            addressStreet: data.addressStreet ?? null,
-            addressSuburb: data.addressSuburb ?? null,
-            addressCity: data.addressCity ?? null,
-            addressPostcode: data.addressPostcode ?? null,
-            addressCountry: data.addressCountry ?? "AU",
-            birthday: parseBirthday(data.birthday),
-            communicationPreference: data.communicationPreference,
-            marketingOptIn: data.marketingOptIn,
-            relatedClientId: data.relatedClientId ?? null,
-            groupId: data.groupId ?? null,
-            groupName: data.groupName ?? null,
-            notes: data.notes ?? null,
-            returningGuest: data.returningGuest,
-            isVip: data.isVip,
-            portalEnabled: data.portalEnabled,
-            updatedAt: new Date(),
-          })
-          .where(scope)
+          .set({ ...contactValues(data), updatedAt: new Date() })
+          .where(eq(contacts.id, contactId))
 
         const row = await fetchContactRow(tx, contactId)
         if (!row) return err("NOT_FOUND", "That contact no longer exists.")
@@ -242,16 +195,14 @@ export async function updateContact(
           entityType: "contact",
           entityId: contactId,
           action: "update",
-          oldValue: existing[0],
-          newValue: {
-            firstName: data.firstName,
-            lastName: data.lastName,
-            clientNumber: existing[0].clientNumber,
-          },
+          newValue: { firstName: data.firstName, lastName: data.lastName },
         })
 
         return ok(row)
-      } catch {
+      } catch (e) {
+        if (isUniqueViolation(e)) {
+          return err("CONFLICT", "A contact with that email already exists.")
+        }
         return err("INTERNAL", "Could not update the contact.")
       }
     }),
