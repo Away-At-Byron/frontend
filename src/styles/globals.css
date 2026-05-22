@@ -9,6 +9,7 @@
 :root {
   /* ── Brand palette ──────────────────────────────────────── */
   --linen:        #FBF8F3;   /* canvas */
+  --cloud:        #FDFCFA;   /* lightest surface (header / shell bg) */
   --shell:        #FBEFE8;   /* secondary surface (warm) */
   --shell-deep:   #F6DDD0;   /* sunrise blush */
   --paper:        #FFFFFF;   /* card */
@@ -69,6 +70,7 @@
  * text-ink, rounded-r3, shadow-2 work alongside raw var() usage. */
 @theme inline {
   --color-linen: var(--linen);
+  --color-cloud: var(--cloud);
   --color-shell: var(--shell);
   --color-shell-deep: var(--shell-deep);
   --color-paper: var(--paper);
