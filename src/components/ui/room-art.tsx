@@ -61,7 +61,7 @@ export function RoomArt({
           style={{
             position: "absolute", left: 10, bottom: 10, padding: "5px 9px",
             borderRadius: 99, background: "rgba(31,42,42,.55)", color: "#FBF8F3",
-            font: '500 9px/1 var(--font-mono), monospace', letterSpacing: ".14em",
+            font: '300 9px/1 var(--font-sans), sans-serif', letterSpacing: ".14em",
             textTransform: "uppercase", backdropFilter: "blur(6px)",
           }}
         >

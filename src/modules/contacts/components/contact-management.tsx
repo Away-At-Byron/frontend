@@ -1,21 +1,28 @@
-"use client"
+"use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
-import { Avatar, Button, Card, FilterPill, IconButton, Pill } from "@/components/ui/primitives"
-import { Icon } from "@/components/ui/icon"
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Avatar,
+  Button,
+  Card,
+  FilterPill,
+  IconButton,
+  Pill,
+} from "@/components/ui/primitives";
+import { Icon } from "@/components/ui/icon";
 import {
   type ContactRow,
   type ContactTier,
   type ContactTypeOption,
   CONTACT_TIER_LABELS,
-} from "../types"
-import { birthdaysThisMonth, formatBirthday } from "../utils"
-import { createContact, updateContact } from "../actions"
-import { NewContactModal, EditContactModal } from "./contact-modal"
-import type { CreateContactInput, UpdateContactInput } from "../schemas"
+} from "../types";
+import { birthdaysThisMonth, formatBirthday } from "../utils";
+import { createContact, updateContact } from "../actions";
+import { NewContactModal, EditContactModal } from "./contact-modal";
+import type { CreateContactInput, UpdateContactInput } from "../schemas";
 
-type FilterId = "all" | "birthdays" | "vip" | "returning" | "in_house"
+type FilterId = "all" | "birthdays" | "vip" | "returning" | "in_house";
 
 const FILTER_LABELS: Record<FilterId, string> = {
   all: "All",
@@ -23,14 +30,14 @@ const FILTER_LABELS: Record<FilterId, string> = {
   vip: "VIP",
   returning: "Returning",
   in_house: "In-house & upcoming",
-}
+};
 
-const GRID = "1.5fr 1fr 1.2fr 0.9fr 0.5fr 0.7fr 0.7fr 0.8fr 90px"
+const GRID = "1.5fr 1fr 1.2fr 0.9fr 0.5fr 0.7fr 0.7fr 0.8fr 90px";
 
 function tierTone(tier: ContactTier) {
-  if (tier === "vip") return "accent" as const
-  if (tier === "gold") return "ok" as const
-  return "neutral" as const
+  if (tier === "vip") return "accent" as const;
+  if (tier === "gold") return "ok" as const;
+  return "neutral" as const;
 }
 
 function exportCsv(rows: ContactRow[]) {
@@ -43,7 +50,7 @@ function exportCsv(rows: ContactRow[]) {
     "Tier",
     "Birthday",
     "Stays",
-  ]
+  ];
   const lines = rows.map((r) =>
     [
       r.firstName,
@@ -57,46 +64,46 @@ function exportCsv(rows: ContactRow[]) {
     ]
       .map((c) => `"${String(c).replace(/"/g, '""')}"`)
       .join(","),
-  )
+  );
   const blob = new Blob([[header.join(","), ...lines].join("\n")], {
     type: "text/csv;charset=utf-8",
-  })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = `contacts-${new Date().toISOString().slice(0, 10)}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `contacts-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export function ContactManagement({
   initialContacts,
   contactTypes,
 }: {
-  initialContacts: ContactRow[]
-  contactTypes: ContactTypeOption[]
+  initialContacts: ContactRow[];
+  contactTypes: ContactTypeOption[];
 }) {
-  const router = useRouter()
-  const [contacts, setContacts] = useState<ContactRow[]>(initialContacts)
-  const [syncedFrom, setSyncedFrom] = useState(initialContacts)
+  const router = useRouter();
+  const [contacts, setContacts] = useState<ContactRow[]>(initialContacts);
+  const [syncedFrom, setSyncedFrom] = useState(initialContacts);
   if (initialContacts !== syncedFrom) {
-    setSyncedFrom(initialContacts)
-    setContacts(initialContacts)
+    setSyncedFrom(initialContacts);
+    setContacts(initialContacts);
   }
 
-  const [activeFilter, setActiveFilter] = useState<FilterId>("all")
-  const [searchTerm, setSearchTerm] = useState("")
-  const [debounced, setDebounced] = useState("")
-  const [newOpen, setNewOpen] = useState(false)
-  const [editContact, setEditContact] = useState<ContactRow | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [activeFilter, setActiveFilter] = useState<FilterId>("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debounced, setDebounced] = useState("");
+  const [newOpen, setNewOpen] = useState(false);
+  const [editContact, setEditContact] = useState<ContactRow | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(searchTerm), 300)
-    return () => clearTimeout(t)
-  }, [searchTerm])
+    const t = setTimeout(() => setDebounced(searchTerm), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
 
-  const birthdayRows = useMemo(() => birthdaysThisMonth(contacts), [contacts])
+  const birthdayRows = useMemo(() => birthdaysThisMonth(contacts), [contacts]);
 
   const counts = useMemo(
     () => ({
@@ -107,56 +114,71 @@ export function ContactManagement({
       in_house: 0,
     }),
     [contacts, birthdayRows],
-  )
+  );
 
   const filtered = useMemo(() => {
-    const s = debounced.trim().toLowerCase()
+    const s = debounced.trim().toLowerCase();
     return contacts.filter((c) => {
-      if (activeFilter === "birthdays" && !birthdayRows.some((b) => b.id === c.id)) return false
-      if (activeFilter === "vip" && c.tier !== "vip") return false
-      if (activeFilter === "returning" && !c.returningGuest) return false
-      if (activeFilter === "in_house") return false
-      if (!s) return true
+      if (
+        activeFilter === "birthdays" &&
+        !birthdayRows.some((b) => b.id === c.id)
+      )
+        return false;
+      if (activeFilter === "vip" && c.tier !== "vip") return false;
+      if (activeFilter === "returning" && !c.returningGuest) return false;
+      if (activeFilter === "in_house") return false;
+      if (!s) return true;
       return (
         `${c.firstName} ${c.lastName}`.toLowerCase().includes(s) ||
         (c.email?.toLowerCase().includes(s) ?? false) ||
         (c.phone?.toLowerCase().includes(s) ?? false)
-      )
-    })
-  }, [contacts, activeFilter, debounced, birthdayRows])
+      );
+    });
+  }, [contacts, activeFilter, debounced, birthdayRows]);
 
   const handleCreate = useCallback(
     async (values: CreateContactInput) => {
-      setError(null)
-      const res = await createContact(values)
+      setError(null);
+      const res = await createContact(values);
       if (res.ok) {
-        setContacts((prev) => [...prev, res.data].sort((a, b) => a.lastName.localeCompare(b.lastName)))
-        router.refresh()
+        setContacts((prev) =>
+          [...prev, res.data].sort((a, b) =>
+            a.lastName.localeCompare(b.lastName),
+          ),
+        );
+        router.refresh();
       }
-      return res
+      return res;
     },
     [router],
-  )
+  );
 
   const handleUpdate = useCallback(
     async (id: string, values: UpdateContactInput) => {
-      setError(null)
-      const res = await updateContact(id, values)
+      setError(null);
+      const res = await updateContact(id, values);
       if (res.ok) {
         setContacts((prev) =>
           prev
             .map((c) => (c.id === id ? res.data : c))
             .sort((a, b) => a.lastName.localeCompare(b.lastName)),
-        )
-        router.refresh()
+        );
+        router.refresh();
       }
-      return res
+      return res;
     },
     [router],
-  )
+  );
 
   return (
-    <div style={{ padding: "24px 32px 48px", display: "flex", flexDirection: "column", gap: 20 }}>
+    <div
+      style={{
+        padding: "24px 32px 48px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 20,
+      }}
+    >
       <div>
         <h1
           style={{
@@ -185,7 +207,12 @@ export function ContactManagement({
           }}
         >
           {error}
-          <IconButton size={28} variant="quiet" title="Dismiss" onClick={() => setError(null)}>
+          <IconButton
+            size={28}
+            variant="quiet"
+            title="Dismiss"
+            onClick={() => setError(null)}
+          >
             <Icon name="X" size={14} />
           </IconButton>
         </div>
@@ -193,7 +220,14 @@ export function ContactManagement({
 
       {/* Birthdays this month */}
       <Card surface="shell" pad={20}>
-        <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 24,
+            flexWrap: "wrap",
+          }}
+        >
           <div style={{ minWidth: 140 }}>
             <div className="caps" style={{ color: "var(--ink-faint)" }}>
               Birthdays this month
@@ -227,9 +261,25 @@ export function ContactManagement({
                   borderRadius: "var(--r-pill)",
                 }}
               >
-                <Avatar name={`${c.firstName} ${c.lastName}`} size={32} tint="teal" />
-                <span style={{ display: "inline-flex", flexDirection: "column", lineHeight: 1.2 }}>
-                  <span style={{ fontSize: 13, color: "var(--ink)", whiteSpace: "nowrap" }}>
+                <Avatar
+                  name={`${c.firstName} ${c.lastName}`}
+                  size={32}
+                  tint="teal"
+                />
+                <span
+                  style={{
+                    display: "inline-flex",
+                    flexDirection: "column",
+                    lineHeight: 1.2,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 13,
+                      color: "var(--ink)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     {c.firstName} {c.lastName}
                   </span>
                   <span
@@ -249,17 +299,29 @@ export function ContactManagement({
               </div>
             ))}
             {birthdayRows.length === 0 && (
-              <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>No birthdays this month.</span>
+              <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>
+                No birthdays this month.
+              </span>
             )}
           </div>
-          <Button variant="ghost" iconRight={<Icon name="ArrowRight" size={14} />}>
+          <Button
+            variant="ghost"
+            iconRight={<Icon name="ArrowRight" size={14} />}
+          >
             Send birthday offers
           </Button>
         </div>
       </Card>
 
       {/* Filters + search */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
         {(Object.keys(FILTER_LABELS) as FilterId[]).map((id) => (
           <FilterPill
             key={id}
@@ -272,7 +334,14 @@ export function ContactManagement({
         ))}
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          flexWrap: "wrap",
+        }}
+      >
         <div
           style={{
             display: "flex",
@@ -332,6 +401,7 @@ export function ContactManagement({
           }}
           className="caps"
         >
+          <span style={{ color: "var(--ink-faint)" }}>ID</span>
           <span style={{ color: "var(--ink-faint)" }}>Name</span>
           <span style={{ color: "var(--ink-faint)" }}>Type</span>
           <span style={{ color: "var(--ink-faint)" }}>Email</span>
@@ -340,11 +410,20 @@ export function ContactManagement({
           <span style={{ color: "var(--ink-faint)" }}>Tier</span>
           <span style={{ color: "var(--ink-faint)" }}>Birthday</span>
           <span style={{ color: "var(--ink-faint)" }}>Last stay</span>
-          <span style={{ color: "var(--ink-faint)", textAlign: "right" }}>Actions</span>
+          <span style={{ color: "var(--ink-faint)", textAlign: "right" }}>
+            Actions
+          </span>
         </div>
 
         {filtered.length === 0 ? (
-          <div style={{ padding: "40px 22px", textAlign: "center", color: "var(--ink-soft)", fontSize: 14 }}>
+          <div
+            style={{
+              padding: "40px 22px",
+              textAlign: "center",
+              color: "var(--ink-soft)",
+              fontSize: 14,
+            }}
+          >
             No contacts match this filter.
           </div>
         ) : (
@@ -361,33 +440,80 @@ export function ContactManagement({
                 fontSize: 13,
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                <Avatar name={`${c.firstName} ${c.lastName}`} size={34} tint="shell" />
+              <span
+                style={{
+                  fontFamily: "var(--font-sans), sans-serif",
+                  fontSize: 11,
+                  fontWeight: 300,
+                }}
+              >
+                {c.id.slice(0, 8)}
+              </span>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  minWidth: 0,
+                }}
+              >
+                <Avatar
+                  name={`${c.firstName} ${c.lastName}`}
+                  size={34}
+                  tint="shell"
+                />
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontFamily: "var(--font-display), serif", fontSize: 15.5 }}>
+                  <div
+                    style={{
+                      fontFamily: "var(--font-display), serif",
+                      fontSize: 15.5,
+                    }}
+                  >
                     {c.firstName} {c.lastName}
                   </div>
                 </div>
               </div>
-              <span style={{ color: "var(--ink-soft)", overflow: "hidden", textOverflow: "ellipsis" }}>
+              <span
+                style={{
+                  color: "var(--ink-soft)",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
                 {c.contactTypeName ?? "—"}
               </span>
-              <span style={{ color: "var(--ink-soft)", overflow: "hidden", textOverflow: "ellipsis" }}>
+              <span
+                style={{
+                  color: "var(--ink-soft)",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
                 {c.email ?? "—"}
               </span>
               <span style={{ color: "var(--ink-soft)" }}>{c.phone ?? "—"}</span>
               <span>{c.stayCount}</span>
               <span>
                 {c.tier ? (
-                  <Pill tone={tierTone(c.tier)}>{CONTACT_TIER_LABELS[c.tier]}</Pill>
+                  <Pill tone={tierTone(c.tier)}>
+                    {CONTACT_TIER_LABELS[c.tier]}
+                  </Pill>
                 ) : (
                   <span style={{ color: "var(--ink-faint)" }}>—</span>
                 )}
               </span>
-              <span style={{ color: "var(--ink-soft)" }}>{formatBirthday(c.birthday) ?? "—"}</span>
-              <span style={{ color: "var(--ink-soft)" }}>{c.lastStayLabel ?? "—"}</span>
+              <span style={{ color: "var(--ink-soft)" }}>
+                {formatBirthday(c.birthday) ?? "—"}
+              </span>
+              <span style={{ color: "var(--ink-soft)" }}>
+                {c.lastStayLabel ?? "—"}
+              </span>
               <div style={{ textAlign: "right" }}>
-                <Button size="sm" variant="ghost" onClick={() => setEditContact(c)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setEditContact(c)}
+                >
                   Edit
                 </Button>
               </div>
@@ -410,5 +536,5 @@ export function ContactManagement({
         onSave={handleUpdate}
       />
     </div>
-  )
+  );
 }

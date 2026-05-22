@@ -155,8 +155,8 @@ export function Pill({
       style={{
         background: t.bg, color: t.fg, border: `1px solid ${t.bd}`,
         fontSize: s.fontSize, padding: s.padding, gap: s.gap,
-        borderRadius: "var(--r-pill)", fontFamily: "var(--font-mono), monospace",
-        fontWeight: 500, letterSpacing: "var(--tracked)", textTransform: "uppercase",
+        borderRadius: "var(--r-pill)", fontFamily: "var(--font-sans), sans-serif",
+        fontWeight: 300, letterSpacing: "var(--tracked)", textTransform: "uppercase",
         whiteSpace: "nowrap", display: "inline-flex", alignItems: "center",
         justifyContent: "center", ...style,
       }}
@@ -189,7 +189,7 @@ export function FilterPill({
         background: on ? "var(--ink)" : "transparent",
         color: on ? "var(--linen)" : "var(--ink)",
         border: on ? "none" : "1px solid var(--line-strong)",
-        fontFamily: "var(--font-mono), monospace", fontSize: 10, fontWeight: 500,
+        fontFamily: "var(--font-sans), sans-serif", fontSize: 10, fontWeight: 300,
         letterSpacing: "var(--tracked)", textTransform: "uppercase",
         display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap",
         ...style,
@@ -282,6 +282,9 @@ const TINTS = {
   sand: { bg: "var(--sand)", fg: "var(--ink)" },
   ink: { bg: "var(--ink)", fg: "var(--linen)" },
   apri: { bg: "var(--apricot)", fg: "var(--ink)" },
+  mist: { bg: "var(--mist)", fg: "var(--ink)" },
+  terra: { bg: "var(--terra)", fg: "var(--ink)" },
+  rattan: { bg: "var(--rattan)", fg: "var(--ink)" },
 }
 export function Avatar({
   name,

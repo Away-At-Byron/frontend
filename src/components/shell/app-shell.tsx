@@ -49,7 +49,7 @@ export function AppShell({
       style={{
         display: "flex",
         minHeight: "100vh",
-        background: "var(--linen)",
+        background: "var(--cloud)",
         fontFamily: "var(--font-sans), sans-serif",
         color: "var(--ink)",
       }}
@@ -303,8 +303,28 @@ export function AppShell({
             alignItems: "center",
             gap: 14,
             padding: "18px 32px",
-            borderBottom: "1px solid var(--line)",
-            background: "var(--linen)",
+            borderBottom: "1px solid #FAEFE7",
+            background: "var(--cloud)",
+            // linear-gradient(180deg, #E4CFC1C7 0%, transparent 100%) over a
+            // 24px fade, sampled as 6 hard-edged box-shadow bands.
+            // (#E4CFC1C7 = rgb(228,207,193) at 0.78 alpha.)
+            // boxShadow: [
+            //   "0 4px 0 0 rgba(228,207,193,0.314)",
+            //   "0 8px 0 0 rgba(228,207,193,0.239)",
+            //   "0 12px 0 0 rgba(228,207,193,0.193)",
+            //   "0 16px 0 0 rgba(228,207,193,0.162)",
+            //   "0 20px 0 0 rgba(228,207,193,0.139)",
+            //   "0 24px 0 0 rgba(228,207,193,0.065)",
+            // ].join(", "),
+            // Previous #FAEFE7 version:
+            boxShadow: [
+              "0 4px 0 0 rgba(250,239,231,0.667)",
+              "0 8px 0 0 rgba(250,239,231,0.4)",
+              "0 12px 0 0 rgba(250,239,231,0.286)",
+              "0 16px 0 0 rgba(250,239,231,0.222)",
+              "0 20px 0 0 rgba(250,239,231,0.182)",
+              "0 24px 0 0 rgba(250,239,231,0.083)",
+            ].join(", "),
             position: "sticky",
             top: 0,
             zIndex: 5,

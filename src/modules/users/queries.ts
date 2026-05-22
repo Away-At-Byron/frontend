@@ -1,7 +1,7 @@
 import "server-only"
 
 import { desc, eq, inArray } from "drizzle-orm"
-import { users, roles, userModuleAccess } from "@/db/schema"
+import { users, roles, userModuleAccess, properties } from "@/db/schema"
 import { withTenant } from "@/lib/rls"
 import { ok, err, type ActionResult } from "@/lib/result"
 import { ROLE_NAMES } from "@/lib/modules"
@@ -14,7 +14,12 @@ export type UserRow = {
   phone: string | null
   roleId: string
   roleName: string
+  /** Property the user belongs to; null = admin (cross-property). */
+  propertyName: string | null
   status: "active" | "disabled"
+  /** Last successful sign-in; null = never signed in. */
+  lastLoginAt: Date | null
+  createdAt: Date
   /** Per-user module override codes; null = no override (full role default). */
   moduleCodes: string[] | null
 }
@@ -45,10 +50,14 @@ export async function listUsers(): Promise<ActionResult<UserRow[]>> {
         phone: users.phone,
         roleId: users.roleId,
         roleName: roles.name,
+        propertyName: properties.name,
         status: users.status,
+        lastLoginAt: users.lastLoginAt,
+        createdAt: users.createdAt,
       })
       .from(users)
       .innerJoin(roles, eq(users.roleId, roles.id))
+      .leftJoin(properties, eq(users.propertyId, properties.id))
       .where(scope)
       // Newest first. Matches the optimistic prepend on create, so the row
       // does not jump position after router.refresh(). `id` breaks ties on

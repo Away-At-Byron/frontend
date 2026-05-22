@@ -9,6 +9,7 @@
 :root {
   /* ── Brand palette ──────────────────────────────────────── */
   --linen:        #FBF8F3;   /* canvas */
+  --cloud:        #FDFCFA;   /* lightest surface (header / shell bg) */
   --shell:        #FBEFE8;   /* secondary surface (warm) */
   --shell-deep:   #F6DDD0;   /* sunrise blush */
   --paper:        #FFFFFF;   /* card */
@@ -69,6 +70,7 @@
  * text-ink, rounded-r3, shadow-2 work alongside raw var() usage. */
 @theme inline {
   --color-linen: var(--linen);
+  --color-cloud: var(--cloud);
   --color-shell: var(--shell);
   --color-shell-deep: var(--shell-deep);
   --color-paper: var(--paper);
@@ -116,14 +118,15 @@ body {
 }
 
 /* ── Editorial utility classes (used across every screen) ──── */
-.mono { font-family: var(--font-mono), ui-monospace, monospace; font-weight: 500; }
+/* Kept the class name for call sites; now renders Inter 300, not monospace. */
+.mono { font-family: var(--font-sans), -apple-system, system-ui, sans-serif; font-weight: 300; }
 .caps {
-  font-family: var(--font-mono), ui-monospace, monospace; font-size: 10px;
-  font-weight: 500; letter-spacing: var(--tracked-wide); text-transform: uppercase;
+  font-family: var(--font-sans), -apple-system, system-ui, sans-serif; font-size: 10px;
+  font-weight: 300; letter-spacing: var(--tracked-wide); text-transform: uppercase;
 }
 .eyebrow {
-  font-family: var(--font-mono), ui-monospace, monospace; font-size: 10px;
-  font-weight: 500; letter-spacing: var(--tracked-wide); text-transform: uppercase;
+  font-family: var(--font-sans), -apple-system, system-ui, sans-serif; font-size: 10px;
+  font-weight: 300; letter-spacing: var(--tracked-wide); text-transform: uppercase;
   color: var(--ink-faint);
 }
 .display { font-family: var(--font-display), serif; font-weight: 300; letter-spacing: var(--tight); }

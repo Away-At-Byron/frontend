@@ -1,127 +1,261 @@
-"use client"
+"use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
-import { signOut } from "next-auth/react"
-import { Avatar, Button, Card, FilterPill, IconButton, Pill } from "@/components/ui/primitives"
-import { Icon } from "@/components/ui/icon"
-import type { RoleOption, UserRow } from "../queries"
-import { createUser, updateUser, disableUser } from "../actions"
-import { NewUserModal, labelFor } from "./new-user-modal"
-import { EditUserModal } from "./edit-user-modal"
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
+import {
+  Avatar,
+  Button,
+  Card,
+  FilterPill,
+  IconButton,
+  Pill,
+} from "@/components/ui/primitives";
+import { Icon } from "@/components/ui/icon";
+import type { RoleOption, UserRow } from "../queries";
+import { createUser, updateUser, disableUser } from "../actions";
+import { NewUserModal, labelFor } from "./new-user-modal";
+import { EditUserModal } from "./edit-user-modal";
+
+// Column track shared by the header row and every data row so they align.
+// Name is the widest column; Email and Property flex behind it.
+const TABLE_GRID =
+  "90px minmax(300px, 2.4fr) minmax(180px, 1.6fr) 130px 110px minmax(120px, 1fr) 96px 120px 148px";
+
+// Stable pseudo-random avatar tint per user — same colour on every render.
+const AVATAR_TINTS = ["mist", "teal", "terra", "rattan"] as const
+
+function avatarTint(id: string): (typeof AVATAR_TINTS)[number] {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0
+  return AVATAR_TINTS[Math.abs(h) % AVATAR_TINTS.length]!
+}
+
+/** Role badge background — design tokens, not raw hex. */
+function roleBg(roleName: string): string {
+  if (roleName === "admin") return "var(--shell-deep)"
+  if (roleName === "manager") return "var(--mist)"
+  return "var(--paper)"
+}
+
+/** "14 Aug 2024" — short, day-first (en-AU). */
+function formatDate(value: Date | string | null): string {
+  if (!value) return "—";
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function exportCsv(rows: UserRow[]) {
+  const header = [
+    "First name",
+    "Last name",
+    "Email",
+    "Phone",
+    "Role",
+    "Status",
+  ];
+  const lines = rows.map((r) =>
+    [
+      r.firstName,
+      r.lastName,
+      r.email,
+      r.phone ?? "",
+      labelFor(r.roleName),
+      r.status,
+    ]
+      .map((c) => `"${String(c).replace(/"/g, '""')}"`)
+      .join(","),
+  );
+  const blob = new Blob([[header.join(","), ...lines].join("\n")], {
+    type: "text/csv;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `users-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function UserManagement({
   initialUsers,
   roles,
   currentUserId,
 }: {
-  initialUsers: UserRow[]
-  roles: RoleOption[]
-  currentUserId: string
+  initialUsers: UserRow[];
+  roles: RoleOption[];
+  currentUserId: string;
 }) {
-  const router = useRouter()
-  const [users, setUsers] = useState<UserRow[]>(initialUsers)
-  const [syncedFrom, setSyncedFrom] = useState(initialUsers)
+  const router = useRouter();
+  const [users, setUsers] = useState<UserRow[]>(initialUsers);
+  const [syncedFrom, setSyncedFrom] = useState(initialUsers);
   // Reconcile with fresh server data after router.refresh() — the
   // React-sanctioned "adjust state during render" pattern (no effect).
   if (initialUsers !== syncedFrom) {
-    setSyncedFrom(initialUsers)
-    setUsers(initialUsers)
+    setSyncedFrom(initialUsers);
+    setUsers(initialUsers);
   }
-  const [activeTab, setActiveTab] = useState<string>("all")
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all")
-  const [searchTerm, setSearchTerm] = useState("")
-  const [debounced, setDebounced] = useState("")
-  const [newOpen, setNewOpen] = useState(false)
-  const [editUser, setEditUser] = useState<UserRow | null>(null)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "active" | "inactive"
+  >("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debounced, setDebounced] = useState("");
+  const [newOpen, setNewOpen] = useState(false);
+  const [editUser, setEditUser] = useState<UserRow | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // 300 ms debounced search (old app behaviour).
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(searchTerm), 300)
-    return () => clearTimeout(t)
-  }, [searchTerm])
+    const t = setTimeout(() => setDebounced(searchTerm), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
 
   const filtered = useMemo(() => {
-    const s = debounced.trim().toLowerCase()
+    const s = debounced.trim().toLowerCase();
     return users.filter((u) => {
-      if (activeTab !== "all" && u.roleName !== activeTab) return false
-      if (statusFilter === "active" && u.status !== "active") return false
-      if (statusFilter === "inactive" && u.status === "active") return false
-      if (!s) return true
+      if (activeTab !== "all" && u.roleName !== activeTab) return false;
+      if (statusFilter === "active" && u.status !== "active") return false;
+      if (statusFilter === "inactive" && u.status === "active") return false;
+      if (!s) return true;
       return (
         `${u.firstName} ${u.lastName}`.toLowerCase().includes(s) ||
         u.email.toLowerCase().includes(s)
-      )
-    })
-  }, [users, activeTab, statusFilter, debounced])
+      );
+    });
+  }, [users, activeTab, statusFilter, debounced]);
 
   const handleCreate = useCallback(
     async (values: Parameters<typeof createUser>[0]) => {
-      setError(null)
-      const res = await createUser(values)
+      setError(null);
+      const res = await createUser(values);
       if (res.ok) {
-        setUsers((prev) => [res.data, ...prev])
-        router.refresh()
+        setUsers((prev) => [res.data, ...prev]);
+        router.refresh();
       }
-      return res
+      return res;
     },
     [router],
-  )
+  );
 
   const handleUpdate = useCallback(
     async (id: string, values: Parameters<typeof updateUser>[1]) => {
-      setError(null)
-      const before = users.find((u) => u.id === id)
-      const res = await updateUser(id, values)
+      setError(null);
+      const before = users.find((u) => u.id === id);
+      const res = await updateUser(id, values);
       if (res.ok) {
-        const roleChanged = before && before.roleId !== res.data.roleId
-        setUsers((prev) => prev.map((u) => (u.id === id ? res.data : u)))
+        const roleChanged = before && before.roleId !== res.data.roleId;
+        setUsers((prev) => prev.map((u) => (u.id === id ? res.data : u)));
         // Self-edit safeguard: changing your own role invalidates your
         // session — sign out (old app behaviour, adapted to Auth.js).
         if (id === currentUserId && roleChanged) {
-          await signOut({ callbackUrl: "/signin" })
-          return res
+          await signOut({ callbackUrl: "/signin" });
+          return res;
         }
-        router.refresh()
+        router.refresh();
       }
-      return res
+      return res;
     },
     [users, currentUserId, router],
-  )
+  );
 
-  const handleDisable = useCallback(
-    async (u: UserRow) => {
-      if (
-        !window.confirm(
-          `Disable ${u.firstName} ${u.lastName}? They will no longer be able to sign in.`,
-        )
+  const handleDisable = useCallback(async (u: UserRow) => {
+    if (
+      !window.confirm(
+        `Disable ${u.firstName} ${u.lastName}? They will no longer be able to sign in.`,
       )
-        return
-      setDeletingId(u.id)
-      setError(null)
-      const res = await disableUser(u.id)
-      if (res.ok) {
-        // Keep the row visible as inactive (status filter handles hiding).
-        setUsers((prev) =>
-          prev.map((x) => (x.id === u.id ? { ...x, status: "disabled" } : x)),
-        )
-      } else {
-        setError(res.error.message)
-      }
-      setDeletingId(null)
-    },
-    [],
-  )
+    )
+      return;
+    setDeletingId(u.id);
+    setError(null);
+    const res = await disableUser(u.id);
+    if (res.ok) {
+      // Keep the row visible as inactive (status filter handles hiding).
+      setUsers((prev) =>
+        prev.map((x) => (x.id === u.id ? { ...x, status: "disabled" } : x)),
+      );
+    } else {
+      setError(res.error.message);
+    }
+    setDeletingId(null);
+  }, []);
 
   const tabs = useMemo(
-    () => [{ id: "all", label: "All" }, ...roles.map((r) => ({ id: r.name, label: labelFor(r.name) }))],
+    () => [
+      { id: "all", label: "All" },
+      ...roles.map((r) => ({ id: r.name, label: labelFor(r.name) })),
+    ],
     [roles],
-  )
+  );
 
   return (
-    <div style={{ padding: "24px 32px 48px", display: "flex", flexDirection: "column", gap: 20 }}>
+    <div
+      style={{
+        padding: "24px 32px 48px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 20,
+      }}
+    >
+      {/* Page header — title (start) · Export + New user (end) · description */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+            flexWrap: "wrap",
+          }}
+        >
+          <h1
+            style={{
+              fontFamily: "var(--font-display), serif",
+              fontWeight: 300,
+              fontSize: 32,
+              letterSpacing: "var(--tight)",
+              margin: 0,
+            }}
+          >
+            Users
+          </h1>
+          <div style={{ display: "flex", gap: 10 }}>
+            <Button
+              variant="paper"
+              icon={<Icon name="Sparkline" size={15} />}
+              onClick={() => exportCsv(filtered)}
+              disabled={filtered.length === 0}
+            >
+              Export
+            </Button>
+            <Button
+              variant="primary"
+              icon={<Icon name="Plus" size={15} />}
+              onClick={() => setNewOpen(true)}
+            >
+              New user
+            </Button>
+          </div>
+        </div>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 13.5,
+            color: "var(--ink-soft)",
+            maxWidth: 620,
+          }}
+        >
+          Staff, housekeepers, contractors, admin who have access to the system.
+          Manage roles, permissions and onboarding.
+        </p>
+      </div>
+
       {error && (
         <div
           style={{
@@ -136,20 +270,27 @@ export function UserManagement({
           }}
         >
           {error}
-          <IconButton size={28} variant="quiet" title="Dismiss" onClick={() => setError(null)}>
+          <IconButton
+            size={28}
+            variant="quiet"
+            title="Dismiss"
+            onClick={() => setError(null)}
+          >
             <Icon name="X" size={14} />
           </IconButton>
         </div>
       )}
 
-      {/* Row 1 — filter by role, full width */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", width: "100%" }}>
-        <span
-          className="caps"
-          style={{ color: "var(--ink-faint)", width: 56, flex: "0 0 56px" }}
-        >
-          Role
-        </span>
+      {/* Row 1 — role filter · status dropdown, full width */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          flexWrap: "wrap",
+          width: "100%",
+        }}
+      >
         {tabs.map((t) => (
           <FilterPill
             key={t.id}
@@ -164,158 +305,257 @@ export function UserManagement({
             {t.label}
           </FilterPill>
         ))}
-      </div>
-
-      {/* Row 2 — status filter (start) · search + new user (end) */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span
-            className="caps"
-            style={{ color: "var(--ink-faint)", width: 56, flex: "0 0 56px" }}
-          >
-            Status
-          </span>
-          {(
-            [
-              { id: "all", label: "All" },
-              { id: "active", label: "Active" },
-              { id: "inactive", label: "Inactive" },
-            ] as const
-          ).map((s) => (
-            <FilterPill
-              key={s.id}
-              on={statusFilter === s.id}
-              count={
-                s.id === "all"
-                  ? users.length
-                  : s.id === "active"
-                    ? users.filter((u) => u.status === "active").length
-                    : users.filter((u) => u.status !== "active").length
-              }
-              onClick={() => setStatusFilter(s.id)}
-            >
-              {s.label}
-            </FilterPill>
-          ))}
-        </div>
         <div
           style={{
-            marginLeft: "auto",
+            position: "relative",
             display: "flex",
             alignItems: "center",
-            gap: 10,
           }}
         >
-          <div
+          <select
+            value={statusFilter}
+            onChange={(e) =>
+              setStatusFilter(e.target.value as "all" | "active" | "inactive")
+            }
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
+              appearance: "none",
+              WebkitAppearance: "none",
               background: "var(--paper)",
               border: "1px solid var(--line)",
               borderRadius: "var(--r-pill)",
-              padding: "9px 14px",
-              width: 280,
+              padding: "9px 36px 9px 16px",
+              font: "inherit",
+              fontSize: 13,
+              color: "var(--ink)",
+              cursor: "pointer",
             }}
           >
-            <Icon name="Search" size={15} />
-            <input
-              placeholder="Search users"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                flex: 1,
-                border: "none",
-                outline: "none",
-                background: "transparent",
-                font: "inherit",
-                fontSize: 13,
-                color: "var(--ink)",
-              }}
-            />
-          </div>
-          <Button
-            variant="primary"
-            icon={<Icon name="Plus" size={15} />}
-            onClick={() => setNewOpen(true)}
-          >
-            New user
-          </Button>
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+          <Icon
+            name="ChevronDown"
+            size={15}
+            style={{ position: "absolute", right: 14, pointerEvents: "none" }}
+          />
+        </div>
+      </div>
+
+      {/* Row 2 — search */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            background: "var(--paper)",
+            border: "1px solid var(--line)",
+            borderRadius: "var(--r-pill)",
+            padding: "9px 14px",
+            width: 280,
+          }}
+        >
+          <Icon name="Search" size={15} />
+          <input
+            placeholder="Search users"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              flex: 1,
+              border: "none",
+              outline: "none",
+              background: "transparent",
+              font: "inherit",
+              fontSize: 13,
+              color: "var(--ink)",
+            }}
+          />
         </div>
       </div>
 
       <Card pad={0}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.6fr 1.6fr 1fr 0.9fr 150px",
-            gap: 16,
-            padding: "14px 22px",
-            borderBottom: "1px solid var(--line-soft)",
-          }}
-          className="caps"
-        >
-          <span style={{ color: "var(--ink-faint)" }}>Name</span>
-          <span style={{ color: "var(--ink-faint)" }}>Email</span>
-          <span style={{ color: "var(--ink-faint)" }}>Role</span>
-          <span style={{ color: "var(--ink-faint)" }}>Status</span>
-          <span style={{ color: "var(--ink-faint)", textAlign: "right" }}>Actions</span>
-        </div>
-
-        {filtered.length === 0 ? (
-          <div style={{ padding: "40px 22px", textAlign: "center", color: "var(--ink-soft)", fontSize: 14 }}>
-            No users match this filter.
-          </div>
-        ) : (
-          filtered.map((u, i) => (
+        <div style={{ overflowX: "auto" }}>
+          <div style={{ minWidth: 1440 }}>
             <div
-              key={u.id}
               style={{
                 display: "grid",
-                gridTemplateColumns: "1.6fr 1.6fr 1fr 0.9fr 150px",
+                gridTemplateColumns: TABLE_GRID,
                 gap: 16,
-                alignItems: "center",
                 padding: "14px 22px",
-                borderTop: i > 0 ? "1px solid var(--line-soft)" : "none",
+                borderBottom: "1px solid var(--line-soft)",
               }}
+              className="caps"
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-                <Avatar name={`${u.firstName} ${u.lastName}`} size={34} tint="shell" />
-                <span style={{ fontFamily: "var(--font-display), serif", fontSize: 15.5 }}>
-                  {u.firstName} {u.lastName}
-                </span>
-              </div>
-              <span style={{ fontSize: 13, color: "var(--ink-soft)", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {u.email}
+              <span style={{ color: "var(--ink-faint)" }}>User Id</span>
+              <span style={{ color: "var(--ink-faint)" }}>Name</span>
+              <span style={{ color: "var(--ink-faint)" }}>Email</span>
+              <span style={{ color: "var(--ink-faint)" }}>Phone</span>
+              <span style={{ color: "var(--ink-faint)" }}>Role</span>
+              <span style={{ color: "var(--ink-faint)" }}>Property</span>
+              <span style={{ color: "var(--ink-faint)" }}>Status</span>
+              <span style={{ color: "var(--ink-faint)" }}>Last Seen</span>
+              <span style={{ color: "var(--ink-faint)", textAlign: "right" }}>
+                {/* Actions */}
               </span>
-              <span>
-                <Pill tone={u.roleName === "admin" ? "ink" : "neutral"}>{labelFor(u.roleName)}</Pill>
-              </span>
-              <span>
-                <Pill tone={u.status === "active" ? "ok" : "bad"}>
-                  {u.status}
-                </Pill>
-              </span>
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                <Button size="sm" variant="ghost" onClick={() => setEditUser(u)}>
-                  Edit
-                </Button>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  disabled={
-                    deletingId === u.id ||
-                    u.id === currentUserId ||
-                    u.status === "disabled"
-                  }
-                  onClick={() => handleDisable(u)}
-                >
-                  {deletingId === u.id ? "..." : "Disable"}
-                </Button>
-              </div>
             </div>
-          ))
-        )}
+
+            {filtered.length === 0 ? (
+              <div
+                style={{
+                  padding: "40px 22px",
+                  textAlign: "center",
+                  color: "var(--ink-soft)",
+                  fontSize: 14,
+                }}
+              >
+                No users match this filter.
+              </div>
+            ) : (
+              filtered.map((u, i) => (
+                <div
+                  key={u.id}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: TABLE_GRID,
+                    gap: 16,
+                    alignItems: "center",
+                    padding: "14px 22px",
+                    borderTop: i > 0 ? "1px solid var(--line-soft)" : "none",
+                  }}
+                >
+                  <span
+                    title={u.id}
+                    style={{
+                      fontFamily: "var(--font-sans), sans-serif",
+                      fontSize: 11,
+                      fontWeight: 300,
+                      color: "var(--ink-faint)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {u.id.slice(0, 8)}
+                  </span>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      minWidth: 0,
+                    }}
+                  >
+                    <Avatar
+                      name={`${u.firstName} ${u.lastName}`}
+                      size={36}
+                      tint={avatarTint(u.id)}
+                    />
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        minWidth: 0,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontFamily: "var(--font-display), serif",
+                          fontSize: 15.5,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {u.firstName} {u.lastName}
+                      </span>
+                      <span
+                        style={{ fontSize: 11.5, color: "var(--ink-faint)" }}
+                      >
+                        Joined {formatDate(u.createdAt)}
+                      </span>
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 13,
+                      color: "var(--ink-soft)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {u.email}
+                  </span>
+                  <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>
+                    {u.phone ?? "—"}
+                  </span>
+                  <span>
+                    <Pill
+                      tone="neutral"
+                      style={{ background: roleBg(u.roleName) }}
+                    >
+                      {labelFor(u.roleName)}
+                    </Pill>
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 13,
+                      color: "var(--ink-soft)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {u.propertyName ?? "All properties"}
+                  </span>
+                  <span>
+                    <Pill tone={u.status === "active" ? "ok" : "bad"}>
+                      {u.status}
+                    </Pill>
+                  </span>
+                  <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>
+                    {u.lastLoginAt ? formatDate(u.lastLoginAt) : "Never"}
+                  </span>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      justifyContent: "flex-end",
+                    }}
+                  >
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditUser(u)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      disabled={
+                        deletingId === u.id ||
+                        u.id === currentUserId ||
+                        u.status === "disabled"
+                      }
+                      onClick={() => handleDisable(u)}
+                    >
+                      {deletingId === u.id ? "..." : "Disable"}
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </Card>
 
       <NewUserModal
@@ -332,5 +572,5 @@ export function UserManagement({
         onSave={handleUpdate}
       />
     </div>
-  )
+  );
 }
