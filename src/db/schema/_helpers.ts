@@ -14,5 +14,9 @@ export const tenantCols = {
     .references(() => properties.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  createdBy: uuid("created_by").references(() => users.id), // nullable for system actions
+  // Nullable: system actions, or the creating user was later hard-deleted
+  // (the FK sets this to null on delete - see migration 0009).
+  createdBy: uuid("created_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
 }

@@ -13,9 +13,10 @@ import {
 } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icon";
 import type { RoleOption, UserRow } from "../queries";
-import { createUser, updateUser, disableUser } from "../actions";
+import { createUser, updateUser, deleteUser } from "../actions";
 import { NewUserModal, labelFor } from "./new-user-modal";
 import { EditUserModal } from "./edit-user-modal";
+import { Modal } from "./modal";
 
 // Column track shared by the header row and every data row so they align.
 // Name is the widest column; Email and Property flex behind it.
@@ -111,6 +112,7 @@ export function UserManagement({
   const [debounced, setDebounced] = useState("");
   const [newOpen, setNewOpen] = useState(false);
   const [editUser, setEditUser] = useState<UserRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -168,26 +170,25 @@ export function UserManagement({
     [users, currentUserId, router],
   );
 
-  const handleDisable = useCallback(async (u: UserRow) => {
-    if (
-      !window.confirm(
-        `Disable ${u.firstName} ${u.lastName}? They will no longer be able to sign in.`,
-      )
-    )
-      return;
-    setDeletingId(u.id);
-    setError(null);
-    const res = await disableUser(u.id);
-    if (res.ok) {
-      // Keep the row visible as inactive (status filter handles hiding).
-      setUsers((prev) =>
-        prev.map((x) => (x.id === u.id ? { ...x, status: "disabled" } : x)),
-      );
-    } else {
-      setError(res.error.message);
-    }
-    setDeletingId(null);
-  }, []);
+  // Disabling a user is now a status change made through the Edit modal.
+  // This is the permanent path: it removes the row. The confirm modal below
+  // gates it.
+  const handleDelete = useCallback(
+    async (u: UserRow) => {
+      setDeletingId(u.id);
+      setError(null);
+      const res = await deleteUser(u.id);
+      if (res.ok) {
+        setUsers((prev) => prev.filter((x) => x.id !== u.id));
+        router.refresh();
+      } else {
+        setError(res.error.message);
+      }
+      setDeletingId(null);
+      setDeleteTarget(null);
+    },
+    [router],
+  );
 
   const tabs = useMemo(
     () => [
@@ -533,6 +534,7 @@ export function UserManagement({
                       display: "flex",
                       gap: 8,
                       justifyContent: "flex-end",
+                      marginRight: 8,
                     }}
                   >
                     <Button
@@ -545,14 +547,10 @@ export function UserManagement({
                     <Button
                       size="sm"
                       variant="danger"
-                      disabled={
-                        deletingId === u.id ||
-                        u.id === currentUserId ||
-                        u.status === "disabled"
-                      }
-                      onClick={() => handleDisable(u)}
+                      disabled={deletingId === u.id || u.id === currentUserId}
+                      onClick={() => setDeleteTarget(u)}
                     >
-                      {deletingId === u.id ? "..." : "Disable"}
+                      Delete
                     </Button>
                   </div>
                 </div>
@@ -575,6 +573,68 @@ export function UserManagement({
         user={editUser}
         onSave={handleUpdate}
       />
+
+      {/* Delete confirmation. Destructive and permanent, so a styled popup. */}
+      <Modal
+        isOpen={deleteTarget !== null}
+        onClose={() => {
+          if (deletingId === null) setDeleteTarget(null);
+        }}
+      >
+        {deleteTarget && (
+          <div style={{ padding: "24px 24px 22px" }}>
+            <h2
+              style={{
+                fontFamily: "var(--font-display), serif",
+                fontWeight: 300,
+                fontSize: 22,
+                letterSpacing: "var(--tight)",
+                margin: 0,
+              }}
+            >
+              Delete user
+            </h2>
+            <p
+              style={{
+                marginTop: 8,
+                fontSize: 13.5,
+                lineHeight: 1.5,
+                color: "var(--ink-soft)",
+              }}
+            >
+              Are you sure you want to delete {deleteTarget.firstName}{" "}
+              {deleteTarget.lastName}? This permanently removes their account
+              and cannot be undone. To keep the account but block sign-in, use
+              Edit and set the status to Disabled instead.
+            </p>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 10,
+                marginTop: 20,
+              }}
+            >
+              <Button
+                variant="ghost"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deletingId !== null}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => handleDelete(deleteTarget)}
+                disabled={deletingId !== null}
+              >
+                {deletingId === deleteTarget.id
+                  ? "Deleting..."
+                  : "Delete user"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
