@@ -2,7 +2,7 @@
 
 import bcrypt from "bcryptjs"
 import { eq } from "drizzle-orm"
-import { users, roles, userModuleAccess } from "@/db/schema"
+import { users, roles, userModuleAccess, properties } from "@/db/schema"
 import { withTenant, type TenantContext } from "@/lib/rls"
 import { writeAudit } from "@/lib/audit"
 import { ok, err, type ActionResult, type ActionErr } from "@/lib/result"
@@ -65,6 +65,19 @@ async function persistModules(
   }
 }
 
+async function propertyNameOf(
+  tx: Tx,
+  propertyId: string | null,
+): Promise<string | null> {
+  if (!propertyId) return null
+  const rows = await tx
+    .select({ name: properties.name })
+    .from(properties)
+    .where(eq(properties.id, propertyId))
+    .limit(1)
+  return rows[0]?.name ?? null
+}
+
 function isUniqueViolation(e: unknown): boolean {
   return (
     typeof e === "object" &&
@@ -123,10 +136,14 @@ export async function createUser(
           email: users.email,
           phone: users.phone,
           roleId: users.roleId,
+          propertyId: users.propertyId,
           status: users.status,
+          lastLoginAt: users.lastLoginAt,
+          createdAt: users.createdAt,
         })
 
-      const row = inserted[0]!
+      const { propertyId, ...row } = inserted[0]!
+      const propertyName = await propertyNameOf(tx, propertyId)
       const sel = resolveModuleSelection(role[0].name, data.modules)
       await persistModules(tx, row.id, sel.rows)
 
@@ -144,7 +161,12 @@ export async function createUser(
         },
       })
 
-      return ok({ ...row, roleName: role[0].name, moduleCodes: sel.moduleCodes })
+      return ok({
+        ...row,
+        roleName: role[0].name,
+        propertyName,
+        moduleCodes: sel.moduleCodes,
+      })
     } catch (e) {
       if (isUniqueViolation(e)) {
         return err("CONFLICT", "A user with that email already exists.", {
@@ -219,10 +241,14 @@ export async function updateUser(
           email: users.email,
           phone: users.phone,
           roleId: users.roleId,
+          propertyId: users.propertyId,
           status: users.status,
+          lastLoginAt: users.lastLoginAt,
+          createdAt: users.createdAt,
         })
 
-      const row = updated[0]!
+      const { propertyId, ...row } = updated[0]!
+      const propertyName = await propertyNameOf(tx, propertyId)
       const sel = resolveModuleSelection(role[0].name, data.modules)
       await persistModules(tx, userId, sel.rows)
 
@@ -242,7 +268,12 @@ export async function updateUser(
         },
       })
 
-      return ok({ ...row, roleName: role[0].name, moduleCodes: sel.moduleCodes })
+      return ok({
+        ...row,
+        roleName: role[0].name,
+        propertyName,
+        moduleCodes: sel.moduleCodes,
+      })
     } catch (e) {
       if (isUniqueViolation(e)) {
         return err("CONFLICT", "A user with that email already exists.", {
