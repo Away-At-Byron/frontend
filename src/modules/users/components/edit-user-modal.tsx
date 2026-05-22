@@ -83,12 +83,17 @@ export function EditUserModal({
   const close = () => {
     if (isSubmitting) return
     onClose()
+    // Clear the form so the next user opened starts from a blank slate.
+    // Without this, the previous user's roleId/modules linger for a render
+    // and the role-change effect wrongly resets this user's module access.
+    reset()
   }
 
   const submit = handleSubmit(async (values) => {
     const res = await onSave(user.id, values)
     if (res.ok) {
       onClose()
+      reset()
       return
     }
     const fields = res.error.fields
