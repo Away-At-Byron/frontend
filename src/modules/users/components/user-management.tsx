@@ -386,7 +386,8 @@ export function UserManagement({
 
       <Card pad={0}>
         <div style={{ overflowX: "auto" }}>
-          <div style={{ minWidth: 1440 }}>
+          {/* paddingBottom keeps the last row off the horizontal scrollbar */}
+          <div style={{ minWidth: 1440, paddingBottom: 12 }}>
             <div
               style={{
                 display: "grid",
