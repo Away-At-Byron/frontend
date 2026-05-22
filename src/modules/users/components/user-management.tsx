@@ -10,6 +10,31 @@ import { createUser, updateUser, disableUser } from "../actions"
 import { NewUserModal, labelFor } from "./new-user-modal"
 import { EditUserModal } from "./edit-user-modal"
 
+function exportCsv(rows: UserRow[]) {
+  const header = ["First name", "Last name", "Email", "Phone", "Role", "Status"]
+  const lines = rows.map((r) =>
+    [
+      r.firstName,
+      r.lastName,
+      r.email,
+      r.phone ?? "",
+      labelFor(r.roleName),
+      r.status,
+    ]
+      .map((c) => `"${String(c).replace(/"/g, '""')}"`)
+      .join(","),
+  )
+  const blob = new Blob([[header.join(","), ...lines].join("\n")], {
+    type: "text/csv;charset=utf-8",
+  })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `users-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export function UserManagement({
   initialUsers,
   roles,
@@ -122,6 +147,52 @@ export function UserManagement({
 
   return (
     <div style={{ padding: "24px 32px 48px", display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* Page header — title (start) · Export + New user (end) · description */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+            flexWrap: "wrap",
+          }}
+        >
+          <h1
+            style={{
+              fontFamily: "var(--font-display), serif",
+              fontWeight: 300,
+              fontSize: 32,
+              letterSpacing: "var(--tight)",
+              margin: 0,
+            }}
+          >
+            Users
+          </h1>
+          <div style={{ display: "flex", gap: 10 }}>
+            <Button
+              variant="paper"
+              icon={<Icon name="Sparkline" size={15} />}
+              onClick={() => exportCsv(filtered)}
+              disabled={filtered.length === 0}
+            >
+              Export
+            </Button>
+            <Button
+              variant="primary"
+              icon={<Icon name="Plus" size={15} />}
+              onClick={() => setNewOpen(true)}
+            >
+              New user
+            </Button>
+          </div>
+        </div>
+        <p style={{ margin: 0, fontSize: 13.5, color: "var(--ink-soft)", maxWidth: 620 }}>
+          Staff, housekeepers, contractors, admin who have access to the system.
+          Manage roles, permissions and onboarding.
+        </p>
+      </div>
+
       {error && (
         <div
           style={{
@@ -234,13 +305,6 @@ export function UserManagement({
               }}
             />
           </div>
-          <Button
-            variant="primary"
-            icon={<Icon name="Plus" size={15} />}
-            onClick={() => setNewOpen(true)}
-          >
-            New user
-          </Button>
         </div>
       </div>
 
