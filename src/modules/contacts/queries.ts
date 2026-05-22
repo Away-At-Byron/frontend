@@ -1,6 +1,6 @@
 import "server-only"
 
-import { eq, asc } from "drizzle-orm"
+import { eq, asc, desc } from "drizzle-orm"
 import { contacts, contactTypes, groups } from "@/db/schema"
 import { withTenant, withPermission } from "@/lib/rls"
 import { ok, type ActionResult } from "@/lib/result"
@@ -71,7 +71,9 @@ export async function listContacts(): Promise<ActionResult<ContactRow[]>> {
         .from(contacts)
         .leftJoin(contactTypes, eq(contacts.contactTypeId, contactTypes.id))
         .leftJoin(groups, eq(contacts.groupId, groups.id))
-        .orderBy(contacts.lastName, contacts.firstName)
+        .where(eq(contacts.isDeleted, false))
+        // Newest contacts first.
+        .orderBy(desc(contacts.createdAt))
 
       return ok(rows.map(mapContactRow))
     }),

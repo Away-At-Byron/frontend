@@ -5,7 +5,9 @@
 import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import { assertModuleAccess } from "@/lib/access"
+import { hasPermission } from "@/lib/permissions"
 import { listContacts, listContactTypes } from "@/modules/contacts/queries"
+import { CONTACT_PERMISSIONS } from "@/modules/contacts/permissions"
 import { ContactManagement } from "@/modules/contacts/components/contact-management"
 
 export default async function ContactsPage() {
@@ -35,6 +37,7 @@ export default async function ContactsPage() {
     <ContactManagement
       initialContacts={contactsRes.data}
       contactTypes={typesRes.data}
+      canDelete={hasPermission(session.user.role, CONTACT_PERMISSIONS.delete)}
     />
   )
 }

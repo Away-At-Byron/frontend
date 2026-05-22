@@ -23,7 +23,7 @@ const PROPERTIES = [
 // Routes not scoped to a single property (e.g. Users spans every property).
 // The topbar shows just the date on these - add an href here to hide the
 // property name on another page.
-const HIDE_PROPERTY_ROUTES = ["/users"];
+const HIDE_PROPERTY_ROUTES = ["/users", "/settings/contact-types"];
 
 export function AppShell({
   user,
@@ -39,9 +39,13 @@ export function AppShell({
   const [propOpen, setPropOpen] = useState(false);
   const today = nav.filter((n) => n.group === "today");
   const secondary = nav.filter((n) => n.group === "manage");
+  // Flatten one level deep so a submenu child can be the current route.
+  const flatNav = nav.flatMap((n) => (n.children ? [n, ...n.children] : [n]));
   const current =
-    nav.find((n) => pathname === n.href || pathname.startsWith(n.href + "/")) ??
-    nav[0];
+    flatNav.find(
+      (n) =>
+        n.href && (pathname === n.href || pathname.startsWith(n.href + "/")),
+    ) ?? nav[0];
   const title = current?.label ?? "";
 
   return (
@@ -230,7 +234,11 @@ export function AppShell({
             Today
           </div>
           {today.map((n) => (
-            <NavItem key={n.href} item={n} active={current?.href === n.href} />
+            <NavNode
+              key={n.href ?? n.label}
+              item={n}
+              currentHref={current?.href}
+            />
           ))}
           <div
             className="caps"
@@ -239,7 +247,11 @@ export function AppShell({
             Manage
           </div>
           {secondary.map((n) => (
-            <NavItem key={n.href} item={n} active={current?.href === n.href} />
+            <NavNode
+              key={n.href ?? n.label}
+              item={n}
+              currentHref={current?.href}
+            />
           ))}
         </nav>
 
@@ -421,23 +433,136 @@ export function AppShell({
   );
 }
 
-function NavItem({ item, active }: { item: NavEntry; active: boolean }) {
+/** Renders a leaf link, or an expandable parent when the entry has children. */
+function NavNode({
+  item,
+  currentHref,
+}: {
+  item: NavEntry;
+  currentHref?: string;
+}) {
+  if (item.children && item.children.length > 0) {
+    return <NavParent item={item} currentHref={currentHref} />;
+  }
+  return <NavItem item={item} active={currentHref === item.href} />;
+}
+
+/** A parent entry that expands a submenu. Stays open while a child is active. */
+function NavParent({
+  item,
+  currentHref,
+}: {
+  item: NavEntry;
+  currentHref?: string;
+}) {
+  const children = item.children ?? [];
+  const containsCurrent = children.some((c) => c.href === currentHref);
+  const [open, setOpen] = useState(false);
+  const expanded = open || containsCurrent;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: "9px 12px",
+          borderRadius: "var(--r-2)",
+          border: "none",
+          cursor: "pointer",
+          width: "100%",
+          textAlign: "left",
+          font: "inherit",
+          color: "var(--ink)",
+          background:
+            containsCurrent && !expanded ? "var(--shell)" : "transparent",
+        }}
+      >
+        <Icon name={item.icon} size={17} strokeWidth={1.6} />
+        <span
+          style={{
+            flex: 1,
+            fontSize: 13.5,
+            fontWeight: containsCurrent ? 600 : 500,
+          }}
+        >
+          {item.label}
+        </span>
+        <Icon
+          name="ChevronDown"
+          size={14}
+          style={{
+            transition: "transform .15s",
+            transform: expanded ? "rotate(180deg)" : "none",
+          }}
+        />
+      </button>
+      {expanded &&
+        children.map((c) => (
+          <NavItem
+            key={c.href ?? c.label}
+            item={c}
+            active={currentHref === c.href}
+            nested
+          />
+        ))}
+    </>
+  );
+}
+
+function NavItem({
+  item,
+  active,
+  nested = false,
+}: {
+  item: NavEntry;
+  active: boolean;
+  nested?: boolean;
+}) {
   return (
     <Link
-      href={item.href}
+      href={item.href ?? "#"}
       style={{
         display: "flex",
         alignItems: "center",
         gap: 12,
-        padding: "9px 12px",
+        padding: nested ? "8px 12px 8px 22px" : "9px 12px",
         borderRadius: "var(--r-2)",
         textDecoration: "none",
         background: active ? "var(--ink)" : "transparent",
         color: active ? "var(--linen)" : "var(--ink)",
       }}
     >
-      <Icon name={item.icon} size={17} strokeWidth={1.6} />
-      <span style={{ flex: 1, fontSize: 13.5, fontWeight: active ? 600 : 500 }}>
+      {nested ? (
+        <span
+          style={{
+            width: 17,
+            flex: "0 0 auto",
+            display: "inline-flex",
+            justifyContent: "center",
+          }}
+        >
+          <span
+            style={{
+              width: 5,
+              height: 5,
+              borderRadius: "50%",
+              background: active ? "var(--linen)" : "var(--line-strong)",
+            }}
+          />
+        </span>
+      ) : (
+        <Icon name={item.icon} size={17} strokeWidth={1.6} />
+      )}
+      <span
+        style={{
+          flex: 1,
+          fontSize: nested ? 13 : 13.5,
+          fontWeight: active ? 600 : 500,
+        }}
+      >
         {item.label}
       </span>
       {item.badge && (

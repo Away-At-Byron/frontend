@@ -17,7 +17,7 @@ const PERMISSIONS: Record<Role, Set<string>> = {
   admin: new Set(["*"]),
   manager: new Set([
     "booking.read", "booking.create", "booking.update", "booking.cancel",
-    "contact.read", "contact.create", "contact.update",
+    "contact.read", "contact.create", "contact.update", "contact.delete",
     "payment.read", "payment.create", "payment.refund",
     "charge.read", "charge.create", "charge.void",
     "room.read", "room.update", "room.status",

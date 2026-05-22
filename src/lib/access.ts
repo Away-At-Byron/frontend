@@ -45,9 +45,14 @@ export function visibleNav(
   allowed: Set<ModuleCode>,
 ): NavEntry[] {
   const isAdmin = roleName === "admin"
-  return NAV_ENTRIES.filter((n) =>
-    n.adminOnly ? isAdmin : allowed.has(n.module),
-  )
+  const canSee = (n: NavEntry): boolean =>
+    n.adminOnly ? isAdmin : allowed.has(n.module)
+  return NAV_ENTRIES.filter(canSee)
+    .map((n) =>
+      n.children ? { ...n, children: n.children.filter(canSee) } : n,
+    )
+    // Drop a parent whose every child got filtered out.
+    .filter((n) => !n.children || n.children.length > 0)
 }
 
 /**

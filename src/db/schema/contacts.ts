@@ -137,6 +137,12 @@ export const contacts = pgTable(
      */
     portalEnabled: boolean("portal_enabled").notNull().default(false),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+
+    /**
+     * Soft delete — flips instead of removing the row so historical bookings
+     * and FK references to this contact stay intact. Matches `contact_types`.
+     */
+    isDeleted: boolean("is_deleted").notNull().default(false),
   },
   (t) => [
     // Email is the sign-in identifier; one address can only map to one row.

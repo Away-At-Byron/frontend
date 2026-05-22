@@ -1,6 +1,6 @@
 "use server"
 
-import { eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import { contacts, contactTypes, groups } from "@/db/schema"
 import { withTenant, withPermission } from "@/lib/rls"
 import { writeAudit } from "@/lib/audit"
@@ -205,6 +205,49 @@ export async function updateContact(
         }
         return err("INTERNAL", "Could not update the contact.")
       }
+    }),
+  )
+}
+
+/**
+ * Soft delete — flips `is_deleted` so historical bookings and FK references
+ * to this contact stay intact (mirrors `deleteContactType`).
+ */
+export async function deleteContact(
+  contactId: string,
+): Promise<ActionResult<{ id: string }>> {
+  return withTenant(async (tx, ctx) =>
+    withPermission(CONTACT_PERMISSIONS.delete, ctx, async () => {
+      const existing = await tx
+        .select({
+          id: contacts.id,
+          firstName: contacts.firstName,
+          lastName: contacts.lastName,
+        })
+        .from(contacts)
+        .where(and(eq(contacts.id, contactId), eq(contacts.isDeleted, false)))
+        .limit(1)
+      if (!existing[0]) {
+        return err("NOT_FOUND", "That contact no longer exists.")
+      }
+
+      await tx
+        .update(contacts)
+        .set({ isDeleted: true, updatedAt: new Date() })
+        .where(eq(contacts.id, contactId))
+
+      await writeAudit({
+        ctx,
+        entityType: "contact",
+        entityId: contactId,
+        action: "delete",
+        oldValue: {
+          firstName: existing[0].firstName,
+          lastName: existing[0].lastName,
+        },
+      })
+
+      return ok({ id: contactId })
     }),
   )
 }

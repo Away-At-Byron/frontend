@@ -26,7 +26,8 @@ export type ModuleCode =
   | "invoices"
   | "reports"
   | "setup"
-  | "users";
+  | "users"
+  | "settings";
 
 export type ModuleDef = {
   code: ModuleCode;
@@ -50,6 +51,7 @@ export const MODULES: ModuleDef[] = [
   { code: "reports", label: "Reports" },
   { code: "setup", label: "Setup" },
   { code: "users", label: "Users", adminOnly: true },
+  { code: "settings", label: "Settings", adminOnly: true },
 ];
 
 const BY_CODE = new Map(MODULES.map((m) => [m.code, m]));
@@ -95,7 +97,8 @@ export const ROLE_NAMES = [
 ] as const;
 
 export type NavEntry = {
-  href: string;
+  /** Omitted for a parent entry that only expands a submenu. */
+  href?: string;
   label: string;
   icon: IconName;
   group: "today" | "manage";
@@ -103,6 +106,8 @@ export type NavEntry = {
   badge?: number;
   /** Visible to the admin role only, bypassing module access. */
   adminOnly?: boolean;
+  /** Child entries rendered as an expandable submenu under this one. */
+  children?: NavEntry[];
 };
 
 export const NAV_ENTRIES: NavEntry[] = [
@@ -177,6 +182,23 @@ export const NAV_ENTRIES: NavEntry[] = [
     group: "manage",
     module: "users",
     adminOnly: true,
+  },
+  {
+    label: "Settings",
+    icon: "Settings",
+    group: "manage",
+    module: "settings",
+    adminOnly: true,
+    children: [
+      {
+        href: "/settings/contact-types",
+        label: "Contact Types",
+        icon: "User",
+        group: "manage",
+        module: "settings",
+        adminOnly: true,
+      },
+    ],
   },
 ];
 

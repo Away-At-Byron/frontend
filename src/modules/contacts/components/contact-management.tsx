@@ -18,7 +18,7 @@ import {
   CONTACT_TIER_LABELS,
 } from "../types";
 import { birthdaysThisMonth, formatBirthday } from "../utils";
-import { createContact, updateContact } from "../actions";
+import { createContact, updateContact, deleteContact } from "../actions";
 import { NewContactModal, EditContactModal } from "./contact-modal";
 import type { CreateContactInput, UpdateContactInput } from "../schemas";
 
@@ -32,13 +32,26 @@ const FILTER_LABELS: Record<FilterId, string> = {
   in_house: "In-house & upcoming",
 };
 
-const GRID = "1.5fr 1fr 1.2fr 0.9fr 0.5fr 0.7fr 0.7fr 0.8fr 90px";
+// Client# · Name · Email · Phone · Stays · Tier · Birthday · Last stay · Action
+const GRID = "110px 1.9fr 1.5fr 1fr 64px 0.9fr 1fr 1fr 150px";
 
-function tierTone(tier: ContactTier) {
-  if (tier === "vip") return "accent" as const;
-  if (tier === "gold") return "ok" as const;
-  return "neutral" as const;
+// Stable pseudo-random avatar tint per contact — the same hashed-id scheme
+// the Users table uses, so a contact keeps one colour across renders.
+const AVATAR_TINTS = ["mist", "teal", "terra", "rattan"] as const;
+
+function avatarTint(id: string): (typeof AVATAR_TINTS)[number] {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return AVATAR_TINTS[Math.abs(h) % AVATAR_TINTS.length]!;
 }
+
+// Tier badge background — one brand token per tier (ADR-002 palette).
+const TIER_STYLE: Record<ContactTier, { background: string; color: string }> = {
+  bronze: { background: "var(--rattan)", color: "var(--linen)" },
+  silver: { background: "var(--mist)", color: "var(--ink)" },
+  gold: { background: "var(--sand)", color: "var(--ink)" },
+  vip: { background: "var(--terra)", color: "var(--linen)" },
+};
 
 function exportCsv(rows: ContactRow[]) {
   const header = [
@@ -79,9 +92,11 @@ function exportCsv(rows: ContactRow[]) {
 export function ContactManagement({
   initialContacts,
   contactTypes,
+  canDelete,
 }: {
   initialContacts: ContactRow[];
   contactTypes: ContactTypeOption[];
+  canDelete: boolean;
 }) {
   const router = useRouter();
   const [contacts, setContacts] = useState<ContactRow[]>(initialContacts);
@@ -96,6 +111,7 @@ export function ContactManagement({
   const [debounced, setDebounced] = useState("");
   const [newOpen, setNewOpen] = useState(false);
   const [editContact, setEditContact] = useState<ContactRow | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -104,6 +120,11 @@ export function ContactManagement({
   }, [searchTerm]);
 
   const birthdayRows = useMemo(() => birthdaysThisMonth(contacts), [contacts]);
+  // Ids whose birthday falls in the current month — drives the row emphasis.
+  const birthdayIds = useMemo(
+    () => new Set(birthdayRows.map((r) => r.id)),
+    [birthdayRows],
+  );
 
   const counts = useMemo(
     () => ({
@@ -141,11 +162,8 @@ export function ContactManagement({
       setError(null);
       const res = await createContact(values);
       if (res.ok) {
-        setContacts((prev) =>
-          [...prev, res.data].sort((a, b) =>
-            a.lastName.localeCompare(b.lastName),
-          ),
-        );
+        // Newest first — the new contact goes to the top of the list.
+        setContacts((prev) => [res.data, ...prev]);
         router.refresh();
       }
       return res;
@@ -158,14 +176,33 @@ export function ContactManagement({
       setError(null);
       const res = await updateContact(id, values);
       if (res.ok) {
-        setContacts((prev) =>
-          prev
-            .map((c) => (c.id === id ? res.data : c))
-            .sort((a, b) => a.lastName.localeCompare(b.lastName)),
-        );
+        // Keep the row where it is — order is by creation date, not name.
+        setContacts((prev) => prev.map((c) => (c.id === id ? res.data : c)));
         router.refresh();
       }
       return res;
+    },
+    [router],
+  );
+
+  const handleDelete = useCallback(
+    async (c: ContactRow) => {
+      if (
+        !window.confirm(
+          `Delete ${c.firstName} ${c.lastName}? They will be removed from your contacts.`,
+        )
+      )
+        return;
+      setDeletingId(c.id);
+      setError(null);
+      const res = await deleteContact(c.id);
+      if (res.ok) {
+        setContacts((prev) => prev.filter((x) => x.id !== c.id));
+        router.refresh();
+      } else {
+        setError(res.error.message);
+      }
+      setDeletingId(null);
     },
     [router],
   );
@@ -401,9 +438,8 @@ export function ContactManagement({
           }}
           className="caps"
         >
-          <span style={{ color: "var(--ink-faint)" }}>ID</span>
+          <span style={{ color: "var(--ink-faint)" }}>Client #</span>
           <span style={{ color: "var(--ink-faint)" }}>Name</span>
-          <span style={{ color: "var(--ink-faint)" }}>Type</span>
           <span style={{ color: "var(--ink-faint)" }}>Email</span>
           <span style={{ color: "var(--ink-faint)" }}>Phone</span>
           <span style={{ color: "var(--ink-faint)" }}>Stays</span>
@@ -411,7 +447,7 @@ export function ContactManagement({
           <span style={{ color: "var(--ink-faint)" }}>Birthday</span>
           <span style={{ color: "var(--ink-faint)" }}>Last stay</span>
           <span style={{ color: "var(--ink-faint)", textAlign: "right" }}>
-            Actions
+            Action
           </span>
         </div>
 
@@ -441,10 +477,15 @@ export function ContactManagement({
               }}
             >
               <span
+                title={c.id}
                 style={{
                   fontFamily: "var(--font-sans), sans-serif",
                   fontSize: 11,
                   fontWeight: 300,
+                  color: "var(--ink-faint)",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
                 }}
               >
                 {c.id.slice(0, 8)}
@@ -453,35 +494,48 @@ export function ContactManagement({
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 10,
+                  gap: 12,
                   minWidth: 0,
                 }}
               >
                 <Avatar
                   name={`${c.firstName} ${c.lastName}`}
-                  size={34}
-                  tint="shell"
+                  size={36}
+                  tint={avatarTint(c.id)}
                 />
-                <div style={{ minWidth: 0 }}>
-                  <div
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    minWidth: 0,
+                  }}
+                >
+                  <span
                     style={{
                       fontFamily: "var(--font-display), serif",
                       fontSize: 15.5,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
                     }}
                   >
                     {c.firstName} {c.lastName}
-                  </div>
+                  </span>
+                  {c.returningGuest && (
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        fontSize: 11.5,
+                        color: "var(--teal-ink)",
+                      }}
+                    >
+                      Returning guest
+                    </span>
+                  )}
                 </div>
               </div>
-              <span
-                style={{
-                  color: "var(--ink-soft)",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {c.contactTypeName ?? "—"}
-              </span>
               <span
                 style={{
                   color: "var(--ink-soft)",
@@ -495,26 +549,56 @@ export function ContactManagement({
               <span>{c.stayCount}</span>
               <span>
                 {c.tier ? (
-                  <Pill tone={tierTone(c.tier)}>
+                  <Pill
+                    tone="neutral"
+                    style={{
+                      ...TIER_STYLE[c.tier],
+                      border: "1px solid transparent",
+                    }}
+                  >
                     {CONTACT_TIER_LABELS[c.tier]}
                   </Pill>
                 ) : (
                   <span style={{ color: "var(--ink-faint)" }}>—</span>
                 )}
               </span>
-              <span style={{ color: "var(--ink-soft)" }}>
+              <span
+                style={
+                  birthdayIds.has(c.id)
+                    ? {
+                        fontWeight: 700,
+                        fontStyle: "italic",
+                        color: "var(--terra-deep)",
+                      }
+                    : { color: "var(--ink-soft)" }
+                }
+              >
                 {formatBirthday(c.birthday) ?? "—"}
               </span>
               <span style={{ color: "var(--ink-soft)" }}>
                 {c.lastStayLabel ?? "—"}
               </span>
-              <div style={{ textAlign: "right" }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  justifyContent: "flex-end",
+                }}
+              >
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => setEditContact(c)}
                 >
                   Edit
+                </Button>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  disabled={!canDelete || deletingId === c.id}
+                  onClick={() => handleDelete(c)}
+                >
+                  {deletingId === c.id ? "..." : "Delete"}
                 </Button>
               </div>
             </div>
