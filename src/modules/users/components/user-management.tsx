@@ -19,9 +19,9 @@ import { EditUserModal } from "./edit-user-modal";
 import { Modal } from "./modal";
 
 // Column track shared by the header row and every data row so they align.
-// Name is the widest column; Email and Property flex behind it.
-const TABLE_GRID =
-  "90px minmax(300px, 2.4fr) minmax(180px, 1.6fr) 130px 110px 96px 148px";
+// Name is a fixed width sized to its content - an fr max still inflates on a
+// wide table. Email is the lone flexible column and soaks up the slack.
+const TABLE_GRID = "90px 220px minmax(160px, 1fr) 120px 110px 96px 148px";
 
 // Stable pseudo-random avatar tint per user — same colour on every render.
 const AVATAR_TINTS = ["mist", "teal", "terra", "rattan"] as const;
@@ -611,9 +611,7 @@ export function UserManagement({
                 onClick={() => handleDelete(deleteTarget)}
                 disabled={deletingId !== null}
               >
-                {deletingId === deleteTarget.id
-                  ? "Deleting..."
-                  : "Delete user"}
+                {deletingId === deleteTarget.id ? "Deleting..." : "Delete user"}
               </Button>
             </div>
           </div>
