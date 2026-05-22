@@ -21,7 +21,7 @@ import { Modal } from "./modal";
 // Column track shared by the header row and every data row so they align.
 // Name is the widest column; Email and Property flex behind it.
 const TABLE_GRID =
-  "90px minmax(300px, 2.4fr) minmax(180px, 1.6fr) 130px 110px minmax(120px, 1fr) 96px 120px 148px";
+  "90px minmax(300px, 2.4fr) minmax(180px, 1.6fr) 130px 110px 96px 148px";
 
 // Stable pseudo-random avatar tint per user — same colour on every render.
 const AVATAR_TINTS = ["mist", "teal", "terra", "rattan"] as const;
@@ -388,7 +388,7 @@ export function UserManagement({
       <Card pad={0}>
         <div style={{ overflowX: "auto" }}>
           {/* paddingBottom keeps the last row off the horizontal scrollbar */}
-          <div style={{ minWidth: 1440, paddingBottom: 12 }}>
+          <div style={{ minWidth: 1200, paddingBottom: 12 }}>
             <div
               style={{
                 display: "grid",
@@ -404,9 +404,7 @@ export function UserManagement({
               <span style={{ color: "var(--ink-faint)" }}>Email</span>
               <span style={{ color: "var(--ink-faint)" }}>Phone</span>
               <span style={{ color: "var(--ink-faint)" }}>Role</span>
-              <span style={{ color: "var(--ink-faint)" }}>Property</span>
               <span style={{ color: "var(--ink-faint)" }}>Status</span>
-              <span style={{ color: "var(--ink-faint)" }}>Last Seen</span>
               <span style={{ color: "var(--ink-faint)", textAlign: "right" }}>
                 {/* Actions */}
               </span>
@@ -510,24 +508,10 @@ export function UserManagement({
                       {labelFor(u.roleName)}
                     </Pill>
                   </span>
-                  <span
-                    style={{
-                      fontSize: 13,
-                      color: "var(--ink-soft)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {u.propertyName ?? "All properties"}
-                  </span>
                   <span>
                     <Pill tone={u.status === "active" ? "ok" : "bad"}>
                       {u.status}
                     </Pill>
-                  </span>
-                  <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>
-                    {u.lastLoginAt ? formatDate(u.lastLoginAt) : "Never"}
                   </span>
                   <div
                     style={{
