@@ -43,8 +43,9 @@ describe("effectiveModules", () => {
     expect(m.has("users")).toBe(false)
   })
 
-  test("role with no defaults gets dashboard only", () => {
-    expect(codes(effectiveModules("other", null))).toEqual(["dashboard"])
+  test("an unmapped role gets dashboard only", () => {
+    // No ROLE_DEFAULTS entry — the `?? []` fallback leaves always-on only.
+    expect(codes(effectiveModules("unmapped_role", null))).toEqual(["dashboard"])
   })
 })
 
@@ -55,9 +56,9 @@ describe("toggleableModulesForRole", () => {
     )
   })
 
-  test("admin and empty roles expose nothing", () => {
+  test("admin and unmapped roles expose nothing", () => {
     expect(toggleableModulesForRole("admin")).toEqual([])
-    expect(toggleableModulesForRole("other")).toEqual([])
+    expect(toggleableModulesForRole("unmapped_role")).toEqual([])
   })
 })
 

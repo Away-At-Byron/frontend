@@ -73,8 +73,8 @@ export const ROLE_DEFAULTS: Record<string, ModuleCode[]> = {
   manager: ["bookings", "contacts", "messages", "reports", "housekeeping"],
   staff: ["bookings", "messages", "contacts"],
   housekeeper: ["housekeeping"],
-  contractor: [],
-  other: [],
+  contractor: ["maintenance"],
+  other: ["bookings", "messages", "contacts"],
 };
 
 /**

@@ -1,6 +1,6 @@
 import "server-only"
 
-import { eq, inArray } from "drizzle-orm"
+import { desc, eq, inArray } from "drizzle-orm"
 import { users, roles, userModuleAccess } from "@/db/schema"
 import { withTenant } from "@/lib/rls"
 import { ok, err, type ActionResult } from "@/lib/result"
@@ -50,7 +50,10 @@ export async function listUsers(): Promise<ActionResult<UserRow[]>> {
       .from(users)
       .innerJoin(roles, eq(users.roleId, roles.id))
       .where(scope)
-      .orderBy(users.firstName)
+      // Newest first. Matches the optimistic prepend on create, so the row
+      // does not jump position after router.refresh(). `id` breaks ties on
+      // an identical timestamp, keeping the order deterministic.
+      .orderBy(desc(users.createdAt), users.id)
 
     const ids = rows.map((r) => r.id)
     const access = ids.length

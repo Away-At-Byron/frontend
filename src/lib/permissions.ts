@@ -55,8 +55,18 @@ const PERMISSIONS: Record<Role, Set<string>> = {
     "invoice.read", "invoice.create", "invoice.void",
     "report.read",
   ]),
-  contractor: new Set([]),
-  other: new Set([]),
+  contractor: new Set([
+    "maintenance.read", "maintenance.create",
+  ]),
+  // Mirrors `staff` — the "Other" catch-all role gets the same access.
+  other: new Set([
+    "booking.read", "booking.create", "booking.update",
+    "contact.read", "contact.create", "contact.update",
+    "payment.read", "payment.create",
+    "charge.read", "charge.create",
+    "room.read", "room.status",
+    "housekeeping.read",
+  ]),
 }
 
 export function hasPermission(role: string, permission: string): boolean {

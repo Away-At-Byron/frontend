@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, type ChangeEvent } from "react"
 import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Avatar, Button } from "@/components/ui/primitives"
@@ -67,33 +67,17 @@ export function EditUserModal({
   const roleName = roles.find((r) => r.id === roleId)?.name ?? ""
   const modules = useWatch({ control, name: "modules" }) ?? []
 
-  // Switching this user to a different role resets access to that role's
-  // full static default (its old selection no longer applies).
-  useEffect(() => {
-    if (user && roleName && roleName !== user.roleName) {
-      setValue(
-        "modules",
-        toggleableModulesForRole(roleName).map((m) => m.code),
-      )
-    }
-  }, [roleName, user, setValue])
-
   if (!user) return null
 
   const close = () => {
     if (isSubmitting) return
     onClose()
-    // Clear the form so the next user opened starts from a blank slate.
-    // Without this, the previous user's roleId/modules linger for a render
-    // and the role-change effect wrongly resets this user's module access.
-    reset()
   }
 
   const submit = handleSubmit(async (values) => {
     const res = await onSave(user.id, values)
     if (res.ok) {
       onClose()
-      reset()
       return
     }
     const fields = res.error.fields
@@ -105,6 +89,21 @@ export function EditUserModal({
       setError("root", { message: res.error.message })
     }
   })
+
+  // Resetting module access belongs on a real role change, so it lives on
+  // the select's onChange - not in an effect keyed on the role. An effect
+  // also fires while a newly-opened user's form is still syncing, when the
+  // watched role is briefly stale, and would wrongly wipe the loaded access.
+  const roleField = register("roleId")
+  const onRoleChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    roleField.onChange(e)
+    // New role => its full static default; the old selection no longer applies.
+    const picked = roles.find((r) => r.id === e.target.value)
+    setValue(
+      "modules",
+      picked ? toggleableModulesForRole(picked.name).map((m) => m.code) : [],
+    )
+  }
 
   return (
     <Modal isOpen={isOpen} onClose={close}>
@@ -166,7 +165,7 @@ export function EditUserModal({
               <input style={inputStyle} {...register("phone")} />
             </Field>
             <Field label="Role" error={errors.roleId?.message}>
-              <select style={inputStyle} {...register("roleId")}>
+              <select style={inputStyle} {...roleField} onChange={onRoleChange}>
                 {roles.map((r) => (
                   <option key={r.id} value={r.id}>
                     {labelFor(r.name)}
