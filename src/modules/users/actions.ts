@@ -286,11 +286,13 @@ export async function updateUser(
 }
 
 /**
- * Soft delete: set status = 'disabled'. The list hides disabled users, so
- * the UX matches the old hard-delete (row disappears) while audit_log and
- * login history stay intact.
+ * Hard delete: removes the user row for good. Disabling is now a soft status
+ * change made through Edit (see `updateUser`); this is the permanent path.
+ * Sessions, module access and password resets cascade away; `created_by` on
+ * tenanted records becomes null; audit_log keeps the actor id as a dangling
+ * reference so the history survives. See migration 0009.
  */
-export async function disableUser(
+export async function deleteUser(
   userId: string,
 ): Promise<ActionResult<{ id: string }>> {
   return withTenant(async (tx, ctx) => {
@@ -298,28 +300,35 @@ export async function disableUser(
     if (gate) return gate
 
     if (userId === ctx.userId) {
-      return err("CONFLICT", "You cannot disable your own account.")
+      return err("CONFLICT", "You cannot delete your own account.")
     }
 
     const existing = await tx
-      .select({ id: users.id, status: users.status })
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        roleId: users.roleId,
+        status: users.status,
+      })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1)
     if (!existing[0]) return err("NOT_FOUND", "That user no longer exists.")
 
-    await tx
-      .update(users)
-      .set({ status: "disabled", updatedAt: new Date() })
-      .where(eq(users.id, userId))
+    try {
+      await tx.delete(users).where(eq(users.id, userId))
+    } catch {
+      return err("INTERNAL", "Could not delete the user.")
+    }
 
     await writeAudit({
       ctx,
       entityType: "user",
       entityId: userId,
-      action: "status_change",
-      oldValue: { status: existing[0].status },
-      newValue: { status: "disabled" },
+      action: "delete",
+      oldValue: existing[0],
     })
 
     return ok({ id: userId })

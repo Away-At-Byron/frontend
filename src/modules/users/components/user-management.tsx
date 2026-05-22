@@ -13,29 +13,33 @@ import {
 } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icon";
 import type { RoleOption, UserRow } from "../queries";
-import { createUser, updateUser, disableUser } from "../actions";
+import { createUser, updateUser, deleteUser } from "../actions";
 import { NewUserModal, labelFor } from "./new-user-modal";
 import { EditUserModal } from "./edit-user-modal";
+import { Modal } from "./modal";
 
 // Column track shared by the header row and every data row so they align.
-// Name is the widest column; Email and Property flex behind it.
-const TABLE_GRID =
-  "90px minmax(300px, 2.4fr) minmax(180px, 1.6fr) 130px 110px minmax(120px, 1fr) 96px 120px 148px";
+// Name is a fixed width sized to its content - an fr max still inflates on a
+// wide table. Email is the lone flexible column and soaks up the slack.
+const TABLE_GRID = "90px 220px minmax(160px, 1fr) 120px 110px 96px 148px";
 
 // Stable pseudo-random avatar tint per user — same colour on every render.
-const AVATAR_TINTS = ["mist", "teal", "terra", "rattan"] as const
+const AVATAR_TINTS = ["mist", "teal", "terra", "rattan"] as const;
 
 function avatarTint(id: string): (typeof AVATAR_TINTS)[number] {
-  let h = 0
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0
-  return AVATAR_TINTS[Math.abs(h) % AVATAR_TINTS.length]!
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return AVATAR_TINTS[Math.abs(h) % AVATAR_TINTS.length]!;
 }
 
 /** Role badge background — design tokens, not raw hex. */
 function roleBg(roleName: string): string {
-  if (roleName === "admin") return "var(--shell-deep)"
-  if (roleName === "manager") return "var(--mist)"
-  return "var(--paper)"
+  if (roleName === "admin") return "var(--shell-deep)";
+  if (roleName === "manager") return "var(--mist)";
+  if (roleName === "contractor") return "var(--sand)"; // #E6D4B7
+  if (roleName === "housekeeper") return "var(--rattan)"; // #A89274
+  if (roleName === "other") return "var(--shell)"; // #FBEFE8
+  return "var(--paper)";
 }
 
 /** "14 Aug 2024" — short, day-first (en-AU). */
@@ -108,6 +112,7 @@ export function UserManagement({
   const [debounced, setDebounced] = useState("");
   const [newOpen, setNewOpen] = useState(false);
   const [editUser, setEditUser] = useState<UserRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -165,26 +170,25 @@ export function UserManagement({
     [users, currentUserId, router],
   );
 
-  const handleDisable = useCallback(async (u: UserRow) => {
-    if (
-      !window.confirm(
-        `Disable ${u.firstName} ${u.lastName}? They will no longer be able to sign in.`,
-      )
-    )
-      return;
-    setDeletingId(u.id);
-    setError(null);
-    const res = await disableUser(u.id);
-    if (res.ok) {
-      // Keep the row visible as inactive (status filter handles hiding).
-      setUsers((prev) =>
-        prev.map((x) => (x.id === u.id ? { ...x, status: "disabled" } : x)),
-      );
-    } else {
-      setError(res.error.message);
-    }
-    setDeletingId(null);
-  }, []);
+  // Disabling a user is now a status change made through the Edit modal.
+  // This is the permanent path: it removes the row. The confirm modal below
+  // gates it.
+  const handleDelete = useCallback(
+    async (u: UserRow) => {
+      setDeletingId(u.id);
+      setError(null);
+      const res = await deleteUser(u.id);
+      if (res.ok) {
+        setUsers((prev) => prev.filter((x) => x.id !== u.id));
+        router.refresh();
+      } else {
+        setError(res.error.message);
+      }
+      setDeletingId(null);
+      setDeleteTarget(null);
+    },
+    [router],
+  );
 
   const tabs = useMemo(
     () => [
@@ -251,8 +255,8 @@ export function UserManagement({
             maxWidth: 620,
           }}
         >
-          Staff, housekeepers, contractors, admin who have access to the system.
-          Manage roles, permissions and onboarding.
+          {/* Staff, housekeepers, contractors, admin who have access to the system.
+          Manage roles, permissions and onboarding. */}
         </p>
       </div>
 
@@ -383,7 +387,8 @@ export function UserManagement({
 
       <Card pad={0}>
         <div style={{ overflowX: "auto" }}>
-          <div style={{ minWidth: 1440 }}>
+          {/* paddingBottom keeps the last row off the horizontal scrollbar */}
+          <div style={{ minWidth: 1200, paddingBottom: 12 }}>
             <div
               style={{
                 display: "grid",
@@ -399,9 +404,7 @@ export function UserManagement({
               <span style={{ color: "var(--ink-faint)" }}>Email</span>
               <span style={{ color: "var(--ink-faint)" }}>Phone</span>
               <span style={{ color: "var(--ink-faint)" }}>Role</span>
-              <span style={{ color: "var(--ink-faint)" }}>Property</span>
               <span style={{ color: "var(--ink-faint)" }}>Status</span>
-              <span style={{ color: "var(--ink-faint)" }}>Last Seen</span>
               <span style={{ color: "var(--ink-faint)", textAlign: "right" }}>
                 {/* Actions */}
               </span>
@@ -505,30 +508,17 @@ export function UserManagement({
                       {labelFor(u.roleName)}
                     </Pill>
                   </span>
-                  <span
-                    style={{
-                      fontSize: 13,
-                      color: "var(--ink-soft)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {u.propertyName ?? "All properties"}
-                  </span>
                   <span>
                     <Pill tone={u.status === "active" ? "ok" : "bad"}>
                       {u.status}
                     </Pill>
-                  </span>
-                  <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>
-                    {u.lastLoginAt ? formatDate(u.lastLoginAt) : "Never"}
                   </span>
                   <div
                     style={{
                       display: "flex",
                       gap: 8,
                       justifyContent: "flex-end",
+                      marginRight: 8,
                     }}
                   >
                     <Button
@@ -541,14 +531,10 @@ export function UserManagement({
                     <Button
                       size="sm"
                       variant="danger"
-                      disabled={
-                        deletingId === u.id ||
-                        u.id === currentUserId ||
-                        u.status === "disabled"
-                      }
-                      onClick={() => handleDisable(u)}
+                      disabled={deletingId === u.id || u.id === currentUserId}
+                      onClick={() => setDeleteTarget(u)}
                     >
-                      {deletingId === u.id ? "..." : "Disable"}
+                      Delete
                     </Button>
                   </div>
                 </div>
@@ -571,6 +557,66 @@ export function UserManagement({
         user={editUser}
         onSave={handleUpdate}
       />
+
+      {/* Delete confirmation. Destructive and permanent, so a styled popup. */}
+      <Modal
+        isOpen={deleteTarget !== null}
+        onClose={() => {
+          if (deletingId === null) setDeleteTarget(null);
+        }}
+      >
+        {deleteTarget && (
+          <div style={{ padding: "24px 24px 22px" }}>
+            <h2
+              style={{
+                fontFamily: "var(--font-display), serif",
+                fontWeight: 300,
+                fontSize: 22,
+                letterSpacing: "var(--tight)",
+                margin: 0,
+              }}
+            >
+              Delete user
+            </h2>
+            <p
+              style={{
+                marginTop: 8,
+                fontSize: 13.5,
+                lineHeight: 1.5,
+                color: "var(--ink-soft)",
+              }}
+            >
+              Are you sure you want to delete {deleteTarget.firstName}{" "}
+              {deleteTarget.lastName}? This permanently removes their account
+              and cannot be undone. To keep the account but block sign-in, use
+              Edit and set the status to Disabled instead.
+            </p>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 10,
+                marginTop: 20,
+              }}
+            >
+              <Button
+                variant="ghost"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deletingId !== null}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => handleDelete(deleteTarget)}
+                disabled={deletingId !== null}
+              >
+                {deletingId === deleteTarget.id ? "Deleting..." : "Delete user"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

@@ -1,5 +1,4 @@
 import { pgTable, uuid, text, jsonb, timestamp, pgEnum } from "drizzle-orm/pg-core"
-import { users } from "./auth"
 
 export const auditAction = pgEnum("audit_action", [
   "create",
@@ -17,7 +16,9 @@ export const auditAction = pgEnum("audit_action", [
  */
 export const auditLog = pgTable("audit_log", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").references(() => users.id),
+  // No FK to users: audit_log is append-only and must survive a user being
+  // hard-deleted. The id is kept as a dangling reference (see migration 0009).
+  userId: uuid("user_id"),
   entityType: text("entity_type").notNull(),
   entityId: uuid("entity_id").notNull(),
   action: auditAction("action").notNull(),
