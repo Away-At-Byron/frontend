@@ -1,13 +1,23 @@
 import "server-only"
 
-import { eq, asc, desc } from "drizzle-orm"
+import { eq, asc, desc, sql } from "drizzle-orm"
 import { contacts, contactTypes, contactSources, groups } from "@/db/schema"
 import { withTenant, withPermission } from "@/lib/rls"
 import { ok, type ActionResult } from "@/lib/result"
 import { CONTACT_PERMISSIONS } from "./permissions"
-import type { ContactRow, ContactSourceOption, ContactTypeOption } from "./types"
+import type {
+  ContactRow,
+  ContactSourceOption,
+  ContactTypeOption,
+  GroupRow,
+} from "./types"
 
-export type { ContactRow, ContactSourceOption, ContactTypeOption } from "./types"
+export type {
+  ContactRow,
+  ContactSourceOption,
+  ContactTypeOption,
+  GroupRow,
+} from "./types"
 
 /** Columns shared by listContacts and the single-row fetch in actions.ts. */
 export const contactSelection = {
@@ -92,6 +102,43 @@ export async function listContactTypes(): Promise<ActionResult<ContactTypeOption
         .where(eq(contactTypes.isDeleted, false))
         .orderBy(asc(contactTypes.name))
       return ok(rows)
+    }),
+  )
+}
+
+/** Group bookings with a live member count (FRS §6.4). */
+export async function listGroups(): Promise<ActionResult<GroupRow[]>> {
+  return withTenant(async (tx, ctx) =>
+    withPermission(CONTACT_PERMISSIONS.read, ctx, async () => {
+      const rows = await tx
+        .select({
+          id: groups.id,
+          groupName: groups.groupName,
+          relationships: groups.relationships,
+          companyName: groups.companyName,
+          corporateAccountId: groups.corporateAccountId,
+          travelAgentId: groups.travelAgentId,
+          groupBookerFlag: groups.groupBookerFlag,
+          billingPreference: groups.billingPreference,
+          taxAbn: groups.taxAbn,
+          memberCount: sql<number>`count(${contacts.id})::int`,
+          createdAt: groups.createdAt,
+        })
+        .from(groups)
+        .leftJoin(
+          contacts,
+          sql`${contacts.groupId} = ${groups.id} AND ${contacts.isDeleted} = false`,
+        )
+        .where(eq(groups.isDeleted, false))
+        .groupBy(groups.id)
+        .orderBy(desc(groups.createdAt))
+
+      return ok(
+        rows.map((r) => ({
+          ...r,
+          createdAt: r.createdAt.toISOString(),
+        })),
+      )
     }),
   )
 }

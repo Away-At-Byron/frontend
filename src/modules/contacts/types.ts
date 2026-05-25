@@ -102,3 +102,18 @@ export type ContactRow = {
   stayCount: number
   lastStayLabel: string | null
 }
+
+/** Read-only row for the Group Management list (FRS §6.4 group bookings). */
+export type GroupRow = {
+  id: string
+  groupName: string
+  relationships: string | null
+  companyName: string | null
+  corporateAccountId: string | null
+  travelAgentId: string | null
+  groupBookerFlag: boolean
+  billingPreference: string | null
+  taxAbn: string | null
+  memberCount: number
+  createdAt: string
+}

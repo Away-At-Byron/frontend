@@ -147,11 +147,26 @@ export const NAV_ENTRIES: NavEntry[] = [
     module: "bookings",
   },
   {
-    href: "/contacts",
     label: "Contacts",
     icon: "User",
     group: "manage",
     module: "contacts",
+    children: [
+      {
+        href: "/contacts",
+        label: "Contacts",
+        icon: "User",
+        group: "manage",
+        module: "contacts",
+      },
+      {
+        href: "/contacts/groups",
+        label: "Group Management",
+        icon: "User",
+        group: "manage",
+        module: "contacts",
+      },
+    ],
   },
   {
     href: "/messages",

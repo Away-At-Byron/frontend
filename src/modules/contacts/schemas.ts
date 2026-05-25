@@ -106,3 +106,27 @@ export const updateContactSchema = z.object(contactFields)
 
 export type CreateContactInput = z.infer<typeof createContactSchema>
 export type UpdateContactInput = z.infer<typeof updateContactSchema>
+
+// ─── Groups (FRS §6.4) ──────────────────────────────────────────
+const groupName = z
+  .string()
+  .trim()
+  .min(1, "Required")
+  .max(120, "Keep it under 120 characters")
+
+const groupFields = {
+  groupName,
+  relationships: longText,
+  companyName: optionalText,
+  corporateAccountId: optionalText,
+  travelAgentId: optionalText,
+  groupBookerFlag: z.boolean().default(false),
+  billingPreference: optionalText,
+  taxAbn: optionalText,
+}
+
+export const createGroupSchema = z.object(groupFields)
+export const updateGroupSchema = z.object(groupFields)
+
+export type CreateGroupInput = z.infer<typeof createGroupSchema>
+export type UpdateGroupInput = z.infer<typeof updateGroupSchema>
