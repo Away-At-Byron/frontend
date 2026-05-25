@@ -1,13 +1,13 @@
 import "server-only"
 
 import { eq, asc, desc } from "drizzle-orm"
-import { contacts, contactTypes, groups } from "@/db/schema"
+import { contacts, contactTypes, contactSources, groups } from "@/db/schema"
 import { withTenant, withPermission } from "@/lib/rls"
 import { ok, type ActionResult } from "@/lib/result"
 import { CONTACT_PERMISSIONS } from "./permissions"
-import type { ContactRow, ContactTypeOption } from "./types"
+import type { ContactRow, ContactSourceOption, ContactTypeOption } from "./types"
 
-export type { ContactRow, ContactTypeOption } from "./types"
+export type { ContactRow, ContactSourceOption, ContactTypeOption } from "./types"
 
 /** Columns shared by listContacts and the single-row fetch in actions.ts. */
 export const contactSelection = {
@@ -48,7 +48,8 @@ export const contactSelection = {
   lastContactDate: contacts.lastContactDate,
   doNotRebook: contacts.doNotRebook,
   tier: contacts.tier,
-  source: contacts.source,
+  contactSourceId: contacts.contactSourceId,
+  contactSourceName: contactSources.name,
   guestType: contacts.guestType,
 } as const
 
@@ -70,6 +71,7 @@ export async function listContacts(): Promise<ActionResult<ContactRow[]>> {
         .select(contactSelection)
         .from(contacts)
         .leftJoin(contactTypes, eq(contacts.contactTypeId, contactTypes.id))
+        .leftJoin(contactSources, eq(contacts.contactSourceId, contactSources.id))
         .leftJoin(groups, eq(contacts.groupId, groups.id))
         .where(eq(contacts.isDeleted, false))
         // Newest contacts first.
@@ -89,6 +91,22 @@ export async function listContactTypes(): Promise<ActionResult<ContactTypeOption
         .from(contactTypes)
         .where(eq(contactTypes.isDeleted, false))
         .orderBy(asc(contactTypes.name))
+      return ok(rows)
+    }),
+  )
+}
+
+/** Active (non-deleted) contact sources for the contact form select. */
+export async function listContactSources(): Promise<
+  ActionResult<ContactSourceOption[]>
+> {
+  return withTenant(async (tx, ctx) =>
+    withPermission(CONTACT_PERMISSIONS.read, ctx, async () => {
+      const rows = await tx
+        .select({ id: contactSources.id, name: contactSources.name })
+        .from(contactSources)
+        .where(eq(contactSources.isDeleted, false))
+        .orderBy(asc(contactSources.name))
       return ok(rows)
     }),
   )

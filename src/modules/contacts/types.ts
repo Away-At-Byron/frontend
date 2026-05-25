@@ -33,38 +33,6 @@ export const CONTACT_TIER_LABELS: Record<ContactTier, string> = {
   vip: "VIP",
 }
 
-export const CONTACT_SOURCES = [
-  "website_direct_booking",
-  "phone_enquiry",
-  "email_sms_enquiry",
-  "referral",
-  "social_media",
-  "ota",
-  "advertising",
-  "events",
-  "email_campaign",
-  "travel_agent",
-  "corporate_account",
-  "group_booking_partner",
-  "other",
-] as const
-export type ContactSource = (typeof CONTACT_SOURCES)[number]
-export const CONTACT_SOURCE_LABELS: Record<ContactSource, string> = {
-  website_direct_booking: "Website Direct Booking",
-  phone_enquiry: "Phone Enquiry",
-  email_sms_enquiry: "Email / SMS Enquiry",
-  referral: "Referral",
-  social_media: "Social Media",
-  ota: "OTA",
-  advertising: "Advertising",
-  events: "Events",
-  email_campaign: "Email Campaign",
-  travel_agent: "Travel Agent",
-  corporate_account: "Corporate Account",
-  group_booking_partner: "Group Booking Partner",
-  other: "Other",
-}
-
 export const GUEST_TYPES = [
   "leisure",
   "corporate",
@@ -86,6 +54,7 @@ export const GUEST_TYPE_LABELS: Record<GuestType, string> = {
 }
 
 export type ContactTypeOption = { id: string; name: string }
+export type ContactSourceOption = { id: string; name: string }
 
 export type ContactRow = {
   id: string
@@ -126,7 +95,8 @@ export type ContactRow = {
   lastContactDate: string | null
   doNotRebook: boolean
   tier: ContactTier | null
-  source: ContactSource | null
+  contactSourceId: string | null
+  contactSourceName: string | null
   guestType: GuestType | null
   /** Derived from bookings (Booking module); 0 until that module lands. */
   stayCount: number

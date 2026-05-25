@@ -32,10 +32,9 @@ import {
   CONTACT_ID_TYPE_LABELS,
   CONTACT_TIERS,
   CONTACT_TIER_LABELS,
-  CONTACT_SOURCES,
-  CONTACT_SOURCE_LABELS,
   GUEST_TYPES,
   GUEST_TYPE_LABELS,
+  type ContactSourceOption,
   type ContactTypeOption,
 } from "../types";
 
@@ -88,12 +87,14 @@ export function ContactFormFields({
   errors,
   setValue,
   contactTypes,
+  contactSources,
 }: {
   register: UseFormRegister<CreateContactInput>;
   control: Control<CreateContactInput>;
   errors: FieldErrors<CreateContactInput>;
   setValue: UseFormSetValue<CreateContactInput>;
   contactTypes: ContactTypeOption[];
+  contactSources: ContactSourceOption[];
 }) {
   const country = useWatch({ control, name: "addressCountry" });
   const isAustralia = country === "AU";
@@ -206,15 +207,15 @@ export function ContactFormFields({
             ))}
           </select>
         </Field>
-        <Field label="Source" error={errors.source?.message}>
+        <Field label="Source" error={errors.contactSourceId?.message}>
           <select
-            {...register("source")}
+            {...register("contactSourceId")}
             style={{ ...inputStyle, width: "100%" }}
           >
             <option value="">—</option>
-            {CONTACT_SOURCES.map((v) => (
-              <option key={v} value={v}>
-                {CONTACT_SOURCE_LABELS[v]}
+            {contactSources.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
               </option>
             ))}
           </select>

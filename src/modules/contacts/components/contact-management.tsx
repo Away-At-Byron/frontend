@@ -13,6 +13,7 @@ import {
 import { Icon } from "@/components/ui/icon";
 import {
   type ContactRow,
+  type ContactSourceOption,
   type ContactTier,
   type ContactTypeOption,
   CONTACT_TIERS,
@@ -94,10 +95,12 @@ function exportCsv(rows: ContactRow[]) {
 export function ContactManagement({
   initialContacts,
   contactTypes,
+  contactSources,
   canDelete,
 }: {
   initialContacts: ContactRow[];
   contactTypes: ContactTypeOption[];
+  contactSources: ContactSourceOption[];
   canDelete: boolean;
 }) {
   const router = useRouter();
@@ -698,6 +701,7 @@ export function ContactManagement({
         isOpen={newOpen}
         onClose={() => setNewOpen(false)}
         contactTypes={contactTypes}
+        contactSources={contactSources}
         onSave={handleCreate}
       />
       <EditContactModal
@@ -705,6 +709,7 @@ export function ContactManagement({
         onClose={() => setEditContact(null)}
         contact={editContact}
         contactTypes={contactTypes}
+        contactSources={contactSources}
         onSave={handleUpdate}
       />
     </div>

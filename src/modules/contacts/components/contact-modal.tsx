@@ -10,7 +10,7 @@ import {
   type CreateContactInput,
   type UpdateContactInput,
 } from "../schemas"
-import type { ContactRow, ContactTypeOption } from "../types"
+import type { ContactRow, ContactSourceOption, ContactTypeOption } from "../types"
 import type { ActionResult } from "@/lib/result"
 import { ContactFormFields } from "./contact-form"
 
@@ -49,7 +49,7 @@ const defaults: CreateContactInput = {
   lastContactDate: "",
   doNotRebook: false,
   tier: undefined,
-  source: undefined,
+  contactSourceId: "",
   guestType: undefined,
 }
 
@@ -57,11 +57,13 @@ export function NewContactModal({
   isOpen,
   onClose,
   contactTypes,
+  contactSources,
   onSave,
 }: {
   isOpen: boolean
   onClose: () => void
   contactTypes: ContactTypeOption[]
+  contactSources: ContactSourceOption[]
   onSave: (values: CreateContactInput) => Promise<ActionResult<ContactRow>>
 }) {
   const {
@@ -122,7 +124,7 @@ export function NewContactModal({
               {errors.root.message}
             </div>
           )}
-          <ContactFormFields register={register} control={control} errors={errors} setValue={setValue} contactTypes={contactTypes} />
+          <ContactFormFields register={register} control={control} errors={errors} setValue={setValue} contactTypes={contactTypes} contactSources={contactSources} />
         </div>
         <div style={{ padding: "14px 24px 22px", display: "flex", justifyContent: "flex-end", gap: 10, borderTop: "1px solid var(--line-soft)" }}>
           <Button variant="ghost" type="button" onClick={close} disabled={isSubmitting}>
@@ -142,12 +144,14 @@ export function EditContactModal({
   onClose,
   contact,
   contactTypes,
+  contactSources,
   onSave,
 }: {
   isOpen: boolean
   onClose: () => void
   contact: ContactRow | null
   contactTypes: ContactTypeOption[]
+  contactSources: ContactSourceOption[]
   onSave: (id: string, values: UpdateContactInput) => Promise<ActionResult<ContactRow>>
 }) {
   const {
@@ -195,7 +199,7 @@ export function EditContactModal({
           lastContactDate: contact.lastContactDate ?? "",
           doNotRebook: contact.doNotRebook,
           tier: contact.tier ?? undefined,
-          source: contact.source ?? undefined,
+          contactSourceId: contact.contactSourceId ?? "",
           guestType: contact.guestType ?? undefined,
         }
       : undefined,
@@ -242,7 +246,7 @@ export function EditContactModal({
               {errors.root.message}
             </div>
           )}
-          <ContactFormFields register={register} control={control} errors={errors} setValue={setValue} contactTypes={contactTypes} />
+          <ContactFormFields register={register} control={control} errors={errors} setValue={setValue} contactTypes={contactTypes} contactSources={contactSources} />
         </div>
         <div style={{ padding: "14px 24px 22px", display: "flex", justifyContent: "flex-end", gap: 10, borderTop: "1px solid var(--line-soft)" }}>
           <Button variant="ghost" type="button" onClick={close} disabled={isSubmitting}>

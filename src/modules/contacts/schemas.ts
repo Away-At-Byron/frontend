@@ -3,7 +3,6 @@ import {
   COMMUNICATION_PREFERENCES,
   CONTACT_ID_TYPES,
   CONTACT_TIERS,
-  CONTACT_SOURCES,
   GUEST_TYPES,
 } from "./types"
 
@@ -36,7 +35,6 @@ const optionalDate = z
 export const communicationPreferenceSchema = z.enum(COMMUNICATION_PREFERENCES)
 export const contactIdTypeSchema = z.enum(CONTACT_ID_TYPES)
 export const contactTierSchema = z.enum(CONTACT_TIERS)
-export const contactSourceSchema = z.enum(CONTACT_SOURCES)
 export const guestTypeSchema = z.enum(GUEST_TYPES)
 
 const contactFields = {
@@ -97,7 +95,7 @@ const contactFields = {
   lastContactDate: optionalDate,
   doNotRebook: z.boolean().default(false),
   tier: contactTierSchema.optional().or(z.literal("")).transform((v) => (v ? v : undefined)),
-  source: contactSourceSchema.optional().or(z.literal("")).transform((v) => (v ? v : undefined)),
+  contactSourceId: optionalUuid,
   guestType: guestTypeSchema.optional().or(z.literal("")).transform((v) => (v ? v : undefined)),
 
   portalEnabled: z.boolean().default(false),

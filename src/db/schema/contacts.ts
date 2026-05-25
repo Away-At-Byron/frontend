@@ -12,6 +12,7 @@ import {
 import { sql } from "drizzle-orm"
 import { users } from "./auth"
 import { contactTypes } from "./contact-types"
+import { contactSources } from "./contact-sources"
 import { groups } from "./groups"
 
 /** Communication Preference (Email, SMS, Both, None, Unsubscribed). */
@@ -36,23 +37,6 @@ export const contactTierEnum = pgEnum("contact_tier", [
   "silver",
   "gold",
   "vip",
-])
-
-/** How the contact first reached the business. */
-export const contactSourceEnum = pgEnum("contact_source", [
-  "website_direct_booking",
-  "phone_enquiry",
-  "email_sms_enquiry",
-  "referral",
-  "social_media",
-  "ota",
-  "advertising",
-  "events",
-  "email_campaign",
-  "travel_agent",
-  "corporate_account",
-  "group_booking_partner",
-  "other",
 ])
 
 /** Guest classification. */
@@ -128,7 +112,8 @@ export const contacts = pgTable(
     lastContactDate: date("last_contact_date"),
     doNotRebook: boolean("do_not_rebook").notNull().default(false),
     tier: contactTierEnum("tier"),
-    source: contactSourceEnum("source"),
+    /** FK to the admin-managed contact_sources catalogue. */
+    contactSourceId: uuid("contact_source_id").references(() => contactSources.id),
     guestType: guestTypeEnum("guest_type"),
 
     /**
