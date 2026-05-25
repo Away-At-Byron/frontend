@@ -23,6 +23,8 @@ import { birthdaysThisMonth, formatBirthday } from "../utils";
 import { createContact, updateContact, deleteContact } from "../actions";
 import { NewContactModal, EditContactModal } from "./contact-modal";
 import type { CreateContactInput, UpdateContactInput } from "../schemas";
+import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/dialog";
 
 type FilterId = "all" | "birthdays" | "returning";
 
@@ -121,6 +123,8 @@ export function ContactManagement({
   const [editContact, setEditContact] = useState<ContactRow | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
+  const confirm = useConfirm();
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(searchTerm), 300);
@@ -204,24 +208,34 @@ export function ContactManagement({
 
   const handleDelete = useCallback(
     async (c: ContactRow) => {
-      if (
-        !window.confirm(
-          `Delete ${c.firstName} ${c.lastName}? They will be removed from your contacts.`,
-        )
-      )
-        return;
+      const ok = await confirm({
+        tone: "danger",
+        title: `Delete ${c.firstName} ${c.lastName}?`,
+        message:
+          "They will be removed from your contacts. This cannot be undone.",
+        confirmLabel: "Delete contact",
+        cancelLabel: "Cancel",
+      });
+      if (!ok) return;
       setDeletingId(c.id);
       setError(null);
       const res = await deleteContact(c.id);
       if (res.ok) {
         setContacts((prev) => prev.filter((x) => x.id !== c.id));
         router.refresh();
+        toast.success({
+          title: "Contact deleted",
+          message: `${c.firstName} ${c.lastName} has been removed.`,
+        });
       } else {
-        setError(res.error.message);
+        toast.error({
+          title: "Couldn't delete contact",
+          message: res.error.message,
+        });
       }
       setDeletingId(null);
     },
-    [router],
+    [router, confirm, toast],
   );
 
   return (
