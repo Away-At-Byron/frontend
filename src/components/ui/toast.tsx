@@ -12,9 +12,16 @@
  */
 import {
   createContext, useCallback, useContext, useEffect, useId, useMemo,
-  useRef, useState, type CSSProperties, type ReactNode,
+  useRef, useState, useSyncExternalStore,
+  type CSSProperties, type ReactNode,
 } from "react"
 import { createPortal } from "react-dom"
+
+// Stable references for useSyncExternalStore — module scope keeps the
+// snapshots referentially stable across renders.
+const subscribeNoop = () => () => {}
+const getTrue = () => true
+const getFalse = () => false
 import { CheckCircle2, Info, TriangleAlert, XCircle, RotateCcw, X } from "lucide-react"
 
 type Style = CSSProperties
@@ -286,8 +293,7 @@ function ToastViewport({
   onDismiss: (id: string) => void
   position: ToastPosition
 }) {
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  const mounted = useSyncExternalStore(subscribeNoop, getTrue, getFalse)
   if (!mounted || typeof document === "undefined") return null
 
   const isTop = position === "top-right"

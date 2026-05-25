@@ -11,9 +11,16 @@
  */
 import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
+  useSyncExternalStore,
   type CSSProperties, type ReactNode,
 } from "react"
 import { createPortal } from "react-dom"
+
+// Stable references for useSyncExternalStore — module scope keeps the
+// snapshots referentially stable across renders.
+const subscribeNoop = () => () => {}
+const getTrue = () => true
+const getFalse = () => false
 import { Info, TriangleAlert } from "lucide-react"
 
 type Style = CSSProperties
@@ -53,9 +60,8 @@ export function ConfirmDialog({
   onCancel: () => void
   icon?: ReactNode
 }) {
-  const [mounted, setMounted] = useState(false)
+  const mounted = useSyncExternalStore(subscribeNoop, getTrue, getFalse)
   const confirmRef = useRef<HTMLButtonElement>(null)
-  useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
     if (!open) return

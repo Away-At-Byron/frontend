@@ -47,8 +47,6 @@ export function SearchSelect({
 
   useEffect(() => {
     if (!open) return
-    setQuery("")
-    setActive(0)
     const focus = setTimeout(() => inputRef.current?.focus(), 0)
     const onDown = (e: MouseEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
@@ -67,6 +65,16 @@ export function SearchSelect({
       document.removeEventListener("keydown", onKey, true)
     }
   }, [open])
+
+  const toggleOpen = () => {
+    setOpen((o) => {
+      if (!o) {
+        setQuery("")
+        setActive(0)
+      }
+      return !o
+    })
+  }
 
   // Keep the highlighted row visible as the user arrows through the list.
   useEffect(() => {
@@ -98,7 +106,7 @@ export function SearchSelect({
     <div ref={wrapRef} style={{ position: "relative" }}>
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggleOpen}
         style={{
           ...inputStyle,
           width: "100%",

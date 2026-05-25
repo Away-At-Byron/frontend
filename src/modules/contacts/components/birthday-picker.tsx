@@ -47,7 +47,6 @@ export function BirthdayPicker({
 
   useEffect(() => {
     if (!open) return
-    setViewMonth(selMonth ?? new Date().getMonth() + 1)
     const onDown = (e: MouseEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
     }
@@ -63,7 +62,14 @@ export function BirthdayPicker({
       document.removeEventListener("mousedown", onDown)
       document.removeEventListener("keydown", onKey, true)
     }
-  }, [open, selMonth])
+  }, [open])
+
+  const toggleOpen = () => {
+    setOpen((o) => {
+      if (!o) setViewMonth(selMonth ?? new Date().getMonth() + 1)
+      return !o
+    })
+  }
 
   const stepMonth = (delta: number) =>
     setViewMonth((m) => ((m - 1 + delta + 12) % 12) + 1)
@@ -81,7 +87,7 @@ export function BirthdayPicker({
     <div ref={wrapRef} style={{ position: "relative" }}>
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggleOpen}
         style={{
           ...inputStyle,
           width: "100%",
