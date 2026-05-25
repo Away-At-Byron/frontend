@@ -36,6 +36,7 @@ import {
   GUEST_TYPE_LABELS,
   type ContactSourceOption,
   type ContactTypeOption,
+  type GroupOption,
 } from "../types";
 
 function TwoCol({ children }: { children: ReactNode }) {
@@ -88,6 +89,7 @@ export function ContactFormFields({
   setValue,
   contactTypes,
   contactSources,
+  groups,
 }: {
   register: UseFormRegister<CreateContactInput>;
   control: Control<CreateContactInput>;
@@ -95,6 +97,7 @@ export function ContactFormFields({
   setValue: UseFormSetValue<CreateContactInput>;
   contactTypes: ContactTypeOption[];
   contactSources: ContactSourceOption[];
+  groups: GroupOption[];
 }) {
   const country = useWatch({ control, name: "addressCountry" });
   const isAustralia = country === "AU";
@@ -221,6 +224,20 @@ export function ContactFormFields({
           </select>
         </Field>
       </TwoCol>
+
+      <Field label="Group" error={errors.groupId?.message}>
+        <select
+          {...register("groupId")}
+          style={{ ...inputStyle, width: "100%" }}
+        >
+          <option value="">— No group</option>
+          {groups.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.groupName}
+            </option>
+          ))}
+        </select>
+      </Field>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 20px" }}>
         <Check

@@ -10,7 +10,12 @@ import {
   type CreateContactInput,
   type UpdateContactInput,
 } from "../schemas"
-import type { ContactRow, ContactSourceOption, ContactTypeOption } from "../types"
+import type {
+  ContactRow,
+  ContactSourceOption,
+  ContactTypeOption,
+  GroupOption,
+} from "../types"
 import type { ActionResult } from "@/lib/result"
 import { ContactFormFields } from "./contact-form"
 
@@ -58,12 +63,14 @@ export function NewContactModal({
   onClose,
   contactTypes,
   contactSources,
+  groups,
   onSave,
 }: {
   isOpen: boolean
   onClose: () => void
   contactTypes: ContactTypeOption[]
   contactSources: ContactSourceOption[]
+  groups: GroupOption[]
   onSave: (values: CreateContactInput) => Promise<ActionResult<ContactRow>>
 }) {
   const {
@@ -124,7 +131,7 @@ export function NewContactModal({
               {errors.root.message}
             </div>
           )}
-          <ContactFormFields register={register} control={control} errors={errors} setValue={setValue} contactTypes={contactTypes} contactSources={contactSources} />
+          <ContactFormFields register={register} control={control} errors={errors} setValue={setValue} contactTypes={contactTypes} contactSources={contactSources} groups={groups} />
         </div>
         <div style={{ padding: "14px 24px 22px", display: "flex", justifyContent: "flex-end", gap: 10, borderTop: "1px solid var(--line-soft)" }}>
           <Button variant="ghost" type="button" onClick={close} disabled={isSubmitting}>
@@ -145,6 +152,7 @@ export function EditContactModal({
   contact,
   contactTypes,
   contactSources,
+  groups,
   onSave,
 }: {
   isOpen: boolean
@@ -152,6 +160,7 @@ export function EditContactModal({
   contact: ContactRow | null
   contactTypes: ContactTypeOption[]
   contactSources: ContactSourceOption[]
+  groups: GroupOption[]
   onSave: (id: string, values: UpdateContactInput) => Promise<ActionResult<ContactRow>>
 }) {
   const {
@@ -246,7 +255,7 @@ export function EditContactModal({
               {errors.root.message}
             </div>
           )}
-          <ContactFormFields register={register} control={control} errors={errors} setValue={setValue} contactTypes={contactTypes} contactSources={contactSources} />
+          <ContactFormFields register={register} control={control} errors={errors} setValue={setValue} contactTypes={contactTypes} contactSources={contactSources} groups={groups} />
         </div>
         <div style={{ padding: "14px 24px 22px", display: "flex", justifyContent: "flex-end", gap: 10, borderTop: "1px solid var(--line-soft)" }}>
           <Button variant="ghost" type="button" onClick={close} disabled={isSubmitting}>

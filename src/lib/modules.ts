@@ -161,7 +161,7 @@ export const NAV_ENTRIES: NavEntry[] = [
       },
       {
         href: "/contacts/groups",
-        label: "Group Management",
+        label: "Groups",
         icon: "User",
         group: "manage",
         module: "contacts",

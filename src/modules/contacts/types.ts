@@ -103,6 +103,12 @@ export type ContactRow = {
   lastStayLabel: string | null
 }
 
+/** Lightweight option used by the contact form's Group select. */
+export type GroupOption = {
+  id: string
+  groupName: string
+}
+
 /** Read-only row for the Group Management list (FRS §6.4 group bookings). */
 export type GroupRow = {
   id: string

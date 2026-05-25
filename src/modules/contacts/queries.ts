@@ -9,6 +9,7 @@ import type {
   ContactRow,
   ContactSourceOption,
   ContactTypeOption,
+  GroupOption,
   GroupRow,
 } from "./types"
 
@@ -16,6 +17,7 @@ export type {
   ContactRow,
   ContactSourceOption,
   ContactTypeOption,
+  GroupOption,
   GroupRow,
 } from "./types"
 
@@ -101,6 +103,20 @@ export async function listContactTypes(): Promise<ActionResult<ContactTypeOption
         .from(contactTypes)
         .where(eq(contactTypes.isDeleted, false))
         .orderBy(asc(contactTypes.name))
+      return ok(rows)
+    }),
+  )
+}
+
+/** Active (non-deleted) groups for the contact form select. */
+export async function listGroupOptions(): Promise<ActionResult<GroupOption[]>> {
+  return withTenant(async (tx, ctx) =>
+    withPermission(CONTACT_PERMISSIONS.read, ctx, async () => {
+      const rows = await tx
+        .select({ id: groups.id, groupName: groups.groupName })
+        .from(groups)
+        .where(eq(groups.isDeleted, false))
+        .orderBy(asc(groups.groupName))
       return ok(rows)
     }),
   )

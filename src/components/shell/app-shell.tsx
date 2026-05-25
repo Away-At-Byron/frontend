@@ -60,11 +60,14 @@ export function AppShell({
   const secondary = nav.filter((n) => n.group === "manage");
   // Flatten one level deep so a submenu child can be the current route.
   const flatNav = nav.flatMap((n) => (n.children ? [n, ...n.children] : [n]));
+  // Prefer an exact match so /contacts/groups picks the Groups child rather
+  // than the /contacts parent (whose prefix would otherwise win).
   const current =
+    flatNav.find((n) => n.href && pathname === n.href) ??
     flatNav.find(
-      (n) =>
-        n.href && (pathname === n.href || pathname.startsWith(n.href + "/")),
-    ) ?? nav[0];
+      (n) => n.href && pathname.startsWith(n.href + "/"),
+    ) ??
+    nav[0];
   const title = current?.label ?? "";
 
   return (

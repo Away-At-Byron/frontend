@@ -10,6 +10,7 @@ import {
   listContacts,
   listContactSources,
   listContactTypes,
+  listGroupOptions,
 } from "@/modules/contacts/queries"
 import { CONTACT_PERMISSIONS } from "@/modules/contacts/permissions"
 import { ContactManagement } from "@/modules/contacts/components/contact-management"
@@ -19,20 +20,23 @@ export default async function ContactsPage() {
   const session = await auth()
   if (!session?.user) redirect("/signin")
 
-  const [contactsRes, typesRes, sourcesRes] = await Promise.all([
+  const [contactsRes, typesRes, sourcesRes, groupsRes] = await Promise.all([
     listContacts(),
     listContactTypes(),
     listContactSources(),
+    listGroupOptions(),
   ])
 
-  if (!contactsRes.ok || !typesRes.ok || !sourcesRes.ok) {
+  if (!contactsRes.ok || !typesRes.ok || !sourcesRes.ok || !groupsRes.ok) {
     const message = !contactsRes.ok
       ? contactsRes.error.message
       : !typesRes.ok
         ? typesRes.error.message
         : !sourcesRes.ok
           ? sourcesRes.error.message
-          : ""
+          : !groupsRes.ok
+            ? groupsRes.error.message
+            : ""
     return (
       <div style={{ padding: "40px 32px", color: "var(--ink-soft)" }}>
         Could not load contacts. {message}
@@ -45,6 +49,7 @@ export default async function ContactsPage() {
       initialContacts={contactsRes.data}
       contactTypes={typesRes.data}
       contactSources={sourcesRes.data}
+      groups={groupsRes.data}
       canDelete={hasPermission(session.user.role, CONTACT_PERMISSIONS.delete)}
     />
   )

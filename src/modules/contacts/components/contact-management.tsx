@@ -16,6 +16,7 @@ import {
   type ContactSourceOption,
   type ContactTier,
   type ContactTypeOption,
+  type GroupOption,
   CONTACT_TIERS,
   CONTACT_TIER_LABELS,
 } from "../types";
@@ -98,11 +99,13 @@ export function ContactManagement({
   initialContacts,
   contactTypes,
   contactSources,
+  groups,
   canDelete,
 }: {
   initialContacts: ContactRow[];
   contactTypes: ContactTypeOption[];
   contactSources: ContactSourceOption[];
+  groups: GroupOption[];
   canDelete: boolean;
 }) {
   const router = useRouter();
@@ -716,6 +719,7 @@ export function ContactManagement({
         onClose={() => setNewOpen(false)}
         contactTypes={contactTypes}
         contactSources={contactSources}
+        groups={groups}
         onSave={handleCreate}
       />
       <EditContactModal
@@ -724,6 +728,7 @@ export function ContactManagement({
         contact={editContact}
         contactTypes={contactTypes}
         contactSources={contactSources}
+        groups={groups}
         onSave={handleUpdate}
       />
     </div>
