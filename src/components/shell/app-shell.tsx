@@ -6,6 +6,7 @@
  * Next routing, the real session, and Auth.js sign-out.
  */
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -14,6 +15,7 @@ import { Avatar, Button, IconButton } from "@/components/ui/primitives";
 import type { NavEntry } from "@/lib/modules";
 import navbarBg from "./assets/navbar-bg.png";
 import navbarBgBottom from "./assets/navbar-bg-bottom.png";
+import logoTemp from "./assets/logo-temp.png";
 
 const PROPERTIES = [
   { id: "all", name: "All properties", rooms: 9 },
@@ -66,9 +68,7 @@ export function AppShell({
   // than the /contacts parent (whose prefix would otherwise win).
   const current =
     flatNav.find((n) => n.href && pathname === n.href) ??
-    flatNav.find(
-      (n) => n.href && pathname.startsWith(n.href + "/"),
-    ) ??
+    flatNav.find((n) => n.href && pathname.startsWith(n.href + "/")) ??
     nav[0];
   const title = current?.label ?? "";
 
@@ -108,23 +108,13 @@ export function AppShell({
             gap: 12,
           }}
         >
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: "50%",
-              background: "var(--terra)",
-              color: "var(--linen)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontFamily: "var(--font-display), serif",
-              fontStyle: "italic",
-              fontSize: 17,
-            }}
-          >
-            a
-          </div>
+          <Image
+            src={logoTemp}
+            alt="Away at Byron"
+            width={48}
+            height={48}
+            style={{ width: 48, height: 48, objectFit: "contain" }}
+          />
           <div>
             <div
               style={{
@@ -151,7 +141,7 @@ export function AppShell({
         </div>
 
         {/* Property switcher */}
-        <div style={{ padding: "8px 14px 4px", position: "relative" }}>
+        {/* <div style={{ padding: "8px 14px 4px", position: "relative" }}>
           <button
             type="button"
             onClick={() => setPropOpen((v) => !v)}
@@ -253,7 +243,7 @@ export function AppShell({
               ))}
             </div>
           )}
-        </div>
+        </div> */}
 
         {/* Nav */}
         <nav
