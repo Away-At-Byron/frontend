@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next"
 import { Fraunces, Inter, JetBrains_Mono } from "next/font/google"
 import "@/styles/globals.css"
+import { AppProviders } from "@/components/ui/providers"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -43,7 +44,9 @@ export default function RootLayout({
       {/* Browser extensions (e.g. ClickUp) inject attributes onto <body>
           before React hydrates. suppressHydrationWarning silences that
           one-level mismatch; real hydration bugs in children still warn. */}
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        <AppProviders>{children}</AppProviders>
+      </body>
     </html>
   )
 }
