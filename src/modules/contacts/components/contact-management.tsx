@@ -15,6 +15,7 @@ import {
   type ContactRow,
   type ContactTier,
   type ContactTypeOption,
+  CONTACT_TIERS,
   CONTACT_TIER_LABELS,
 } from "../types";
 import { birthdaysThisMonth, formatBirthday } from "../utils";
@@ -22,15 +23,16 @@ import { createContact, updateContact, deleteContact } from "../actions";
 import { NewContactModal, EditContactModal } from "./contact-modal";
 import type { CreateContactInput, UpdateContactInput } from "../schemas";
 
-type FilterId = "all" | "birthdays" | "vip" | "returning" | "in_house";
+type FilterId = "all" | "birthdays" | "returning";
 
 const FILTER_LABELS: Record<FilterId, string> = {
   all: "All",
   birthdays: "Birthdays this month",
-  vip: "VIP",
   returning: "Returning",
-  in_house: "In-house & upcoming",
 };
+
+type TierFilter = "all" | ContactTier;
+type ContactTypeFilter = "all" | string;
 
 // Client# · Name · Email · Phone · Stays · Tier · Birthday · Last stay · Action
 const GRID = "110px 1.9fr 1.5fr 1fr 64px 0.9fr 1fr 1fr 150px";
@@ -107,6 +109,9 @@ export function ContactManagement({
   }
 
   const [activeFilter, setActiveFilter] = useState<FilterId>("all");
+  const [tierFilter, setTierFilter] = useState<TierFilter>("all");
+  const [contactTypeFilter, setContactTypeFilter] =
+    useState<ContactTypeFilter>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [debounced, setDebounced] = useState("");
   const [newOpen, setNewOpen] = useState(false);
@@ -130,9 +135,7 @@ export function ContactManagement({
     () => ({
       all: contacts.length,
       birthdays: birthdayRows.length,
-      vip: contacts.filter((c) => c.tier === "vip").length,
       returning: contacts.filter((c) => c.returningGuest).length,
-      in_house: 0,
     }),
     [contacts, birthdayRows],
   );
@@ -145,9 +148,13 @@ export function ContactManagement({
         !birthdayRows.some((b) => b.id === c.id)
       )
         return false;
-      if (activeFilter === "vip" && c.tier !== "vip") return false;
       if (activeFilter === "returning" && !c.returningGuest) return false;
-      if (activeFilter === "in_house") return false;
+      if (tierFilter !== "all" && c.tier !== tierFilter) return false;
+      if (
+        contactTypeFilter !== "all" &&
+        c.contactTypeId !== contactTypeFilter
+      )
+        return false;
       if (!s) return true;
       return (
         `${c.firstName} ${c.lastName}`.toLowerCase().includes(s) ||
@@ -155,7 +162,14 @@ export function ContactManagement({
         (c.phone?.toLowerCase().includes(s) ?? false)
       );
     });
-  }, [contacts, activeFilter, debounced, birthdayRows]);
+  }, [
+    contacts,
+    activeFilter,
+    tierFilter,
+    contactTypeFilter,
+    debounced,
+    birthdayRows,
+  ]);
 
   const handleCreate = useCallback(
     async (values: CreateContactInput) => {
@@ -369,6 +383,80 @@ export function ContactManagement({
             {FILTER_LABELS[id]}
           </FilterPill>
         ))}
+        <div
+          style={{
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <select
+            value={tierFilter}
+            onChange={(e) => setTierFilter(e.target.value as TierFilter)}
+            style={{
+              appearance: "none",
+              WebkitAppearance: "none",
+              background: "var(--paper)",
+              border: "1px solid var(--line)",
+              borderRadius: "var(--r-pill)",
+              padding: "9px 36px 9px 16px",
+              font: "inherit",
+              fontSize: 13,
+              color: "var(--ink)",
+              cursor: "pointer",
+            }}
+          >
+            <option value="all">All tiers</option>
+            {CONTACT_TIERS.map((t) => (
+              <option key={t} value={t}>
+                {CONTACT_TIER_LABELS[t]}
+              </option>
+            ))}
+          </select>
+          <Icon
+            name="ChevronDown"
+            size={15}
+            style={{ position: "absolute", right: 14, pointerEvents: "none" }}
+          />
+        </div>
+        <div
+          style={{
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <select
+            value={contactTypeFilter}
+            onChange={(e) =>
+              setContactTypeFilter(e.target.value as ContactTypeFilter)
+            }
+            style={{
+              appearance: "none",
+              WebkitAppearance: "none",
+              background: "var(--paper)",
+              border: "1px solid var(--line)",
+              borderRadius: "var(--r-pill)",
+              padding: "9px 36px 9px 16px",
+              font: "inherit",
+              fontSize: 13,
+              color: "var(--ink)",
+              cursor: "pointer",
+            }}
+          >
+            <option value="all">All contact types</option>
+            {contactTypes.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+          <Icon
+            name="ChevronDown"
+            size={15}
+            style={{ position: "absolute", right: 14, pointerEvents: "none" }}
+          />
+        </div>
       </div>
 
       <div
