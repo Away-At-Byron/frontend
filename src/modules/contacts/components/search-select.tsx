@@ -3,19 +3,30 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Check, ChevronDown, Search, X } from "lucide-react"
 import { inputStyle } from "@/modules/users/components/modal"
-import { COUNTRIES } from "@/lib/countries"
+
+export type SearchSelectOption = { value: string; label: string }
 
 /**
- * Searchable country picker. Stores the ISO 3166-1 alpha-2 code.
- * No Radix/Combobox primitive in this repo, so a token-themed popover
- * matching BirthdayPicker: click-outside and Esc close it.
+ * Searchable single-select. Stores `option.value`. No Radix/Combobox
+ * primitive in this repo, so a token-themed popover matching BirthdayPicker:
+ * click-outside and Esc close it. Drives the country and AU-state pickers.
  */
-export function CountrySelect({
+export function SearchSelect({
   value,
   onChange,
+  options,
+  placeholder = "Select",
+  searchPlaceholder = "Type here to search",
+  clearLabel = "Clear",
+  emptyLabel = "No matches",
 }: {
   value: string
   onChange: (next: string) => void
+  options: readonly SearchSelectOption[]
+  placeholder?: string
+  searchPlaceholder?: string
+  clearLabel?: string
+  emptyLabel?: string
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
@@ -24,15 +35,15 @@ export function CountrySelect({
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
-  const selected = COUNTRIES.find((c) => c.code === value) ?? null
+  const selected = options.find((o) => o.value === value) ?? null
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return COUNTRIES
-    return COUNTRIES.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q),
+    if (!q) return options
+    return options.filter(
+      (o) => o.label.toLowerCase().includes(q) || o.value.toLowerCase().includes(q),
     )
-  }, [query])
+  }, [query, options])
 
   useEffect(() => {
     if (!open) return
@@ -64,8 +75,8 @@ export function CountrySelect({
     row?.scrollIntoView({ block: "nearest" })
   }, [active, open])
 
-  const pick = (code: string) => {
-    onChange(code)
+  const pick = (next: string) => {
+    onChange(next)
     setOpen(false)
   }
 
@@ -79,7 +90,7 @@ export function CountrySelect({
     } else if (e.key === "Enter") {
       e.preventDefault()
       const hit = results[active]
-      if (hit) pick(hit.code)
+      if (hit) pick(hit.value)
     }
   }
 
@@ -100,7 +111,7 @@ export function CountrySelect({
         }}
       >
         <span style={{ color: selected ? "var(--ink)" : "var(--ink-faint)" }}>
-          {selected ? selected.name : "Select country"}
+          {selected ? selected.label : placeholder}
         </span>
         <ChevronDown size={15} color="var(--ink-soft)" aria-hidden />
       </button>
@@ -108,7 +119,7 @@ export function CountrySelect({
       {open && (
         <div
           role="dialog"
-          aria-label="Pick a country"
+          aria-label={placeholder}
           style={{
             position: "absolute",
             top: "calc(100% + 6px)",
@@ -137,7 +148,7 @@ export function CountrySelect({
                 setActive(0)
               }}
               onKeyDown={onSearchKey}
-              placeholder="Type here to search"
+              placeholder={searchPlaceholder}
               style={{ ...inputStyle, width: "100%", paddingLeft: 30 }}
             />
           </div>
@@ -145,17 +156,17 @@ export function CountrySelect({
           <div ref={listRef} style={{ maxHeight: 220, overflowY: "auto" }}>
             {results.length === 0 ? (
               <div style={{ padding: "10px 12px", fontSize: 13, color: "var(--ink-faint)" }}>
-                No matching country
+                {emptyLabel}
               </div>
             ) : (
-              results.map((c, i) => {
-                const isSelected = c.code === value
+              results.map((o, i) => {
+                const isSelected = o.value === value
                 const isActive = i === active
                 return (
                   <button
-                    key={c.code}
+                    key={o.value}
                     type="button"
-                    onClick={() => pick(c.code)}
+                    onClick={() => pick(o.value)}
                     onMouseEnter={() => setActive(i)}
                     style={{
                       width: "100%",
@@ -175,7 +186,7 @@ export function CountrySelect({
                       textAlign: "left",
                     }}
                   >
-                    <span>{c.name}</span>
+                    <span>{o.label}</span>
                     {isSelected && <Check size={14} color="var(--ink-soft)" aria-hidden />}
                   </button>
                 )
@@ -208,7 +219,7 @@ export function CountrySelect({
               }}
             >
               <X size={13} aria-hidden />
-              Clear country
+              {clearLabel}
             </button>
           )}
         </div>

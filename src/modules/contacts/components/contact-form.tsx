@@ -1,10 +1,15 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { Controller, type Control, type UseFormRegister, type FieldErrors } from "react-hook-form"
+import { Controller, useWatch, type Control, type UseFormRegister, type FieldErrors } from "react-hook-form"
 import { Field, inputStyle } from "@/modules/users/components/modal"
+import { COUNTRIES } from "@/lib/countries"
+import { AUSTRALIAN_STATES } from "@/lib/australian-states"
 import { BirthdayPicker } from "./birthday-picker"
-import { CountrySelect } from "./country-select"
+import { SearchSelect } from "./search-select"
+
+const COUNTRY_OPTIONS = COUNTRIES.map((c) => ({ value: c.code, label: c.name }))
+const STATE_OPTIONS = AUSTRALIAN_STATES.map((s) => ({ value: s.code, label: s.name }))
 import type { CreateContactInput } from "../schemas"
 import {
   COMMUNICATION_PREFERENCES,
@@ -65,6 +70,8 @@ export function ContactFormFields({
   errors: FieldErrors<CreateContactInput>
   contactTypes: ContactTypeOption[]
 }) {
+  const country = useWatch({ control, name: "addressCountry" })
+  const isAustralia = country === "AU"
   return (
     <>
       <Field label="Contact type" error={errors.contactTypeId?.message}>
@@ -177,7 +184,14 @@ export function ContactFormFields({
             control={control}
             name="idCountry"
             render={({ field }) => (
-              <CountrySelect value={field.value ?? ""} onChange={field.onChange} />
+              <SearchSelect
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                options={COUNTRY_OPTIONS}
+                placeholder="Select country"
+                clearLabel="Clear country"
+                emptyLabel="No matching country"
+              />
             )}
           />
         </Field>
@@ -235,7 +249,24 @@ export function ContactFormFields({
       </TwoCol>
       <TwoCol>
         <Field label="State" error={errors.addressState?.message}>
-          <input {...register("addressState")} style={inputStyle} />
+          {isAustralia ? (
+            <Controller
+              control={control}
+              name="addressState"
+              render={({ field }) => (
+                <SearchSelect
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  options={STATE_OPTIONS}
+                  placeholder="Select state"
+                  clearLabel="Clear state"
+                  emptyLabel="No matching state"
+                />
+              )}
+            />
+          ) : (
+            <input {...register("addressState")} style={inputStyle} placeholder="State or region" />
+          )}
         </Field>
         <Field label="Postcode" error={errors.addressPostcode?.message}>
           <input {...register("addressPostcode")} style={inputStyle} />
@@ -246,7 +277,14 @@ export function ContactFormFields({
           control={control}
           name="addressCountry"
           render={({ field }) => (
-            <CountrySelect value={field.value ?? ""} onChange={field.onChange} />
+            <SearchSelect
+              value={field.value ?? ""}
+              onChange={field.onChange}
+              options={COUNTRY_OPTIONS}
+              placeholder="Select country"
+              clearLabel="Clear country"
+              emptyLabel="No matching country"
+            />
           )}
         />
       </Field>
