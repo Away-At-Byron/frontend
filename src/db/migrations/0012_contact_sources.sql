@@ -30,20 +30,39 @@ INSERT INTO "contact_sources" ("name") VALUES
 
 -- contacts: enum source -> FK contact_source_id. Backfill by mapping the old
 -- enum value to the matching seeded name.
+-- Backfill + drop are guarded so this also runs on dev DBs where 0009 was
+-- edited after first apply and the `source` column / enum never landed.
 ALTER TABLE "contacts" ADD COLUMN "contact_source_id" uuid;--> statement-breakpoint
-UPDATE "contacts" SET "contact_source_id" = (SELECT "id" FROM "contact_sources" WHERE "name" = 'Website Direct Booking' LIMIT 1) WHERE "source" = 'website_direct_booking';--> statement-breakpoint
-UPDATE "contacts" SET "contact_source_id" = (SELECT "id" FROM "contact_sources" WHERE "name" = 'Phone Enquiry' LIMIT 1) WHERE "source" = 'phone_enquiry';--> statement-breakpoint
-UPDATE "contacts" SET "contact_source_id" = (SELECT "id" FROM "contact_sources" WHERE "name" = 'Email / SMS Enquiry' LIMIT 1) WHERE "source" = 'email_sms_enquiry';--> statement-breakpoint
-UPDATE "contacts" SET "contact_source_id" = (SELECT "id" FROM "contact_sources" WHERE "name" = 'Referral' LIMIT 1) WHERE "source" = 'referral';--> statement-breakpoint
-UPDATE "contacts" SET "contact_source_id" = (SELECT "id" FROM "contact_sources" WHERE "name" = 'Social Media' LIMIT 1) WHERE "source" = 'social_media';--> statement-breakpoint
-UPDATE "contacts" SET "contact_source_id" = (SELECT "id" FROM "contact_sources" WHERE "name" = 'OTA' LIMIT 1) WHERE "source" = 'ota';--> statement-breakpoint
-UPDATE "contacts" SET "contact_source_id" = (SELECT "id" FROM "contact_sources" WHERE "name" = 'Advertising' LIMIT 1) WHERE "source" = 'advertising';--> statement-breakpoint
-UPDATE "contacts" SET "contact_source_id" = (SELECT "id" FROM "contact_sources" WHERE "name" = 'Events' LIMIT 1) WHERE "source" = 'events';--> statement-breakpoint
-UPDATE "contacts" SET "contact_source_id" = (SELECT "id" FROM "contact_sources" WHERE "name" = 'Email Campaign' LIMIT 1) WHERE "source" = 'email_campaign';--> statement-breakpoint
-UPDATE "contacts" SET "contact_source_id" = (SELECT "id" FROM "contact_sources" WHERE "name" = 'Travel Agent' LIMIT 1) WHERE "source" = 'travel_agent';--> statement-breakpoint
-UPDATE "contacts" SET "contact_source_id" = (SELECT "id" FROM "contact_sources" WHERE "name" = 'Corporate Account' LIMIT 1) WHERE "source" = 'corporate_account';--> statement-breakpoint
-UPDATE "contacts" SET "contact_source_id" = (SELECT "id" FROM "contact_sources" WHERE "name" = 'Group Booking Partner' LIMIT 1) WHERE "source" = 'group_booking_partner';--> statement-breakpoint
-UPDATE "contacts" SET "contact_source_id" = (SELECT "id" FROM "contact_sources" WHERE "name" = 'Other' LIMIT 1) WHERE "source" = 'other';--> statement-breakpoint
+DO $migrate$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'contacts' AND column_name = 'source'
+  ) THEN
+    EXECUTE $sql$
+      UPDATE "contacts" c
+      SET "contact_source_id" = cs.id
+      FROM "contact_sources" cs
+      WHERE cs.name = CASE c."source"::text
+        WHEN 'website_direct_booking' THEN 'Website Direct Booking'
+        WHEN 'phone_enquiry'          THEN 'Phone Enquiry'
+        WHEN 'email_sms_enquiry'      THEN 'Email / SMS Enquiry'
+        WHEN 'referral'               THEN 'Referral'
+        WHEN 'social_media'           THEN 'Social Media'
+        WHEN 'ota'                    THEN 'OTA'
+        WHEN 'advertising'            THEN 'Advertising'
+        WHEN 'events'                 THEN 'Events'
+        WHEN 'email_campaign'         THEN 'Email Campaign'
+        WHEN 'travel_agent'           THEN 'Travel Agent'
+        WHEN 'corporate_account'      THEN 'Corporate Account'
+        WHEN 'group_booking_partner'  THEN 'Group Booking Partner'
+        WHEN 'other'                  THEN 'Other'
+      END
+    $sql$;
+  END IF;
+END
+$migrate$;
+--> statement-breakpoint
 ALTER TABLE "contacts" ADD CONSTRAINT "contacts_contact_source_id_contact_sources_id_fk" FOREIGN KEY ("contact_source_id") REFERENCES "public"."contact_sources"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "contacts" DROP COLUMN "source";--> statement-breakpoint
-DROP TYPE "public"."contact_source";
+ALTER TABLE "contacts" DROP COLUMN IF EXISTS "source";--> statement-breakpoint
+DROP TYPE IF EXISTS "public"."contact_source";
