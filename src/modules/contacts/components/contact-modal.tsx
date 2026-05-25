@@ -70,6 +70,7 @@ export function NewContactModal({
     handleSubmit,
     reset,
     setError,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<CreateContactInput>({
     resolver: zodResolver(createContactSchema),
@@ -121,7 +122,7 @@ export function NewContactModal({
               {errors.root.message}
             </div>
           )}
-          <ContactFormFields register={register} control={control} errors={errors} contactTypes={contactTypes} />
+          <ContactFormFields register={register} control={control} errors={errors} setValue={setValue} contactTypes={contactTypes} />
         </div>
         <div style={{ padding: "14px 24px 22px", display: "flex", justifyContent: "flex-end", gap: 10, borderTop: "1px solid var(--line-soft)" }}>
           <Button variant="ghost" type="button" onClick={close} disabled={isSubmitting}>
@@ -154,6 +155,7 @@ export function EditContactModal({
     control,
     handleSubmit,
     setError,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<UpdateContactInput>({
     resolver: zodResolver(updateContactSchema),
@@ -240,7 +242,7 @@ export function EditContactModal({
               {errors.root.message}
             </div>
           )}
-          <ContactFormFields register={register} control={control} errors={errors} contactTypes={contactTypes} />
+          <ContactFormFields register={register} control={control} errors={errors} setValue={setValue} contactTypes={contactTypes} />
         </div>
         <div style={{ padding: "14px 24px 22px", display: "flex", justifyContent: "flex-end", gap: 10, borderTop: "1px solid var(--line-soft)" }}>
           <Button variant="ghost" type="button" onClick={close} disabled={isSubmitting}>
