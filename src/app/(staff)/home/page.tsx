@@ -167,7 +167,7 @@ function ArrivalsBlock() {
             <Pill tone={a.status}>{a.label}</Pill>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <Button size="sm" variant="teal">Check in</Button>
-              <IconButton size={32} variant="quiet"><Icon name="More" size={15} /></IconButton>
+              <IconButton size={32} variant="quiet"><Icon name="MoreVertical" size={15} /></IconButton>
             </div>
           </div>
         ))}
@@ -222,7 +222,7 @@ function DeparturesBlock() {
             ) : (
               <Button size="sm" variant="ghost">Receipt</Button>
             )}
-            <IconButton size={32} variant="quiet"><Icon name="More" size={15} /></IconButton>
+            <IconButton size={32} variant="quiet"><Icon name="MoreVertical" size={15} /></IconButton>
           </div>
         </div>
       ))}

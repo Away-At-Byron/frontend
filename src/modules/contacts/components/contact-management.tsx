@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Avatar,
@@ -39,7 +39,7 @@ type TierFilter = "all" | ContactTier;
 type ContactTypeFilter = "all" | string;
 
 // Client# · Name · Email · Phone · Stays · Tier · Birthday · Last stay · Action
-const GRID = "110px 1.9fr 1.5fr 1fr 64px 0.9fr 1fr 1fr 150px";
+const GRID = "110px 1.9fr 1.5fr 1fr 64px 0.9fr 1fr 1fr 60px";
 
 // Stable pseudo-random avatar tint per contact — the same hashed-id scheme
 // the Users table uses, so a contact keeps one colour across renders.
@@ -93,6 +93,124 @@ function exportCsv(rows: ContactRow[]) {
   a.download = `contacts-${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function RowActionsMenu({
+  onEdit,
+  onDelete,
+  canDelete,
+  isDeleting,
+}: {
+  onEdit: () => void;
+  onDelete: () => void;
+  canDelete: boolean;
+  isDeleting: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node))
+        setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={wrapRef} style={{ position: "relative" }}>
+      <IconButton
+        size={32}
+        variant="quiet"
+        title="Actions"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <Icon name="MoreVertical" size={16} />
+      </IconButton>
+      {open && (
+        <div
+          role="menu"
+          style={{
+            position: "absolute",
+            top: "100%",
+            right: 0,
+            marginTop: 4,
+            minWidth: 140,
+            background: "var(--paper)",
+            border: "1px solid var(--line)",
+            borderRadius: "var(--r-2)",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+            padding: 4,
+            zIndex: 30,
+          }}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onEdit();
+            }}
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "8px 10px",
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              borderRadius: "var(--r-1)",
+              font: "inherit",
+              fontSize: 13,
+              color: "var(--ink)",
+              textAlign: "left",
+            }}
+          >
+            <Icon name="Edit" size={14} />
+            Edit
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={!canDelete || isDeleting}
+            onClick={() => {
+              setOpen(false);
+              onDelete();
+            }}
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "8px 10px",
+              border: "none",
+              background: "transparent",
+              cursor: !canDelete || isDeleting ? "not-allowed" : "pointer",
+              borderRadius: "var(--r-1)",
+              font: "inherit",
+              fontSize: 13,
+              color:
+                !canDelete || isDeleting ? "var(--ink-faint)" : "var(--bad-fg)",
+              textAlign: "left",
+            }}
+          >
+            <Icon name="Trash" size={14} />
+            {isDeleting ? "Deleting…" : "Delete"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function ContactManagement({
@@ -160,10 +278,7 @@ export function ContactManagement({
         return false;
       if (activeFilter === "returning" && !c.returningGuest) return false;
       if (tierFilter !== "all" && c.tier !== tierFilter) return false;
-      if (
-        contactTypeFilter !== "all" &&
-        c.contactTypeId !== contactTypeFilter
-      )
+      if (contactTypeFilter !== "all" && c.contactTypeId !== contactTypeFilter)
         return false;
       if (!s) return true;
       return (
@@ -555,7 +670,7 @@ export function ContactManagement({
           <span style={{ color: "var(--ink-faint)" }}>Birthday</span>
           <span style={{ color: "var(--ink-faint)" }}>Last stay</span>
           <span style={{ color: "var(--ink-faint)", textAlign: "right" }}>
-            Action
+            {/* Action */}
           </span>
         </div>
 
@@ -689,25 +804,15 @@ export function ContactManagement({
               <div
                 style={{
                   display: "flex",
-                  gap: 8,
                   justifyContent: "flex-end",
                 }}
               >
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setEditContact(c)}
-                >
-                  Edit
-                </Button>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  disabled={!canDelete || deletingId === c.id}
-                  onClick={() => handleDelete(c)}
-                >
-                  {deletingId === c.id ? "..." : "Delete"}
-                </Button>
+                <RowActionsMenu
+                  onEdit={() => setEditContact(c)}
+                  onDelete={() => handleDelete(c)}
+                  canDelete={canDelete}
+                  isDeleting={deletingId === c.id}
+                />
               </div>
             </div>
           ))
