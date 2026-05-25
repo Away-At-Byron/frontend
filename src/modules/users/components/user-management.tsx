@@ -16,7 +16,8 @@ import type { RoleOption, UserRow } from "../queries";
 import { createUser, updateUser, deleteUser } from "../actions";
 import { NewUserModal, labelFor } from "./new-user-modal";
 import { EditUserModal } from "./edit-user-modal";
-import { Modal } from "./modal";
+import { ConfirmDialog } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/toast";
 
 // Column track shared by the header row and every data row so they align.
 // Name is a fixed width sized to its content - an fr max still inflates on a
@@ -115,6 +116,7 @@ export function UserManagement({
   const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
 
   // 300 ms debounced search (old app behaviour).
   useEffect(() => {
@@ -181,13 +183,20 @@ export function UserManagement({
       if (res.ok) {
         setUsers((prev) => prev.filter((x) => x.id !== u.id));
         router.refresh();
+        toast.success({
+          title: "User deleted",
+          message: `${u.firstName} ${u.lastName} has been removed.`,
+        });
       } else {
-        setError(res.error.message);
+        toast.error({
+          title: "Couldn't delete user",
+          message: res.error.message,
+        });
       }
       setDeletingId(null);
       setDeleteTarget(null);
     },
-    [router],
+    [router, toast],
   );
 
   const tabs = useMemo(
@@ -558,65 +567,30 @@ export function UserManagement({
         onSave={handleUpdate}
       />
 
-      {/* Delete confirmation. Destructive and permanent, so a styled popup. */}
-      <Modal
-        isOpen={deleteTarget !== null}
-        onClose={() => {
+      {/* Delete confirmation — destructive, permanent. ConfirmDialog (danger)
+          replaces window.confirm() and the prior Modal popup. */}
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        tone="danger"
+        title={
+          deleteTarget
+            ? `Delete ${deleteTarget.firstName} ${deleteTarget.lastName}?`
+            : "Delete user?"
+        }
+        message="This permanently removes their account and cannot be undone. To keep the account but block sign-in, use Edit and set the status to Disabled instead."
+        confirmLabel={
+          deleteTarget && deletingId === deleteTarget.id
+            ? "Deleting..."
+            : "Delete user"
+        }
+        cancelLabel="Cancel"
+        onConfirm={() => {
+          if (deleteTarget && deletingId === null) handleDelete(deleteTarget);
+        }}
+        onCancel={() => {
           if (deletingId === null) setDeleteTarget(null);
         }}
-      >
-        {deleteTarget && (
-          <div style={{ padding: "24px 24px 22px" }}>
-            <h2
-              style={{
-                fontFamily: "var(--font-display), serif",
-                fontWeight: 300,
-                fontSize: 22,
-                letterSpacing: "var(--tight)",
-                margin: 0,
-              }}
-            >
-              Delete user
-            </h2>
-            <p
-              style={{
-                marginTop: 8,
-                fontSize: 13.5,
-                lineHeight: 1.5,
-                color: "var(--ink-soft)",
-              }}
-            >
-              Are you sure you want to delete {deleteTarget.firstName}{" "}
-              {deleteTarget.lastName}? This permanently removes their account
-              and cannot be undone. To keep the account but block sign-in, use
-              Edit and set the status to Disabled instead.
-            </p>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: 10,
-                marginTop: 20,
-              }}
-            >
-              <Button
-                variant="ghost"
-                onClick={() => setDeleteTarget(null)}
-                disabled={deletingId !== null}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="danger"
-                onClick={() => handleDelete(deleteTarget)}
-                disabled={deletingId !== null}
-              >
-                {deletingId === deleteTarget.id ? "Deleting..." : "Delete user"}
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
+      />
     </div>
   );
 }

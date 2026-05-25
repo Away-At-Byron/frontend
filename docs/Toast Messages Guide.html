@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Away At Byron Bay — Toast Messages & Dialogs Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="system/tokens.css"/>
+<style>
+  body { background: #FDFCFA; color: var(--ink); }
+  .doc { max-width: 1280px; margin: 0 auto; padding: 56px 56px 120px; }
+  .doc-head { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: end; padding-bottom: 48px; border-bottom: 1px solid var(--line); }
+  .kicker { font-family: var(--mono); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-faint); font-weight: 500; }
+  h1 { font-family: var(--display); font-weight: 300; font-size: 64px; line-height: 1; letter-spacing: -.025em; margin: 16px 0 0; }
+  h1 em { font-style: italic; color: var(--terra); }
+  .lede { font-family: var(--display); font-size: 19px; line-height: 1.5; color: var(--ink-soft); margin: 0; }
+
+  section { padding-top: 72px; }
+  .sect-head { display: grid; grid-template-columns: 100px 1fr; gap: 32px; align-items: baseline; margin-bottom: 32px; }
+  .sect-num { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; color: var(--ink-faint); }
+  .sect-title { font-family: var(--display); font-weight: 300; font-size: 36px; line-height: 1.05; letter-spacing: -.02em; margin: 0; }
+  .sect-title em { font-style: italic; color: var(--terra); }
+  .sect-lead { font-family: var(--display); font-size: 17px; line-height: 1.5; color: var(--ink-soft); margin: 12px 0 0; max-width: 680px; }
+
+  .row { padding-left: 132px; display: flex; flex-direction: column; gap: 18px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+  .demo {
+    background: #FFFFFF;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    overflow: hidden;
+  }
+  .demo-stage {
+    padding: 40px 32px;
+    background: linear-gradient(180deg, #F3EDE2 0%, #E8DDCD 100%);
+    display: flex; align-items: center; justify-content: center;
+    min-height: 180px;
+    position: relative;
+  }
+  .demo-stage.ink { background: linear-gradient(180deg, #2A3838 0%, #1F2A2A 100%); }
+  .demo-meta {
+    padding: 14px 20px;
+    border-top: 1px solid var(--line-soft);
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  }
+  .demo-meta .ttl { font-family: var(--display); font-size: 16px; font-weight: 400; font-style: italic; }
+  .demo-meta .desc { font-size: 12px; color: var(--ink-soft); flex: 1; }
+  .demo-meta .tag { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); letter-spacing: .06em; text-transform: uppercase; }
+
+  /* ─── Toast primitive ─────────────────────────────────── */
+  .toast {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: #FFFFFF;
+    border: 1px solid rgba(31,42,42,.08);
+    border-radius: 14px;
+    padding: 14px 16px;
+    width: 380px; max-width: 100%;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.5) inset,
+      0 18px 40px -18px rgba(31,42,42,.28),
+      0 1px 0 rgba(31,42,42,.04);
+    font-family: var(--ui);
+  }
+  .toast .ic {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex: 0 0 auto;
+  }
+  .toast .body { flex: 1; min-width: 0; padding-top: 1px; }
+  .toast .title {
+    font-family: var(--display); font-weight: 400; font-size: 15px; line-height: 1.2;
+    color: var(--ink);
+  }
+  .toast .msg {
+    font-size: 12.5px; color: var(--ink-soft); line-height: 1.5; margin-top: 4px;
+  }
+  .toast .actions {
+    margin-top: 10px; display: flex; gap: 6px;
+  }
+  .toast .btn {
+    padding: 5px 12px; border-radius: 999px;
+    font: inherit; font-size: 11.5px; font-weight: 600; letter-spacing: .02em;
+    cursor: pointer; border: 1px solid transparent;
+  }
+  .toast .btn-primary { background: var(--ink); color: #FBF8F3; }
+  .toast .btn-ghost { background: transparent; color: var(--ink-soft); border-color: rgba(31,42,42,.16); }
+  .toast .close {
+    width: 22px; height: 22px; border-radius: 6px; border: none; background: transparent;
+    cursor: pointer; color: var(--ink-faint); display: flex; align-items: center; justify-content: center;
+    margin: -2px -4px 0 0;
+  }
+  .toast .close:hover { background: rgba(31,42,42,.06); color: var(--ink); }
+
+  /* Tone variants — left strip + icon background */
+  .toast.success { border-left: 3px solid var(--teal-deep); }
+  .toast.success .ic { background: rgba(157,201,196,.32); color: #3D5C5A; }
+  .toast.warn { border-left: 3px solid var(--apricot); }
+  .toast.warn .ic { background: rgba(232,183,158,.42); color: #A8624B; }
+  .toast.error { border-left: 3px solid var(--terra); }
+  .toast.error .ic { background: rgba(199,126,99,.20); color: #A8624B; }
+  .toast.info { border-left: 3px solid var(--teal); }
+  .toast.info .ic { background: var(--mist); color: #3D5C5A; }
+  .toast.neutral { border-left: 3px solid var(--ink-mute); }
+  .toast.neutral .ic { background: #F4EDDF; color: #5A4A3A; }
+
+  /* Inverted (on dark stage) */
+  .toast.inverted {
+    background: #1F2A2A; color: #FBF8F3;
+    border-color: rgba(255,255,255,.08);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.06) inset,
+      0 18px 40px -18px rgba(0,0,0,.6);
+  }
+  .toast.inverted .title { color: #FBF8F3; }
+  .toast.inverted .msg { color: rgba(251,248,243,.7); }
+  .toast.inverted .btn-ghost { color: rgba(251,248,243,.85); border-color: rgba(255,255,255,.18); }
+  .toast.inverted .close { color: rgba(251,248,243,.55); }
+
+  /* Inline banner */
+  .banner {
+    display: flex; align-items: center; gap: 12px;
+    background: #FFFFFF;
+    border: 1px solid rgba(31,42,42,.08);
+    border-left: 3px solid var(--terra);
+    border-radius: 12px;
+    padding: 12px 16px;
+    width: 100%;
+  }
+  .banner.success { border-left-color: var(--teal-deep); }
+  .banner.warn { border-left-color: var(--apricot); }
+  .banner.info { border-left-color: var(--teal); }
+  .banner .ic {
+    width: 28px; height: 28px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    flex: 0 0 auto;
+  }
+  .banner.success .ic { background: rgba(157,201,196,.32); color: #3D5C5A; }
+  .banner.warn .ic    { background: rgba(232,183,158,.42); color: #A8624B; }
+  .banner.error .ic   { background: rgba(199,126,99,.20); color: #A8624B; }
+  .banner.info .ic    { background: var(--mist); color: #3D5C5A; }
+  .banner .body { flex: 1; }
+  .banner .title { font-family: var(--display); font-weight: 400; font-size: 14.5px; color: var(--ink); }
+  .banner .msg { font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
+  .banner .actions { display: flex; gap: 6px; }
+
+  /* Confirmation dialog */
+  .dialog {
+    background: #FFFFFF;
+    border-radius: 18px;
+    width: 420px; max-width: 100%;
+    padding: 24px 24px 20px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.5) inset,
+      0 28px 60px -20px rgba(31,42,42,.4),
+      0 0 0 1px rgba(31,42,42,.05);
+    position: relative;
+  }
+  .dialog .head {
+    display: flex; gap: 12px; margin-bottom: 14px;
+  }
+  .dialog .ic {
+    width: 40px; height: 40px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex: 0 0 auto;
+  }
+  .dialog.danger .ic { background: rgba(199,126,99,.18); color: #A8624B; }
+  .dialog.warn .ic { background: rgba(232,183,158,.42); color: #A8624B; }
+  .dialog.info .ic { background: var(--mist); color: #3D5C5A; }
+  .dialog .title {
+    font-family: var(--display); font-weight: 400; font-size: 21px; line-height: 1.2;
+    letter-spacing: -.01em; color: var(--ink);
+  }
+  .dialog .title em { font-style: italic; color: var(--terra); }
+  .dialog .msg {
+    font-size: 14px; line-height: 1.55; color: var(--ink-soft); margin: 0 0 18px;
+  }
+  .dialog .actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .dialog .btn {
+    padding: 10px 18px; border-radius: 999px; cursor: pointer;
+    font: inherit; font-size: 13px; font-weight: 600; letter-spacing: .01em;
+    border: 1px solid transparent;
+  }
+  .dialog .btn-ghost { background: transparent; color: var(--ink); border-color: rgba(31,42,42,.14); }
+  .dialog .btn-primary { background: var(--ink); color: #FBF8F3; }
+  .dialog .btn-danger { background: var(--terra); color: #FBF8F3; }
+
+  /* Stack preview */
+  .stack {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+
+  /* Anatomy / spec list */
+  .spec {
+    background: #FFFFFF; border: 1px solid var(--line); border-radius: 14px;
+    padding: 22px 26px;
+  }
+  .spec h4 { font-family: var(--display); font-size: 18px; font-weight: 400; font-style: italic; margin: 0 0 12px; }
+  .spec ul { margin: 0; padding-left: 18px; }
+  .spec li { font-size: 13px; line-height: 1.7; color: var(--ink-soft); }
+  .spec li b { color: var(--ink); font-weight: 600; font-family: var(--mono); font-size: 11.5px; letter-spacing: .02em; }
+  .spec .swatch { display: inline-block; width: 11px; height: 11px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
+
+  /* Do / Don't */
+  .dodont { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .card-do, .card-dont {
+    border-radius: 14px; padding: 18px 20px;
+    border: 1px solid var(--line); background: #FFFFFF;
+  }
+  .card-do { border-left: 3px solid var(--teal-deep); }
+  .card-dont { border-left: 3px solid var(--terra); }
+  .card-do h5, .card-dont h5 {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+    margin: 0 0 8px;
+  }
+  .card-do h5 { color: var(--teal-ink); }
+  .card-dont h5 { color: var(--terra-deep); }
+  .card-do p, .card-dont p { font-size: 13px; line-height: 1.5; color: var(--ink-soft); margin: 0; }
+
+  footer { margin-top: 96px; padding-top: 24px; border-top: 1px solid var(--line);
+    font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--ink-faint); display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <header class="doc-head">
+    <div>
+      <div class="kicker">Toast messages & dialogs · v01</div>
+      <h1>Quiet <em>signals</em>.</h1>
+    </div>
+    <div style="padding-bottom: 12px">
+      <p class="lede">
+        Replacing the system browser alerts with on-brand confirmation, toast and banner patterns —
+        warm linen surfaces, soft shadow lift, tone-coded accents. Calm by default, urgent only
+        where it matters.
+      </p>
+    </div>
+  </header>
+
+  <!-- ════════════ 01 · Confirmation dialogs ════════════ -->
+  <section>
+    <div class="sect-head">
+      <span class="sect-num">01</span>
+      <div>
+        <h2 class="sect-title">Confirmation <em>dialogs</em></h2>
+        <p class="sect-lead">
+          Replacing the default <code style="background:#F4EDDF;padding:1px 6px;border-radius:4px;font-size:13px">window.confirm()</code> dialog with a soft-shadowed, editorial alternative.
+          Reserve for destructive or one-way actions — disable user, decline booking, cancel reservation.
+        </p>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="grid-2">
+        <!-- Danger -->
+        <div class="demo">
+          <div class="demo-stage ink">
+            <div class="dialog danger">
+              <div class="head">
+                <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".5" fill="currentColor" stroke="none" stroke-width="2"/></svg></div>
+                <div>
+                  <div class="title">Disable Renato <em>Manager</em>?</div>
+                </div>
+              </div>
+              <p class="msg">They will no longer be able to sign in. You can re-enable this user at any time from the Users page.</p>
+              <div class="actions">
+                <button class="btn btn-ghost">Cancel</button>
+                <button class="btn btn-danger">Disable user</button>
+              </div>
+            </div>
+          </div>
+          <div class="demo-meta">
+            <div class="ttl">Destructive</div>
+            <div class="desc">Reversible destructive action. Terracotta accent on icon + CTA.</div>
+            <div class="tag">.dialog.danger</div>
+          </div>
+        </div>
+
+        <!-- Warning -->
+        <div class="demo">
+          <div class="demo-stage ink">
+            <div class="dialog warn">
+              <div class="head">
+                <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".5" fill="currentColor" stroke="none" stroke-width="2"/></svg></div>
+                <div>
+                  <div class="title">Decline Liliana's booking?</div>
+                </div>
+              </div>
+              <p class="msg">The guest will be notified by email. The room will return to Booking.com inventory immediately.</p>
+              <div class="actions">
+                <button class="btn btn-ghost">Keep</button>
+                <button class="btn btn-primary">Decline booking</button>
+              </div>
+            </div>
+          </div>
+          <div class="demo-meta">
+            <div class="ttl">Caution</div>
+            <div class="desc">Action has consequences but isn't destructive. Apricot icon + ink CTA.</div>
+            <div class="tag">.dialog.warn</div>
+          </div>
+        </div>
+
+        <!-- Info confirm -->
+        <div class="demo">
+          <div class="demo-stage ink">
+            <div class="dialog info">
+              <div class="head">
+                <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v6"/><circle cx="12" cy="8" r=".5" fill="currentColor" stroke="none" stroke-width="2"/></svg></div>
+                <div>
+                  <div class="title">Push 12 timesheets to <em>Xero</em>?</div>
+                </div>
+              </div>
+              <p class="msg">All approved hours for the week of 17 Nov will be sent. Once pushed, this run cannot be reverted from inside the PMS.</p>
+              <div class="actions">
+                <button class="btn btn-ghost">Cancel</button>
+                <button class="btn btn-primary">Push now</button>
+              </div>
+            </div>
+          </div>
+          <div class="demo-meta">
+            <div class="ttl">Confirmation</div>
+            <div class="desc">Significant but routine action. Teal icon + ink CTA.</div>
+            <div class="tag">.dialog.info</div>
+          </div>
+        </div>
+
+        <!-- Anatomy -->
+        <div class="spec">
+          <h4>Anatomy</h4>
+          <ul>
+            <li><b>Container</b> — 420px max, 18px radius, 24px padding</li>
+            <li><b>Shadow</b> — 0 28px 60px -20px ink/40 + 1px hairline</li>
+            <li><b>Backdrop</b> — ink @78% + 8px blur</li>
+            <li><b>Icon tile</b> — 40px square, 10px radius, tone-tinted</li>
+            <li><b>Title</b> — Fraunces 400 21/24 with optional italic accent</li>
+            <li><b>Message</b> — Inter 14/22 ink-soft, max 2 lines on most</li>
+            <li><b>Buttons</b> — pill, right-aligned, ghost cancel + primary action</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════ 02 · Toasts ════════════ -->
+  <section>
+    <div class="sect-head">
+      <span class="sect-num">02</span>
+      <div>
+        <h2 class="sect-title">Toast <em>messages</em></h2>
+        <p class="sect-lead">
+          Light, time-limited feedback. Anchor to bottom-right of the canvas. Auto-dismiss after 4–6 seconds
+          unless the toast has an action. Stack from the bottom up; max three visible at once.
+        </p>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="grid-2">
+        <!-- Success -->
+        <div class="demo">
+          <div class="demo-stage">
+            <div class="toast success">
+              <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8 12.5l3 3 5-6"/></svg></div>
+              <div class="body">
+                <div class="title">Booking confirmed</div>
+                <div class="msg">Liliana Djokic · Away 03 · 22 Nov. Confirmation email queued.</div>
+              </div>
+              <button class="close">×</button>
+            </div>
+          </div>
+          <div class="demo-meta">
+            <div class="ttl">Success</div>
+            <div class="desc">Confirms a positive outcome. Bay teal accent. Auto-dismiss 4s.</div>
+            <div class="tag">.toast.success</div>
+          </div>
+        </div>
+
+        <!-- Info -->
+        <div class="demo">
+          <div class="demo-stage">
+            <div class="toast info">
+              <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v6"/><circle cx="12" cy="8" r=".5" fill="currentColor" stroke="none" stroke-width="2"/></svg></div>
+              <div class="body">
+                <div class="title">Auto-saved · 2 min ago</div>
+                <div class="msg">Draft reservation #R-5453 is safe. Continue when you're ready.</div>
+              </div>
+              <button class="close">×</button>
+            </div>
+          </div>
+          <div class="demo-meta">
+            <div class="ttl">Informational</div>
+            <div class="desc">Neutral system feedback. Pale teal accent. Auto-dismiss 4s.</div>
+            <div class="tag">.toast.info</div>
+          </div>
+        </div>
+
+        <!-- Warning -->
+        <div class="demo">
+          <div class="demo-stage">
+            <div class="toast warn">
+              <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".5" fill="currentColor" stroke="none" stroke-width="2"/></svg></div>
+              <div class="body">
+                <div class="title">Linen stock low</div>
+                <div class="msg">Queen fitted sheets dropped below reorder threshold (9 of 12).</div>
+                <div class="actions"><button class="btn btn-ghost">Reorder now</button></div>
+              </div>
+              <button class="close">×</button>
+            </div>
+          </div>
+          <div class="demo-meta">
+            <div class="ttl">Warning</div>
+            <div class="desc">Soft urgency. Apricot accent. No auto-dismiss when there's an action.</div>
+            <div class="tag">.toast.warn</div>
+          </div>
+        </div>
+
+        <!-- Error -->
+        <div class="demo">
+          <div class="demo-stage">
+            <div class="toast error">
+              <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M5.5 5.5l13 13M18.5 5.5l-13 13"/></svg></div>
+              <div class="body">
+                <div class="title">Xero push failed</div>
+                <div class="msg">Connection timed out. We've saved your data and will retry in a minute.</div>
+                <div class="actions">
+                  <button class="btn btn-primary">Retry now</button>
+                  <button class="btn btn-ghost">Open log</button>
+                </div>
+              </div>
+              <button class="close">×</button>
+            </div>
+          </div>
+          <div class="demo-meta">
+            <div class="ttl">Error</div>
+            <div class="desc">Something failed. Terracotta accent. Sticky until dismissed.</div>
+            <div class="tag">.toast.error</div>
+          </div>
+        </div>
+
+        <!-- Inverted -->
+        <div class="demo">
+          <div class="demo-stage ink">
+            <div class="toast inverted info">
+              <div class="ic" style="background:rgba(157,201,196,.18); color:#9DC9C4">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v6"/><circle cx="12" cy="8" r=".5" fill="currentColor" stroke="none" stroke-width="2"/></svg>
+              </div>
+              <div class="body">
+                <div class="title">3 new arrivals tomorrow</div>
+                <div class="msg">James Acres · Priya Mehta · J. Holloway. Check-in flows ready.</div>
+              </div>
+              <button class="close">×</button>
+            </div>
+          </div>
+          <div class="demo-meta">
+            <div class="ttl">Inverted</div>
+            <div class="desc">For dark surfaces (modals, photo overlays). Pandanus body, soft accents.</div>
+            <div class="tag">.toast.inverted</div>
+          </div>
+        </div>
+
+        <!-- Neutral / undo -->
+        <div class="demo">
+          <div class="demo-stage">
+            <div class="toast neutral">
+              <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a8 8 0 1 1 3 6"/><path d="M3 17v-5h5"/></svg></div>
+              <div class="body">
+                <div class="title">Maintenance ticket archived</div>
+                <div class="msg">M-0119 moved to the archive.</div>
+                <div class="actions"><button class="btn btn-ghost">Undo</button></div>
+              </div>
+              <button class="close">×</button>
+            </div>
+          </div>
+          <div class="demo-meta">
+            <div class="ttl">Neutral · undo</div>
+            <div class="desc">Recently-completed action with reversal affordance. Auto-dismiss 6s.</div>
+            <div class="tag">.toast.neutral</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════ 03 · Stacking + position ════════════ -->
+  <section>
+    <div class="sect-head">
+      <span class="sect-num">03</span>
+      <div>
+        <h2 class="sect-title">Stacking & <em>position</em></h2>
+        <p class="sect-lead">
+          Toasts anchor 24px from the bottom-right edge. New toasts push older ones up.
+          On screens with a sticky bottom CTA, anchor top-right instead.
+        </p>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="grid-2">
+        <div class="demo">
+          <div class="demo-stage" style="min-height:280px; align-items:flex-end; justify-content:flex-end; padding:24px">
+            <div class="stack">
+              <div class="toast success">
+                <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8 12.5l3 3 5-6"/></svg></div>
+                <div class="body"><div class="title">Payment received</div><div class="msg">A$840 · Liliana D. · #R-5453</div></div>
+              </div>
+              <div class="toast info">
+                <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v6"/><circle cx="12" cy="8" r=".5" fill="currentColor" stroke="none" stroke-width="2"/></svg></div>
+                <div class="body"><div class="title">Anna T. clocked in</div><div class="msg">Away · 09:28am</div></div>
+              </div>
+              <div class="toast warn">
+                <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4"/></svg></div>
+                <div class="body"><div class="title">Late arrival</div><div class="msg">Liliana's flight delayed by 90 min.</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="demo-meta">
+            <div class="ttl">Bottom-right stack</div>
+            <div class="desc">Newest on top. Max 3 visible — older ones auto-dismiss first.</div>
+            <div class="tag">stack: column-reverse</div>
+          </div>
+        </div>
+
+        <div class="demo">
+          <div class="demo-stage" style="min-height:280px; align-items:flex-start; justify-content:flex-end; padding:24px">
+            <div class="toast info">
+              <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v6"/><circle cx="12" cy="8" r=".5" fill="currentColor" stroke="none" stroke-width="2"/></svg></div>
+              <div class="body"><div class="title">2 unread messages</div><div class="msg">Theo Lin · Priya Mehta</div></div>
+              <button class="close">×</button>
+            </div>
+          </div>
+          <div class="demo-meta">
+            <div class="ttl">Top-right (alternate)</div>
+            <div class="desc">Use when the bottom edge holds a sticky CTA bar (e.g. Booking detail).</div>
+            <div class="tag">position: top-right</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════ 04 · Inline banners ════════════ -->
+  <section>
+    <div class="sect-head">
+      <span class="sect-num">04</span>
+      <div>
+        <h2 class="sect-title">Inline <em>banners</em></h2>
+        <p class="sect-lead">
+          Sit inside the page flow above the affected content. For persistent context — "5 invoices overdue",
+          "Booking pending guest confirmation". Never auto-dismiss.
+        </p>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="stack">
+        <div class="banner warn">
+          <div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4"/></svg></div>
+          <div class="body">
+            <div class="title">Booking awaiting guest confirmation</div>
+            <div class="msg">Liliana Djokic hasn't replied to the late check-in confirmation. Auto-cancel in 02:43.</div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-ghost" style="padding:6px 14px;font-size:11.5px;border:1px solid rgba(31,42,42,.16);border-radius:999px;background:transparent;cursor:pointer">Send reminder</button>
+          </div>
+        </div>
+
+        <div class="banner error">
+          <div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M5.5 5.5l13 13M18.5 5.5l-13 13"/></svg></div>
+          <div class="body">
+            <div class="title">A$1,820 outstanding across 5 invoices</div>
+            <div class="msg">Two are 30+ days overdue. Open the income report for the full breakdown.</div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-ghost" style="padding:6px 14px;font-size:11.5px;border:1px solid rgba(168,98,75,.32);border-radius:999px;background:transparent;cursor:pointer;color:#A8624B;font-weight:600">Open report</button>
+          </div>
+        </div>
+
+        <div class="banner success">
+          <div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8 12.5l3 3 5-6"/></svg></div>
+          <div class="body">
+            <div class="title">Night audit closed · 19 Nov</div>
+            <div class="msg">All charges posted. The accounting period is locked.</div>
+          </div>
+        </div>
+
+        <div class="banner info">
+          <div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v6"/><circle cx="12" cy="8" r=".5" fill="currentColor" stroke="none" stroke-width="2"/></svg></div>
+          <div class="body">
+            <div class="title">Group rate plan applied</div>
+            <div class="msg">10% off · A$3,540 → A$3,186 across 4 rooms.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════ 05 · Tone reference ════════════ -->
+  <section>
+    <div class="sect-head">
+      <span class="sect-num">05</span>
+      <div>
+        <h2 class="sect-title">Tone <em>reference</em></h2>
+        <p class="sect-lead">Use the right tone for the moment. Save error tone for things that actually need attention.</p>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="grid-3">
+        <div class="spec">
+          <h4>Success · Bay Teal</h4>
+          <ul>
+            <li><b><span class="swatch" style="background:#9DC9C4"></span>Border</b> #6E9B97</li>
+            <li><b>Icon bg</b> rgba(157,201,196,.32)</li>
+            <li><b>Icon fg</b> #3D5C5A</li>
+            <li><b>Use for</b> Booking confirmed, payment received, audit closed, clean ✓</li>
+            <li><b>Dismiss</b> Auto · 4s</li>
+          </ul>
+        </div>
+        <div class="spec">
+          <h4>Info · Mist</h4>
+          <ul>
+            <li><b><span class="swatch" style="background:#E8F1EE"></span>Border</b> #9DC9C4</li>
+            <li><b>Icon bg</b> #E8F1EE</li>
+            <li><b>Icon fg</b> #3D5C5A</li>
+            <li><b>Use for</b> Auto-save, sync complete, system status</li>
+            <li><b>Dismiss</b> Auto · 4s</li>
+          </ul>
+        </div>
+        <div class="spec">
+          <h4>Warning · Apricot</h4>
+          <ul>
+            <li><b><span class="swatch" style="background:#E8B79E"></span>Border</b> #E8B79E</li>
+            <li><b>Icon bg</b> rgba(232,183,158,.42)</li>
+            <li><b>Icon fg</b> #A8624B</li>
+            <li><b>Use for</b> Stock low, late arrival, pending action</li>
+            <li><b>Dismiss</b> Sticky if action present, else 6s</li>
+          </ul>
+        </div>
+        <div class="spec">
+          <h4>Error · Terracotta</h4>
+          <ul>
+            <li><b><span class="swatch" style="background:#C77E63"></span>Border</b> #C77E63</li>
+            <li><b>Icon bg</b> rgba(199,126,99,.20)</li>
+            <li><b>Icon fg</b> #A8624B</li>
+            <li><b>Use for</b> Sync failed, payment declined, overdue invoice</li>
+            <li><b>Dismiss</b> Sticky until manually dismissed</li>
+          </ul>
+        </div>
+        <div class="spec">
+          <h4>Neutral · Driftwood</h4>
+          <ul>
+            <li><b><span class="swatch" style="background:#A89274"></span>Border</b> #A89274</li>
+            <li><b>Icon bg</b> #F4EDDF</li>
+            <li><b>Icon fg</b> #5A4A3A</li>
+            <li><b>Use for</b> Archived, deleted (with undo), routine</li>
+            <li><b>Dismiss</b> Auto · 6s</li>
+          </ul>
+        </div>
+        <div class="spec">
+          <h4>Inverted</h4>
+          <ul>
+            <li><b><span class="swatch" style="background:#1F2A2A"></span>Bg</b> #1F2A2A</li>
+            <li><b>Title</b> Linen #FBF8F3</li>
+            <li><b>Body</b> Linen @70%</li>
+            <li><b>Use for</b> On dark canvases — modals, photo overlays</li>
+            <li><b>Dismiss</b> Inherit per tone</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════ 06 · Do / Don't ════════════ -->
+  <section>
+    <div class="sect-head">
+      <span class="sect-num">06</span>
+      <div>
+        <h2 class="sect-title">Do &amp; <em>don't</em></h2>
+        <p class="sect-lead">Quick guardrails so toasts stay calm, helpful, and on-brand.</p>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="dodont">
+        <div class="card-do">
+          <h5>Do · short, factual title</h5>
+          <p>"Booking confirmed", "Payment received", "Stock low". Verb + subject. The detail belongs in the body.</p>
+        </div>
+        <div class="card-dont">
+          <h5>Don't · vague or apologetic</h5>
+          <p>"Sorry, something went wrong" tells the user nothing. Be specific: "Xero push failed — connection timed out."</p>
+        </div>
+        <div class="card-do">
+          <h5>Do · one primary action max</h5>
+          <p>"Retry now" / "Open log" / "Undo". One emphasized action, one ghost secondary. Anything more belongs in a dialog.</p>
+        </div>
+        <div class="card-dont">
+          <h5>Don't · stack tones randomly</h5>
+          <p>Avoid showing three different tones at once. If everything looks urgent, nothing is.</p>
+        </div>
+        <div class="card-do">
+          <h5>Do · auto-dismiss the calm tones</h5>
+          <p>Success and Info disappear after 4s. Warning lingers if there's an action. Error stays until acknowledged.</p>
+        </div>
+        <div class="card-dont">
+          <h5>Don't · block the canvas</h5>
+          <p>A toast should never cover what the user is doing. Use a dialog for blocking decisions, a banner for persistent state.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Away At Byron Bay · Toasts & Dialogs · v01</span>
+    <span>6 tones · 3 patterns · 1 calm voice</span>
+  </footer>
+</div>
+</body>
+</html>

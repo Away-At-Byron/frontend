@@ -29,6 +29,21 @@ const HIDE_PROPERTY_ROUTES = ["/users", "/settings/contact-types"];
 // duplicate it - hide the topbar title (date and controls stay) on these.
 const HIDE_TITLE_ROUTES = ["/users", "/contacts"];
 
+const PORTAL_LABELS: Record<string, string> = {
+  admin: "Admin Portal",
+  manager: "Manager Portal",
+  staff: "Staff Portal",
+  housekeeper: "Housekeeper Portal",
+  contractor: "Contractor Portal",
+  other: "Other Portal",
+};
+
+function portalLabel(role: string) {
+  return (
+    PORTAL_LABELS[role.toLowerCase()] ?? `${role.replace(/_/g, " ")} Portal`
+  );
+}
+
 export function AppShell({
   user,
   nav,
@@ -68,7 +83,11 @@ export function AppShell({
           width: 260,
           flex: "0 0 260px",
           borderRight: "1px solid var(--line)",
-          background: "var(--linen)",
+          backgroundImage: "url('/navbar-bg.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center top",
+          backgroundRepeat: "no-repeat",
+          backgroundColor: "var(--teal)",
           display: "flex",
           flexDirection: "column",
           position: "sticky",
@@ -89,7 +108,7 @@ export function AppShell({
               width: 36,
               height: 36,
               borderRadius: "50%",
-              background: "var(--ink)",
+              background: "var(--terra)",
               color: "var(--linen)",
               display: "flex",
               alignItems: "center",
@@ -108,15 +127,20 @@ export function AppShell({
                 fontSize: 16,
                 lineHeight: 1,
                 fontWeight: 400,
+                color: "var(--ink)",
               }}
             >
               Away <em style={{ fontStyle: "italic" }}>at Byron</em>
             </div>
             <div
               className="caps"
-              style={{ marginTop: 3, fontSize: 9, color: "var(--ink-faint)" }}
+              style={{
+                marginTop: 3,
+                fontSize: 9,
+                color: "var(--ink-soft)",
+              }}
             >
-              Reservations · Admin
+              {portalLabel(user.role)}
             </div>
           </div>
         </div>
@@ -132,8 +156,8 @@ export function AppShell({
               display: "flex",
               alignItems: "center",
               gap: 10,
-              background: "var(--shell)",
-              border: "1px solid var(--line-soft)",
+              background: "rgba(251,248,243,0.45)",
+              border: "1px solid rgba(31,42,42,0.12)",
               borderRadius: "var(--r-2)",
               padding: "10px 12px",
               cursor: "pointer",
@@ -156,7 +180,11 @@ export function AppShell({
               </div>
               <div
                 className="caps"
-                style={{ fontSize: 9, color: "var(--ink-faint)", marginTop: 3 }}
+                style={{
+                  fontSize: 9,
+                  color: "var(--ink-soft)",
+                  marginTop: 3,
+                }}
               >
                 {property.rooms} rooms
               </div>
@@ -231,12 +259,6 @@ export function AppShell({
             gap: 2,
           }}
         >
-          <div
-            className="caps"
-            style={{ padding: "8px 12px 4px", color: "var(--ink-faint)" }}
-          >
-            Today
-          </div>
           {today.map((n) => (
             <NavNode
               key={n.href ?? n.label}
@@ -244,12 +266,6 @@ export function AppShell({
               currentHref={current?.href}
             />
           ))}
-          <div
-            className="caps"
-            style={{ padding: "18px 12px 4px", color: "var(--ink-faint)" }}
-          >
-            Manage
-          </div>
           {secondary.map((n) => (
             <NavNode
               key={n.href ?? n.label}
@@ -259,16 +275,39 @@ export function AppShell({
           ))}
         </nav>
 
-        {/* User footer */}
+        {/* User footer — wave transition from teal to linen */}
         <div
           style={{
             marginTop: "auto",
-            padding: "14px 14px 18px",
-            borderTop: "1px solid var(--line-soft)",
+            position: "relative",
+            paddingTop: 20,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Avatar name={user.name} size={36} tint="teal" />
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundImage: "url('/navbar-bg-bottom.png')",
+              backgroundSize: "100% 100%",
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "bottom",
+              pointerEvents: "none",
+            }}
+          />
+          <div
+            style={{
+              position: "relative",
+              padding: "12px 14px 18px",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
+            <Avatar name={user.name} size={36} tint="terra" />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div
                 style={{
@@ -276,6 +315,7 @@ export function AppShell({
                   fontSize: 14,
                   fontWeight: 400,
                   lineHeight: 1.1,
+                  color: "var(--ink)",
                 }}
               >
                 {user.name}
@@ -371,7 +411,10 @@ export function AppShell({
                 {current?.href === "/home" ? (
                   <>
                     Good{" "}
-                    <em style={{ fontStyle: "italic" }} suppressHydrationWarning>
+                    <em
+                      style={{ fontStyle: "italic" }}
+                      suppressHydrationWarning
+                    >
                       {partOfDay()}
                     </em>
                     , {user.name.split(" ")[0]}
@@ -574,8 +617,8 @@ function NavItem({
       {item.badge && (
         <span
           style={{
-            background: active ? "var(--linen)" : "var(--terra)",
-            color: active ? "var(--ink)" : "var(--linen)",
+            background: "var(--terra)",
+            color: "var(--linen)",
             fontSize: 10,
             fontWeight: 700,
             padding: "2px 7px",
