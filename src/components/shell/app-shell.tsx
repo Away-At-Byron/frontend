@@ -257,6 +257,9 @@ export function AppShell({
             display: "flex",
             flexDirection: "column",
             gap: 2,
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
           }}
         >
           {today.map((n) => (
