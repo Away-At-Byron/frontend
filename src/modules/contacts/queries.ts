@@ -76,6 +76,89 @@ export function mapContactRow(
   }
 }
 
+export type ContactOption = {
+  id: string
+  firstName: string
+  lastName: string
+  email: string | null
+}
+
+/** Lightweight list of contacts for the "Related client" search picker. */
+export async function listContactOptions(): Promise<ActionResult<ContactOption[]>> {
+  return withTenant(async (tx, ctx) =>
+    withPermission(CONTACT_PERMISSIONS.read, ctx, async () => {
+      const rows = await tx
+        .select({
+          id: contacts.id,
+          firstName: contacts.firstName,
+          lastName: contacts.lastName,
+          email: contacts.email,
+        })
+        .from(contacts)
+        .where(eq(contacts.isDeleted, false))
+        .orderBy(asc(contacts.firstName), asc(contacts.lastName))
+      return ok(rows)
+    }),
+  )
+}
+
+export type GroupMember = {
+  id: string
+  firstName: string
+  lastName: string
+  contactTypeName: string | null
+  createdAt: string
+}
+
+/** Members of a group, in creation order. */
+export async function listGroupMembers(
+  groupId: string,
+): Promise<ActionResult<GroupMember[]>> {
+  return withTenant(async (tx, ctx) =>
+    withPermission(CONTACT_PERMISSIONS.read, ctx, async () => {
+      const rows = await tx
+        .select({
+          id: contacts.id,
+          firstName: contacts.firstName,
+          lastName: contacts.lastName,
+          contactTypeName: contactTypes.name,
+          createdAt: contacts.createdAt,
+        })
+        .from(contacts)
+        .leftJoin(contactTypes, eq(contacts.contactTypeId, contactTypes.id))
+        .where(
+          sql`${contacts.groupId} = ${groupId} AND ${contacts.isDeleted} = false`,
+        )
+        .orderBy(asc(contacts.createdAt))
+      return ok(
+        rows.map((r) => ({
+          ...r,
+          createdAt: r.createdAt.toISOString(),
+        })),
+      )
+    }),
+  )
+}
+
+export async function getContact(
+  id: string,
+): Promise<ActionResult<ContactRow | null>> {
+  return withTenant(async (tx, ctx) =>
+    withPermission(CONTACT_PERMISSIONS.read, ctx, async () => {
+      const rows = await tx
+        .select(contactSelection)
+        .from(contacts)
+        .leftJoin(contactTypes, eq(contacts.contactTypeId, contactTypes.id))
+        .leftJoin(contactSources, eq(contacts.contactSourceId, contactSources.id))
+        .leftJoin(groups, eq(contacts.groupId, groups.id))
+        .where(eq(contacts.id, id))
+        .limit(1)
+      const r = rows[0]
+      return ok(r ? mapContactRow(r) : null)
+    }),
+  )
+}
+
 export async function listContacts(): Promise<ActionResult<ContactRow[]>> {
   return withTenant(async (tx, ctx) =>
     withPermission(CONTACT_PERMISSIONS.read, ctx, async () => {

@@ -1,0 +1,87 @@
+/**
+ * Contact detail (FRS §6.4) — single-record edit page. `/contacts/new`
+ * opens the page in add mode; otherwise the segment is treated as a
+ * contact id and the record is fetched.
+ */
+import { notFound, redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { assertModuleAccess } from "@/lib/access";
+import {
+  getContact,
+  listContactOptions,
+  listContactSources,
+  listContactTypes,
+  listGroupMembers,
+  listGroupOptions,
+} from "@/modules/contacts/queries";
+import { ContactDetail } from "@/modules/contacts/components/contact-detail";
+
+export default async function ContactDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  await assertModuleAccess("contacts");
+  const session = await auth();
+  if (!session?.user) redirect("/signin");
+
+  const { id } = await params;
+  const isNew = id === "new";
+
+  const [contactRes, typesRes, sourcesRes, groupsRes, optionsRes] = await Promise.all([
+    isNew ? Promise.resolve({ ok: true as const, data: null }) : getContact(id),
+    listContactTypes(),
+    listContactSources(),
+    listGroupOptions(),
+    listContactOptions(),
+  ]);
+
+  if (
+    !typesRes.ok ||
+    !sourcesRes.ok ||
+    !groupsRes.ok ||
+    !contactRes.ok ||
+    !optionsRes.ok
+  ) {
+    const message = !contactRes.ok
+      ? contactRes.error.message
+      : !typesRes.ok
+        ? typesRes.error.message
+        : !sourcesRes.ok
+          ? sourcesRes.error.message
+          : !groupsRes.ok
+            ? groupsRes.error.message
+            : !optionsRes.ok
+              ? optionsRes.error.message
+              : "";
+    return (
+      <div style={{ padding: "40px 32px", color: "var(--ink-soft)" }}>
+        Could not load contact. {message}
+      </div>
+    );
+  }
+
+  if (!isNew && contactRes.data === null) notFound();
+
+  const groupId = contactRes.data?.groupId ?? null;
+  const membersRes = groupId ? await listGroupMembers(groupId) : null;
+  const groupMembers = membersRes && membersRes.ok ? membersRes.data : [];
+
+  // Exclude self from the related-contact picker to stop a contact pointing
+  // at itself.
+  const contactOptions = optionsRes.data.filter(
+    (o) => o.id !== contactRes.data?.id,
+  );
+
+  return (
+    <ContactDetail
+      contact={contactRes.data}
+      mode={isNew ? "new" : "edit"}
+      contactTypes={typesRes.data}
+      contactSources={sourcesRes.data}
+      groups={groupsRes.data}
+      groupMembers={groupMembers}
+      contactOptions={contactOptions}
+    />
+  );
+}

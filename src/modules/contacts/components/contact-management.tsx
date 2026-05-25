@@ -21,9 +21,9 @@ import {
   CONTACT_TIER_LABELS,
 } from "../types";
 import { birthdaysThisMonth, formatBirthday } from "../utils";
-import { createContact, updateContact, deleteContact } from "../actions";
-import { NewContactModal, EditContactModal } from "./contact-modal";
-import type { CreateContactInput, UpdateContactInput } from "../schemas";
+import { createContact, deleteContact } from "../actions";
+import { NewContactModal } from "./contact-modal";
+import type { CreateContactInput } from "../schemas";
 import { useToast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/dialog";
 
@@ -241,7 +241,6 @@ export function ContactManagement({
   const [searchTerm, setSearchTerm] = useState("");
   const [debounced, setDebounced] = useState("");
   const [newOpen, setNewOpen] = useState(false);
-  const [editContact, setEditContact] = useState<ContactRow | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
@@ -303,20 +302,6 @@ export function ContactManagement({
       if (res.ok) {
         // Newest first — the new contact goes to the top of the list.
         setContacts((prev) => [res.data, ...prev]);
-        router.refresh();
-      }
-      return res;
-    },
-    [router],
-  );
-
-  const handleUpdate = useCallback(
-    async (id: string, values: UpdateContactInput) => {
-      setError(null);
-      const res = await updateContact(id, values);
-      if (res.ok) {
-        // Keep the row where it is — order is by creation date, not name.
-        setContacts((prev) => prev.map((c) => (c.id === id ? res.data : c)));
         router.refresh();
       }
       return res;
@@ -808,7 +793,7 @@ export function ContactManagement({
                 }}
               >
                 <RowActionsMenu
-                  onEdit={() => setEditContact(c)}
+                  onEdit={() => router.push(`/contacts/${c.id}`)}
                   onDelete={() => handleDelete(c)}
                   canDelete={canDelete}
                   isDeleting={deletingId === c.id}
@@ -826,15 +811,6 @@ export function ContactManagement({
         contactSources={contactSources}
         groups={groups}
         onSave={handleCreate}
-      />
-      <EditContactModal
-        isOpen={editContact !== null}
-        onClose={() => setEditContact(null)}
-        contact={editContact}
-        contactTypes={contactTypes}
-        contactSources={contactSources}
-        groups={groups}
-        onSave={handleUpdate}
       />
     </div>
   );
