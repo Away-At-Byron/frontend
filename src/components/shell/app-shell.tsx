@@ -12,6 +12,8 @@ import { signOut } from "next-auth/react";
 import { Icon } from "@/components/ui/icon";
 import { Avatar, Button, IconButton } from "@/components/ui/primitives";
 import type { NavEntry } from "@/lib/modules";
+import navbarBg from "./assets/navbar-bg.png";
+import navbarBgBottom from "./assets/navbar-bg-bottom.png";
 
 const PROPERTIES = [
   { id: "all", name: "All properties", rooms: 9 },
@@ -86,7 +88,7 @@ export function AppShell({
           width: 260,
           flex: "0 0 260px",
           borderRight: "1px solid var(--line)",
-          backgroundImage: "url('/navbar-bg.png')",
+          backgroundImage: `url(${navbarBg.src})`,
           backgroundSize: "cover",
           backgroundPosition: "center top",
           backgroundRepeat: "no-repeat",
@@ -297,7 +299,7 @@ export function AppShell({
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundImage: "url('/navbar-bg-bottom.png')",
+              backgroundImage: `url(${navbarBgBottom.src})`,
               backgroundSize: "100% 100%",
               backgroundRepeat: "no-repeat",
               backgroundPosition: "bottom",
