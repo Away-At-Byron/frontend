@@ -58,8 +58,7 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const [property, setProperty] = useState(PROPERTIES[0]!);
-  const [propOpen, setPropOpen] = useState(false);
+  const property = PROPERTIES[0]!;
   const today = nav.filter((n) => n.group === "today");
   const secondary = nav.filter((n) => n.group === "manage");
   // Flatten one level deep so a submenu child can be the current route.
