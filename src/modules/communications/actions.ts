@@ -1,16 +1,27 @@
 "use server"
 
 import { and, eq } from "drizzle-orm"
-import { contactDocuments, contacts, conversations, messages, auditLog } from "@/db/schema"
+import {
+  contactDocuments,
+  contactEmails,
+  contacts,
+  conversations,
+  messages,
+  auditLog,
+} from "@/db/schema"
 import { db } from "@/db"
 import { auth } from "@/lib/auth"
 import { withTenant, withPermission } from "@/lib/rls"
 import { writeAudit } from "@/lib/audit"
 import { ok, err, type ActionResult } from "@/lib/result"
-import { headObjectInfo, MAX_FILE_BYTES } from "@/lib/storage"
+import { getObjectBytes, headObjectInfo, MAX_FILE_BYTES } from "@/lib/storage"
+import { sendEmail } from "@/lib/email"
+import { env } from "@/lib/env"
 import {
+  sendContactEmailSchema,
   sendMessageSchema,
   sendMessageAsContactSchema,
+  type SendContactEmailInput,
   type SendMessageAsContactInput,
   type SendMessageInput,
 } from "./schemas"
@@ -199,6 +210,230 @@ export async function sendMessage(
       })
     }),
   )
+}
+
+/**
+ * Staff sends an outbound marketing / one-off email from the Contact >
+ * Communication tab (Compose Email modal). v1 is one-way only — receiving
+ * + replies land later (see CommunicationTab comment). The flow:
+ *
+ *   1. Validate. Resolve `to` from the contact record server-side (the form
+ *      can't redirect the email).
+ *   2. HEAD any attachments to confirm they're in MinIO + size matches.
+ *   3. Insert the `contact_emails` row in "queued" state inside a tx, plus
+ *      one `contact_documents` row per attachment linked via `email_id`.
+ *   4. Outside the tx, pull attachment bytes from MinIO and hand to
+ *      `sendEmail`. Flip status to 'sent' on success or 'failed' on throw —
+ *      audit log captures both.
+ *
+ * The send itself is deliberately AFTER commit. If we sent inside the tx
+ * and the tx then rolled back we'd have an email out the door with no DB
+ * trace. The brief "queued" window is the trade-off.
+ */
+export async function sendContactEmail(
+  input: SendContactEmailInput,
+): Promise<ActionResult<{ id: string }>> {
+  const prepared = await withTenant(async (tx, ctx) =>
+    withPermission(MESSAGE_PERMISSIONS.send, ctx, async () => {
+      const parsed = sendContactEmailSchema.safeParse(input)
+      if (!parsed.success) {
+        return err(
+          "VALIDATION",
+          "Check the highlighted fields.",
+          parsed.error.flatten().fieldErrors,
+        )
+      }
+      const data = parsed.data
+
+      // Resolve recipient from the contact record — never trust client input
+      // for `to`. Marketing emails go to the address on file or nowhere.
+      const contactRows = await tx
+        .select({
+          id: contacts.id,
+          email: contacts.email,
+          firstName: contacts.firstName,
+          lastName: contacts.lastName,
+        })
+        .from(contacts)
+        .where(and(eq(contacts.id, data.contactId), eq(contacts.isDeleted, false)))
+        .limit(1)
+      const contact = contactRows[0]
+      if (!contact) return err("NOT_FOUND", "That contact no longer exists.")
+      if (!contact.email) {
+        return err(
+          "VALIDATION",
+          "This contact has no email address on file. Add one on the Profile tab first.",
+        )
+      }
+
+      // Defence in depth — attachment keys must live under the contact prefix.
+      const attachments = data.attachments ?? []
+      const expectedPrefix = `contacts/${data.contactId}/`
+      for (const a of attachments) {
+        if (!a.key.startsWith(expectedPrefix)) {
+          return err(
+            "VALIDATION",
+            "One or more attachments don't belong to this contact.",
+          )
+        }
+      }
+
+      if (attachments.length > 0) {
+        const heads = await Promise.all(
+          attachments.map((a) => headObjectInfo(a.key)),
+        )
+        for (let i = 0; i < attachments.length; i++) {
+          const head = heads[i]!
+          const a = attachments[i]!
+          if (!head.exists) {
+            return err(
+              "VALIDATION",
+              `Upload for "${a.fileName}" didn't complete. Try again.`,
+            )
+          }
+          if (
+            head.contentLength !== null &&
+            head.contentLength !== a.sizeBytes
+          ) {
+            return err(
+              "VALIDATION",
+              `"${a.fileName}" is a different size than expected.`,
+            )
+          }
+          if (
+            head.contentLength !== null &&
+            head.contentLength > MAX_FILE_BYTES
+          ) {
+            return err("VALIDATION", `"${a.fileName}" is over the size limit.`)
+          }
+        }
+      }
+
+      const toAddresses = [contact.email]
+      const ccAddresses = data.cc ?? []
+      const bccAddresses = data.bcc ?? []
+
+      const inserted = await tx
+        .insert(contactEmails)
+        .values({
+          contactId: data.contactId,
+          fromAddress: env.EMAIL_FROM,
+          toAddresses,
+          ccAddresses,
+          bccAddresses,
+          subject: data.subject,
+          bodyText: data.body,
+          status: "queued",
+          sentByUserId: ctx.userId,
+        })
+        .returning({ id: contactEmails.id })
+      const email = inserted[0]!
+
+      if (attachments.length > 0) {
+        await tx.insert(contactDocuments).values(
+          attachments.map((a) => ({
+            contactId: data.contactId,
+            type: "communication" as const,
+            title: a.fileName,
+            description: null,
+            fileKey: a.key,
+            fileName: a.fileName,
+            mimeType: a.mimeType,
+            sizeBytes: a.sizeBytes,
+            uploadedBy: ctx.userId,
+            emailId: email.id,
+          })),
+        )
+      }
+
+      return ok({
+        emailId: email.id,
+        userId: ctx.userId,
+        contactId: data.contactId,
+        subject: data.subject,
+        body: data.body,
+        to: toAddresses,
+        cc: ccAddresses,
+        bcc: bccAddresses,
+        attachments,
+      })
+    }),
+  )
+
+  if (!prepared.ok) return prepared
+
+  const p = prepared.data
+  try {
+    // Pull bytes for each attachment. Sequential keeps MinIO load + RAM bounded.
+    const mailAttachments = []
+    for (const a of p.attachments) {
+      const obj = await getObjectBytes(a.key)
+      mailAttachments.push({
+        filename: a.fileName,
+        content: obj.body,
+        contentType: a.mimeType,
+      })
+    }
+
+    await sendEmail({
+      to: p.to,
+      cc: p.cc.length ? p.cc : undefined,
+      bcc: p.bcc.length ? p.bcc : undefined,
+      subject: p.subject,
+      text: p.body,
+      attachments: mailAttachments.length ? mailAttachments : undefined,
+    })
+
+    const now = new Date()
+    await db
+      .update(contactEmails)
+      .set({ status: "sent", sentAt: now, updatedAt: now })
+      .where(eq(contactEmails.id, p.emailId))
+
+    await db.insert(auditLog).values({
+      userId: p.userId,
+      entityType: "contact_email",
+      entityId: p.emailId,
+      action: "create",
+      newValue: {
+        contactId: p.contactId,
+        subject: p.subject,
+        to: p.to,
+        cc: p.cc,
+        bcc: p.bcc,
+        attachmentCount: p.attachments.length,
+        status: "sent",
+      },
+    })
+
+    return ok({ id: p.emailId })
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    const now = new Date()
+    await db
+      .update(contactEmails)
+      .set({
+        status: "failed",
+        errorMessage: message.slice(0, 1000),
+        updatedAt: now,
+      })
+      .where(eq(contactEmails.id, p.emailId))
+
+    await db.insert(auditLog).values({
+      userId: p.userId,
+      entityType: "contact_email",
+      entityId: p.emailId,
+      action: "create",
+      newValue: {
+        contactId: p.contactId,
+        subject: p.subject,
+        status: "failed",
+        error: message,
+      },
+    })
+
+    return err("INTERNAL", "Couldn't send email. The send was logged as failed.")
+  }
 }
 
 /**

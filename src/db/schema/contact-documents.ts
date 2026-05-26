@@ -11,6 +11,7 @@ import {
 import { users } from "./auth"
 import { contacts } from "./contacts"
 import { messages } from "./communications"
+import { contactEmails } from "./contact-emails"
 
 /**
  * Document categories. Open list — extend the enum when a new category is
@@ -58,6 +59,14 @@ export const contactDocuments = pgTable(
     messageId: uuid("message_id").references(() => messages.id, {
       onDelete: "cascade",
     }),
+    /**
+     * Attachment link for `type='communication'` rows attached to an outbound
+     * email. Mirrors `message_id` for in-portal chat. Exactly one of
+     * (messageId, emailId) is populated on comms attachments.
+     */
+    emailId: uuid("email_id").references(() => contactEmails.id, {
+      onDelete: "cascade",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     isDeleted: boolean("is_deleted").notNull().default(false),
@@ -65,6 +74,7 @@ export const contactDocuments = pgTable(
   (t) => [
     index("contact_documents_contact_id_idx").on(t.contactId),
     index("contact_documents_message_id_idx").on(t.messageId),
+    index("contact_documents_email_id_idx").on(t.emailId),
   ],
 )
 

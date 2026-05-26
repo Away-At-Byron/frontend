@@ -23,6 +23,29 @@ export type MessageAttachment = {
   previewUrl: string | null
 }
 
+export const CONTACT_EMAIL_STATUSES = ["sent", "failed", "queued"] as const
+export type ContactEmailStatus = (typeof CONTACT_EMAIL_STATUSES)[number]
+
+/** Read-side row for the Emails quadrant on the Contact > Communication tab. */
+export type ContactEmailRow = {
+  id: string
+  contactId: string
+  fromAddress: string
+  toAddresses: string[]
+  ccAddresses: string[]
+  bccAddresses: string[]
+  subject: string
+  bodyText: string
+  status: ContactEmailStatus
+  errorMessage: string | null
+  sentAt: string | null
+  sentByUserId: string | null
+  /** Display name of the staff sender, joined at read time. Null if hard-deleted. */
+  sentByName: string | null
+  createdAt: string
+  attachmentCount: number
+}
+
 export type MessageRow = {
   id: string
   conversationId: string

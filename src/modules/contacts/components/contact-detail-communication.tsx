@@ -2,10 +2,12 @@
 
 /**
  * Communication tab — 4-quadrant layout ported from
- * `docs/design-reference/contact-details.jsx`. The In-portal messages
- * quadrant is wired to the real `messages`/`conversations` schema; Emails
- * and SMS still render mock data until those channels exist. The Notes &
- * Preferences quadrant is bound to the live form fields.
+ * `docs/design-reference/contact-details.jsx`. In-portal messages and Emails
+ * are wired to real data (messages/conversations schema and contact_emails
+ * respectively); Emails are outbound-only in v1 — reply / inbound threading
+ * lands once the rest of the build is complete (per CLAUDE.md scope notes).
+ * SMS stays on mock data until the Twilio integration lands (mandatory,
+ * scheduled late). Notes & Preferences are bound to the live form fields.
  */
 import {
   useEffect,
@@ -31,14 +33,16 @@ import {
 } from "@/modules/contact-documents/actions";
 import { sendMessage } from "@/modules/communications/actions";
 import type {
+  ContactEmailRow,
   MessageAttachment,
   MessageRow,
 } from "@/modules/communications/types";
+import { ComposeEmailModal } from "./compose-email-modal";
 import { DatePicker } from "./date-picker";
 import type { FormState, OnField, SetField } from "./contact-detail-form";
 import { Row, Textarea } from "./contact-detail-fields";
 
-// ─── Mock data (Emails + SMS quadrants — wire when those channels exist) ────
+// ─── Mock data (SMS quadrant — Twilio integration is scheduled late) ────
 
 type MockChatMessage = {
   who: "guest" | "staff";
@@ -47,51 +51,6 @@ type MockChatMessage = {
   author?: string;
   photos?: string[];
 };
-
-type EmailItem = {
-  kind: "auto" | "manual";
-  subject: string;
-  t: string;
-  dir: "in" | "out";
-  preview: string;
-  photos?: boolean;
-};
-
-const EMAILS: EmailItem[] = [
-  {
-    kind: "auto",
-    subject: "Step-by-step check-in instructions",
-    t: "20 Nov · 09:00",
-    dir: "out",
-    preview:
-      "Hi Liliana, here are step-by-step photos for tonight — the lockbox, the front gate, and how to use the wifi.",
-    photos: true,
-  },
-  {
-    kind: "manual",
-    subject: "Re: arrival",
-    t: "19 Nov · 14:42",
-    dir: "in",
-    preview:
-      "Confirming late check-in tonight, flight lands 10pm. Will text on the way.",
-  },
-  {
-    kind: "auto",
-    subject: "Pre-stay welcome",
-    t: "19 Nov · 09:00",
-    dir: "out",
-    preview:
-      "Looking forward to having you at Away. Booking confirmed for 22-25 Nov.",
-  },
-  {
-    kind: "auto",
-    subject: "Booking confirmation · R-5453",
-    t: "17 Nov · 19:02",
-    dir: "out",
-    preview:
-      "Your reservation is confirmed. Charges queued for 3 nights × A$280.",
-  },
-];
 
 const SMS_MESSAGES: MockChatMessage[] = [
   {
@@ -134,13 +93,19 @@ export function CommunicationTab({
   onField,
   setField,
   contactId,
+  contactName,
+  contactEmail,
   messages,
+  emails,
 }: {
   form: FormState;
   onField: OnField;
   setField: SetField;
   contactId: string | null;
+  contactName: string;
+  contactEmail: string | null;
   messages: MessageRow[];
+  emails: ContactEmailRow[];
 }) {
   const portalMeta = useMemo(() => {
     if (messages.length === 0) return "No messages yet";
@@ -148,6 +113,23 @@ export function CommunicationTab({
     const when = formatBubbleTime(last.createdAt);
     return `${messages.length} ${messages.length === 1 ? "message" : "messages"} · last ${when}`;
   }, [messages]);
+
+  const [emailFilter, setEmailFilter] = useState<"all" | "sent" | "failed">(
+    "all",
+  );
+  const [composeOpen, setComposeOpen] = useState(false);
+  const visibleEmails = useMemo(() => {
+    if (emailFilter === "all") return emails;
+    return emails.filter((e) => e.status === emailFilter);
+  }, [emails, emailFilter]);
+  const sentCount = useMemo(
+    () => emails.filter((e) => e.status === "sent").length,
+    [emails],
+  );
+  const failedCount = useMemo(
+    () => emails.filter((e) => e.status === "failed").length,
+    [emails],
+  );
 
   return (
     <div
@@ -175,35 +157,72 @@ export function CommunicationTab({
         iconBg="rgba(232,183,158,.42)"
         iconFg="var(--terra-deep)"
         title="Emails"
-        sub="Automated notifications & manual emails"
+        sub="Outbound only · reply threading coming later"
         right={
           <div style={{ display: "flex", gap: 6 }}>
-            <MiniFilter on count={EMAILS.length}>
+            <MiniFilter
+              on={emailFilter === "all"}
+              count={emails.length}
+              onClick={() => setEmailFilter("all")}
+            >
               All
             </MiniFilter>
-            <MiniFilter count={EMAILS.filter((e) => e.kind === "auto").length}>
-              Auto
+            <MiniFilter
+              on={emailFilter === "sent"}
+              count={sentCount}
+              onClick={() => setEmailFilter("sent")}
+            >
+              Sent
             </MiniFilter>
             <MiniFilter
-              count={EMAILS.filter((e) => e.kind === "manual").length}
+              on={emailFilter === "failed"}
+              count={failedCount}
+              onClick={() => setEmailFilter("failed")}
             >
-              Manual
+              Failed
             </MiniFilter>
           </div>
         }
         footer={
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <span
+              className="mono"
+              style={{ fontSize: 10, color: "var(--ink-faint)" }}
+            >
+              {contactEmail
+                ? `To ${contactEmail}`
+                : "No email on file — add one on Profile"}
+            </span>
             <Button
               variant="primary"
               iconRight={<Icon name="ArrowRight" size={14} />}
+              onClick={() => setComposeOpen(true)}
+              disabled={!contactId || !contactEmail}
             >
               Compose email
             </Button>
           </div>
         }
       >
-        <EmailList emails={EMAILS} />
+        <EmailList emails={visibleEmails} contactId={contactId} />
       </Quadrant>
+
+      {contactId && (
+        <ComposeEmailModal
+          isOpen={composeOpen}
+          onClose={() => setComposeOpen(false)}
+          contactId={contactId}
+          contactName={contactName}
+          contactEmail={contactEmail}
+        />
+      )}
 
       <Quadrant
         icon="Bell"
@@ -912,7 +931,31 @@ function ChatBubble({ m }: { m: MockChatMessage }) {
 
 // ─── Email list ──────────────────────────────────────────────
 
-function EmailList({ emails }: { emails: EmailItem[] }) {
+function EmailList({
+  emails,
+  contactId,
+}: {
+  emails: ContactEmailRow[];
+  contactId: string | null;
+}) {
+  if (emails.length === 0) {
+    return (
+      <div
+        style={{
+          padding: "40px 22px",
+          textAlign: "center",
+          color: "var(--ink-faint)",
+          fontFamily: "var(--font-display), serif",
+          fontStyle: "italic",
+          fontSize: 16,
+        }}
+      >
+        {contactId
+          ? "No emails sent yet. Use Compose email below."
+          : "Save the contact first, then send an email."}
+      </div>
+    );
+  }
   return (
     <div
       style={{
@@ -922,66 +965,111 @@ function EmailList({ emails }: { emails: EmailItem[] }) {
         gap: 8,
       }}
     >
-      {emails.map((e, i) => (
-        <div
-          key={i}
-          style={{
-            padding: "12px 14px",
-            borderRadius: "var(--r-2)",
-            background: "var(--paper)",
-            border: "1px solid var(--line-soft)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 5,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Pill tone={e.kind === "auto" ? "info" : "neutral"} size="sm">
-              {e.kind === "auto" ? "Automated" : "Manual"}
-            </Pill>
-            <Pill tone={e.dir === "out" ? "paper" : "ok"} size="sm">
-              {e.dir === "out" ? "Sent" : "Received"}
-            </Pill>
-            {e.photos && (
-              <Pill tone="paper" size="sm">
-                Photos
+      {emails.map((e) => {
+        const tone =
+          e.status === "sent"
+            ? "ok"
+            : e.status === "failed"
+              ? "bad"
+              : "neutral";
+        return (
+          <div
+            key={e.id}
+            style={{
+              padding: "12px 14px",
+              borderRadius: "var(--r-2)",
+              background: "var(--paper)",
+              border: "1px solid var(--line-soft)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 5,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Pill tone={tone} size="sm">
+                {e.status === "sent"
+                  ? "Sent"
+                  : e.status === "failed"
+                    ? "Failed"
+                    : "Queued"}
               </Pill>
-            )}
-            <span
-              className="mono"
+              {e.attachmentCount > 0 && (
+                <Pill tone="paper" size="sm">
+                  {e.attachmentCount}{" "}
+                  {e.attachmentCount === 1 ? "file" : "files"}
+                </Pill>
+              )}
+              {e.sentByName && (
+                <span
+                  className="mono"
+                  style={{ fontSize: 10, color: "var(--ink-faint)" }}
+                >
+                  by {e.sentByName}
+                </span>
+              )}
+              <span
+                className="mono"
+                style={{
+                  fontSize: 10,
+                  color: "var(--ink-faint)",
+                  marginLeft: "auto",
+                }}
+              >
+                {formatBubbleTime(e.sentAt ?? e.createdAt)}
+              </span>
+            </div>
+            <div
               style={{
-                fontSize: 10,
-                color: "var(--ink-faint)",
-                marginLeft: "auto",
+                fontFamily: "var(--font-display), serif",
+                fontSize: 14.5,
+                fontWeight: 400,
               }}
             >
-              {e.t}
-            </span>
+              {e.subject}
+            </div>
+            <div
+              style={{
+                fontSize: 12,
+                color: "var(--ink-soft)",
+                lineHeight: 1.45,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {e.bodyText}
+            </div>
+            {e.status === "failed" && e.errorMessage && (
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "var(--bad-fg, var(--terra-deep))",
+                  marginTop: 2,
+                }}
+              >
+                {e.errorMessage}
+              </div>
+            )}
+            {(e.ccAddresses.length > 0 || e.bccAddresses.length > 0) && (
+              <div
+                className="mono"
+                style={{
+                  fontSize: 10,
+                  color: "var(--ink-faint)",
+                  marginTop: 2,
+                }}
+              >
+                {e.ccAddresses.length > 0 && `cc ${e.ccAddresses.join(", ")}`}
+                {e.ccAddresses.length > 0 && e.bccAddresses.length > 0 && " · "}
+                {e.bccAddresses.length > 0 &&
+                  `bcc ${e.bccAddresses.join(", ")}`}
+              </div>
+            )}
           </div>
-          <div
-            style={{
-              fontFamily: "var(--font-display), serif",
-              fontSize: 14.5,
-              fontWeight: 400,
-            }}
-          >
-            {e.subject}
-          </div>
-          <div
-            style={{
-              fontSize: 12,
-              color: "var(--ink-soft)",
-              lineHeight: 1.45,
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
-          >
-            {e.preview}
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -1176,35 +1264,45 @@ function MiniFilter({
   on,
   count,
   children,
+  onClick,
 }: {
   on?: boolean;
   count?: number;
   children: ReactNode;
+  onClick?: () => void;
 }) {
-  return (
-    <span
-      style={{
-        height: 24,
-        padding: "0 10px",
-        borderRadius: "var(--r-pill)",
-        background: on ? "var(--ink)" : "transparent",
-        color: on ? "var(--linen)" : "var(--ink)",
-        border: on ? "none" : "1px solid var(--line-strong)",
-        fontFamily: "var(--font-sans), sans-serif",
-        fontSize: 9.5,
-        fontWeight: 600,
-        letterSpacing: "var(--tracked)",
-        textTransform: "uppercase",
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 5,
-        whiteSpace: "nowrap",
-      }}
-    >
+  const style: React.CSSProperties = {
+    height: 24,
+    padding: "0 10px",
+    borderRadius: "var(--r-pill)",
+    background: on ? "var(--ink)" : "transparent",
+    color: on ? "var(--linen)" : "var(--ink)",
+    border: on ? "none" : "1px solid var(--line-strong)",
+    fontFamily: "var(--font-sans), sans-serif",
+    fontSize: 9.5,
+    fontWeight: 600,
+    letterSpacing: "var(--tracked)",
+    textTransform: "uppercase",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 5,
+    whiteSpace: "nowrap",
+    cursor: onClick ? "pointer" : "default",
+  };
+  const inner = (
+    <>
       {children}
       {count != null && (
         <span style={{ opacity: on ? 0.7 : 0.5 }}>· {count}</span>
       )}
-    </span>
+    </>
   );
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} style={style}>
+        {inner}
+      </button>
+    );
+  }
+  return <span style={style}>{inner}</span>;
 }

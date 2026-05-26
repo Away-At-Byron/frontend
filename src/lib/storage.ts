@@ -157,3 +157,28 @@ export async function deleteObject(key: string): Promise<void> {
     new DeleteObjectCommand({ Bucket: env.S3_BUCKET, Key: key }),
   )
 }
+
+/**
+ * Read an object into memory. Use sparingly — the file size cap (MAX_FILE_BYTES)
+ * bounds the buffer, but a batch of large emails will pin RAM. Today only the
+ * outbound email composer uses it, to inline attachments for nodemailer.
+ */
+export async function getObjectBytes(
+  key: string,
+): Promise<{ body: Buffer; contentType: string | null }> {
+  const res = await client().send(
+    new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: key }),
+  )
+  const body = res.Body
+  if (!body) throw new Error(`Empty body for ${key}`)
+  const chunks: Buffer[] = []
+  // S3 SDK in Node returns a Readable; iterate as Buffers.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for await (const chunk of body as any) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  }
+  return {
+    body: Buffer.concat(chunks),
+    contentType: res.ContentType ?? null,
+  }
+}

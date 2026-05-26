@@ -17,6 +17,7 @@ import {
 import { listContactDocuments } from "@/modules/contact-documents/queries";
 import {
   getConversationByContact,
+  listContactEmails,
   listMessages,
 } from "@/modules/communications/queries";
 import { presignDownload } from "@/lib/storage";
@@ -98,6 +99,11 @@ export default async function ContactDetailPage({
   const messagesRes = conversation ? await listMessages(conversation.id) : null;
   const messages = messagesRes && messagesRes.ok ? messagesRes.data : [];
 
+  // Outbound email log. Same fail-soft pattern — a missing emails list won't
+  // blank the page; the quadrant just renders empty.
+  const emailsRes = isNew ? null : await listContactEmails(contactRes.data!.id);
+  const emails = emailsRes && emailsRes.ok ? emailsRes.data : [];
+
   // Exclude self from the related-contact picker to stop a contact pointing
   // at itself.
   const contactOptions = optionsRes.data.filter(
@@ -115,6 +121,7 @@ export default async function ContactDetailPage({
       contactOptions={contactOptions}
       documents={documents}
       messages={messages}
+      emails={emails}
     />
   );
 }

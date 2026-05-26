@@ -14,7 +14,10 @@ import {
 } from "../types";
 import type { ContactOption, GroupMember } from "../queries";
 import type { ContactDocumentWithPreview } from "@/modules/contact-documents/types";
-import type { MessageRow } from "@/modules/communications/types";
+import type {
+  ContactEmailRow,
+  MessageRow,
+} from "@/modules/communications/types";
 import { createContact, updateContact } from "../actions";
 import {
   initialForm,
@@ -45,6 +48,7 @@ export function ContactDetail({
   contactOptions,
   documents,
   messages,
+  emails,
 }: {
   contact: ContactRow | null;
   mode: "new" | "edit";
@@ -55,6 +59,7 @@ export function ContactDetail({
   contactOptions: ContactOption[];
   documents: ContactDocumentWithPreview[];
   messages: MessageRow[];
+  emails: ContactEmailRow[];
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -268,7 +273,12 @@ export function ContactDetail({
           onField={handleField}
           setField={setField}
           contactId={contact?.id ?? null}
+          contactName={
+            `${form.firstName} ${form.lastName}`.trim() || "this contact"
+          }
+          contactEmail={contact?.email || form.email.trim() || null}
           messages={messages}
+          emails={emails}
         />
       )}
       {tab === "documents" && (
