@@ -39,7 +39,7 @@ type TierFilter = "all" | ContactTier;
 type ContactTypeFilter = "all" | string;
 
 // Client# · Name · Email · Phone · Stays · Tier · Birthday · Last stay · Action
-const GRID = "110px 1.9fr 1.5fr 1fr 64px 0.9fr 1fr 1fr 60px";
+const GRID = "110px 1.9fr 1.5fr 1fr 64px 0.9fr 1fr 1fr 100px";
 
 // Stable pseudo-random avatar tint per contact — the same hashed-id scheme
 // the Users table uses, so a contact keeps one colour across renders.
@@ -695,8 +695,33 @@ export function ContactManagement({
                 style={{
                   display: "flex",
                   justifyContent: "flex-end",
+                  alignItems: "center",
+                  gap: 6,
                 }}
               >
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.push(`/contacts/guest-history?guest=${c.id}`)
+                  }
+                  title="View guest history"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "6px 10px",
+                    borderRadius: "var(--r-pill)",
+                    border: "1px solid var(--line)",
+                    background: "var(--paper)",
+                    color: "var(--ink)",
+                    font: "inherit",
+                    fontSize: 11.5,
+                    cursor: "pointer",
+                  }}
+                >
+                  <Icon name="ArrowRight" size={12} />
+                  View
+                </button>
                 <RowActionsMenu
                   onEdit={() => router.push(`/contacts/${c.id}`)}
                   onDelete={() => handleDelete(c)}

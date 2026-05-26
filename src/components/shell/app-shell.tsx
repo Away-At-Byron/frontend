@@ -31,7 +31,7 @@ const HIDE_PROPERTY_ROUTES = ["/users", "/settings/contact-types"];
 
 // Routes whose page renders its own <h1>, so the topbar title would just
 // duplicate it - hide the topbar title (date and controls stay) on these.
-const HIDE_TITLE_ROUTES = ["/users", "/contacts"];
+const HIDE_TITLE_ROUTES = ["/users", "/contacts", "/contacts/guest-history"];
 
 const PORTAL_LABELS: Record<string, string> = {
   admin: "Admin Portal",

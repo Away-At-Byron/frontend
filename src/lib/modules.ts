@@ -153,6 +153,13 @@ export const NAV_ENTRIES: NavEntry[] = [
         group: "today",
         module: "contacts",
       },
+      {
+        href: "/contacts/guest-history",
+        label: "Guest history",
+        icon: "User",
+        group: "today",
+        module: "contacts",
+      },
     ],
   },
   {
