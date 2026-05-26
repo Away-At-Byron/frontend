@@ -90,6 +90,8 @@ export function ContactFormFields({
   contactTypes,
   contactSources,
   groups,
+  showIdentity = true,
+  showBookingProfile = true,
 }: {
   register: UseFormRegister<CreateContactInput>;
   control: Control<CreateContactInput>;
@@ -98,6 +100,8 @@ export function ContactFormFields({
   contactTypes: ContactTypeOption[];
   contactSources: ContactSourceOption[];
   groups: GroupOption[];
+  showIdentity?: boolean;
+  showBookingProfile?: boolean;
 }) {
   const country = useWatch({ control, name: "addressCountry" });
   const isAustralia = country === "AU";
@@ -258,118 +262,137 @@ export function ContactFormFields({
         />
       </div>
 
-      <SectionLabel>Identity (guests only)</SectionLabel>
-      <TwoCol>
-        <Field label="ID type" error={errors.idType?.message}>
-          <select
-            {...register("idType")}
-            style={{ ...inputStyle, width: "100%" }}
-          >
-            <option value="">—</option>
-            {CONTACT_ID_TYPES.map((v) => (
-              <option key={v} value={v}>
-                {CONTACT_ID_TYPE_LABELS[v]}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="ID country" error={errors.idCountry?.message}>
-          <Controller
-            control={control}
-            name="idCountry"
-            render={({ field }) => (
-              <SearchSelect
-                value={field.value ?? ""}
-                onChange={field.onChange}
-                options={COUNTRY_OPTIONS}
-                placeholder="Select country"
-                clearLabel="Clear country"
-                emptyLabel="No matching country"
+      {showIdentity && (
+        <>
+          <SectionLabel>Identity (guests only)</SectionLabel>
+          <TwoCol>
+            <Field label="ID type" error={errors.idType?.message}>
+              <select
+                {...register("idType")}
+                style={{ ...inputStyle, width: "100%" }}
+              >
+                <option value="">—</option>
+                {CONTACT_ID_TYPES.map((v) => (
+                  <option key={v} value={v}>
+                    {CONTACT_ID_TYPE_LABELS[v]}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="ID country" error={errors.idCountry?.message}>
+              <Controller
+                control={control}
+                name="idCountry"
+                render={({ field }) => (
+                  <SearchSelect
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    options={COUNTRY_OPTIONS}
+                    placeholder="Select country"
+                    clearLabel="Clear country"
+                    emptyLabel="No matching country"
+                  />
+                )}
               />
-            )}
-          />
-        </Field>
-      </TwoCol>
-      <Field label="ID number" error={errors.idNumber?.message}>
-        <input {...register("idNumber")} style={inputStyle} />
-      </Field>
-      <TwoCol>
-        <Field
-          label="ID verification date"
-          error={errors.idVerificationDate?.message}
-        >
-          <input
-            {...register("idVerificationDate")}
-            type="date"
-            style={inputStyle}
-          />
-        </Field>
-        <div
-          style={{ display: "flex", alignItems: "flex-end", paddingBottom: 8 }}
-        >
-          <Check register={register} field="idVerified" label="ID verified" />
-        </div>
-      </TwoCol>
+            </Field>
+          </TwoCol>
+          <Field label="ID number" error={errors.idNumber?.message}>
+            <input {...register("idNumber")} style={inputStyle} />
+          </Field>
+          <TwoCol>
+            <Field
+              label="ID verification date"
+              error={errors.idVerificationDate?.message}
+            >
+              <input
+                {...register("idVerificationDate")}
+                type="date"
+                style={inputStyle}
+              />
+            </Field>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-end",
+                paddingBottom: 8,
+              }}
+            >
+              <Check
+                register={register}
+                field="idVerified"
+                label="ID verified"
+              />
+            </div>
+          </TwoCol>
+        </>
+      )}
 
-      <SectionLabel>Booking profile</SectionLabel>
-      <TwoCol>
-        <Field
-          label="First booking date"
-          error={errors.firstBookingDate?.message}
-        >
-          <input
-            {...register("firstBookingDate")}
-            type="date"
-            style={inputStyle}
-          />
-        </Field>
-        <Field
-          label="Last contact date"
-          error={errors.lastContactDate?.message}
-        >
-          <input
-            {...register("lastContactDate")}
-            type="date"
-            style={inputStyle}
-          />
-        </Field>
-      </TwoCol>
-      <Field
-        label="Preferred booking channel"
-        error={errors.preferredBookingChannel?.message}
-      >
-        <input {...register("preferredBookingChannel")} style={inputStyle} />
-      </Field>
-      <Field
-        label="Special requests / preferences"
-        error={errors.specialRequests?.message}
-      >
-        <textarea
-          {...register("specialRequests")}
-          rows={2}
-          style={{
-            ...inputStyle,
-            height: "auto",
-            padding: "10px 12px",
-            resize: "vertical",
-          }}
-        />
-      </Field>
-      <Field
-        label="Accessibility requirements"
-        error={errors.accessibilityRequirements?.message}
-      >
-        <textarea
-          {...register("accessibilityRequirements")}
-          rows={2}
-          style={{
-            ...inputStyle,
-            height: "auto",
-            padding: "10px 12px",
-            resize: "vertical",
-          }}
-        />
-      </Field>
+      {showBookingProfile && (
+        <>
+          <SectionLabel>Booking profile</SectionLabel>
+          <TwoCol>
+            <Field
+              label="First booking date"
+              error={errors.firstBookingDate?.message}
+            >
+              <input
+                {...register("firstBookingDate")}
+                type="date"
+                style={inputStyle}
+              />
+            </Field>
+            <Field
+              label="Last contact date"
+              error={errors.lastContactDate?.message}
+            >
+              <input
+                {...register("lastContactDate")}
+                type="date"
+                style={inputStyle}
+              />
+            </Field>
+          </TwoCol>
+          <Field
+            label="Preferred booking channel"
+            error={errors.preferredBookingChannel?.message}
+          >
+            <input
+              {...register("preferredBookingChannel")}
+              style={inputStyle}
+            />
+          </Field>
+          <Field
+            label="Special requests / preferences"
+            error={errors.specialRequests?.message}
+          >
+            <textarea
+              {...register("specialRequests")}
+              rows={2}
+              style={{
+                ...inputStyle,
+                height: "auto",
+                padding: "10px 12px",
+                resize: "vertical",
+              }}
+            />
+          </Field>
+          <Field
+            label="Accessibility requirements"
+            error={errors.accessibilityRequirements?.message}
+          >
+            <textarea
+              {...register("accessibilityRequirements")}
+              rows={2}
+              style={{
+                ...inputStyle,
+                height: "auto",
+                padding: "10px 12px",
+                resize: "vertical",
+              }}
+            />
+          </Field>
+        </>
+      )}
 
       <SectionLabel>Address</SectionLabel>
       <Field label="Street" error={errors.addressStreet?.message}>

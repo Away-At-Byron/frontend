@@ -128,7 +128,7 @@ export function NewContactModal({
               {errors.root.message}
             </div>
           )}
-          <ContactFormFields register={register} control={control} errors={errors} setValue={setValue} contactTypes={contactTypes} contactSources={contactSources} groups={groups} />
+          <ContactFormFields register={register} control={control} errors={errors} setValue={setValue} contactTypes={contactTypes} contactSources={contactSources} groups={groups} showIdentity={false} showBookingProfile={false} />
         </div>
         <div style={{ padding: "14px 24px 22px", display: "flex", justifyContent: "flex-end", gap: 10, borderTop: "1px solid var(--line-soft)" }}>
           <Button variant="ghost" type="button" onClick={close} disabled={isSubmitting}>

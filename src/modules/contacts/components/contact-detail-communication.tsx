@@ -145,9 +145,7 @@ export function CommunicationTab({
         iconFg="var(--teal-ink)"
         title="In-portal messages"
         sub="In-app thread between guest & staff"
-        footer={
-          <PortalComposer contactId={contactId} meta={portalMeta} />
-        }
+        footer={<PortalComposer contactId={contactId} meta={portalMeta} />}
       >
         <PortalThread messages={messages} contactId={contactId} />
       </Quadrant>
@@ -196,9 +194,7 @@ export function CommunicationTab({
               className="mono"
               style={{ fontSize: 10, color: "var(--ink-faint)" }}
             >
-              {contactEmail
-                ? `To ${contactEmail}`
-                : "No email on file — add one on Profile"}
+              {contactEmail ? `To ${contactEmail}` : "No email on Profile"}
             </span>
             <Button
               variant="primary"
@@ -425,7 +421,9 @@ function AttachmentStrip({
   );
 
   return (
-    <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+    <div
+      style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}
+    >
       {images.length > 0 && (
         <div
           style={{
@@ -509,7 +507,9 @@ function FileChip({
         padding: "6px 10px",
         borderRadius: "var(--r-1)",
         background: me ? "rgba(255,255,255,0.10)" : "var(--shell)",
-        border: me ? "1px solid rgba(255,255,255,0.15)" : "1px solid var(--line-soft)",
+        border: me
+          ? "1px solid rgba(255,255,255,0.15)"
+          : "1px solid var(--line-soft)",
         color: "inherit",
         font: "inherit",
         fontSize: 11.5,
@@ -876,7 +876,7 @@ function ChatBubble({ m }: { m: MockChatMessage }) {
           marginRight: me ? 10 : 0,
         }}
       >
-        {me ? m.author ?? "Staff" : "Guest"} · {m.t}
+        {me ? (m.author ?? "Staff") : "Guest"} · {m.t}
       </div>
       <div
         style={{
