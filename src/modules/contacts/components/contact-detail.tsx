@@ -13,6 +13,7 @@ import {
   type GroupOption,
 } from "../types";
 import type { ContactOption, GroupMember } from "../queries";
+import type { ContactDocumentWithPreview } from "@/modules/contact-documents/types";
 import { createContact, updateContact } from "../actions";
 import {
   initialForm,
@@ -41,6 +42,7 @@ export function ContactDetail({
   groups,
   groupMembers,
   contactOptions,
+  documents,
 }: {
   contact: ContactRow | null;
   mode: "new" | "edit";
@@ -49,6 +51,7 @@ export function ContactDetail({
   groups: GroupOption[];
   groupMembers: GroupMember[];
   contactOptions: ContactOption[];
+  documents: ContactDocumentWithPreview[];
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -268,6 +271,8 @@ export function ContactDetail({
           form={form}
           onField={handleField}
           setField={setField}
+          contactId={contact?.id ?? null}
+          documents={documents}
         />
       )}
     </div>

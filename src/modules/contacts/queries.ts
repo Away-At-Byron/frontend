@@ -211,6 +211,8 @@ export async function listGroups(): Promise<ActionResult<GroupRow[]>> {
           id: groups.id,
           groupName: groups.groupName,
           relationships: groups.relationships,
+          reason: groups.reason,
+          groupAge: groups.groupAge,
           companyName: groups.companyName,
           corporateAccountId: groups.corporateAccountId,
           travelAgentId: groups.travelAgentId,

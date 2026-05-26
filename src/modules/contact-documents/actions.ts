@@ -10,6 +10,7 @@ import {
   deleteObject,
   headObjectInfo,
   MAX_FILE_BYTES,
+  presignDownload,
   presignUpload,
   type PresignedUpload,
 } from "@/lib/storage"
@@ -296,6 +297,35 @@ export async function deleteContactDocument(
  * the byte itself must be gone, not just hidden from the UI. Audit is written
  * before the row goes so the trail survives.
  */
+/**
+ * Issues a short-lived presigned GET URL for the row. Server-action wrapper
+ * around the read-side query so client components (which can't import
+ * `server-only` modules) can refresh image previews when a URL expires.
+ */
+export async function getContactDocumentDownloadUrlAction(
+  id: string,
+): Promise<ActionResult<{ url: string; fileName: string | null }>> {
+  return withTenant(async (tx, ctx) =>
+    withPermission(CONTACT_DOCUMENT_PERMISSIONS.read, ctx, async () => {
+      const rows = await tx
+        .select({
+          fileKey: contactDocuments.fileKey,
+          fileName: contactDocuments.fileName,
+        })
+        .from(contactDocuments)
+        .where(
+          and(eq(contactDocuments.id, id), eq(contactDocuments.isDeleted, false)),
+        )
+        .limit(1)
+      const r = rows[0]
+      if (!r) return err("NOT_FOUND", "That document no longer exists.")
+      if (!r.fileKey) return err("NOT_FOUND", "This entry has no file attached.")
+      const url = await presignDownload(r.fileKey)
+      return ok({ url, fileName: r.fileName })
+    }),
+  )
+}
+
 export async function deleteContactDocumentHard(
   id: string,
 ): Promise<ActionResult<{ id: string }>> {

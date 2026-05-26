@@ -11,9 +11,17 @@ ALTER TYPE "public"."contact_id_type" ADD VALUE IF NOT EXISTS 'other';--> statem
 ALTER TABLE "groups" ADD COLUMN IF NOT EXISTS "reason" text;--> statement-breakpoint
 ALTER TABLE "groups" ADD COLUMN IF NOT EXISTS "group_age" text;--> statement-breakpoint
 
--- contact_documents: files and communication records per contact.
+-- contact_documents: files and communication records per contact. Subtype
+-- (e.g. "passport" under id_photo, "payment_receipt" under booking_documents)
+-- is encoded in `description` for now; promote to a dedicated column if/when
+-- queries need to filter by it.
 DO $$ BEGIN
-  CREATE TYPE "public"."contact_document_type" AS ENUM('other_documents', 'communication');
+  CREATE TYPE "public"."contact_document_type" AS ENUM(
+    'id_photo',
+    'booking_documents',
+    'other_documents',
+    'communication'
+  );
 EXCEPTION
   WHEN duplicate_object THEN null;
 END $$;--> statement-breakpoint

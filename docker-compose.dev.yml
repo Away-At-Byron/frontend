@@ -32,6 +32,26 @@ services:
       - "9001:9001"
     volumes:
       - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # One-shot: creates the app bucket on first `bun db:up` and exits. Idempotent —
+  # safe to rerun. Keep the bucket name in lockstep with S3_BUCKET in .env.
+  minio-init:
+    image: minio/mc:latest
+    container_name: aab-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 aab aab_local_dev_only &&
+      mc mb local/aab-dev --ignore-existing
+      "
+    restart: "no"
 
 volumes:
   postgres_data:

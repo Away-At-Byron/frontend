@@ -14,8 +14,14 @@ import { contacts } from "./contacts"
 /**
  * Document categories. Open list — extend the enum when a new category is
  * needed. Stored as a Postgres enum so bad values fail at the DB.
+ *
+ * Subtype (e.g. "passport" for id_photo, "payment_receipt" for
+ * booking_documents) is encoded in the `description` column. Promote to a
+ * dedicated column if filtering by subtype becomes a real query.
  */
 export const contactDocumentTypeEnum = pgEnum("contact_document_type", [
+  "id_photo",
+  "booking_documents",
   "other_documents",
   "communication",
 ])
