@@ -1,16 +1,14 @@
 "use client";
 
 /**
- * Documents tab — Identity card (ID photo + ID fields), plus the booking and
- * other-document lists. Only the Identity card's upload flow is wired so far;
- * the booking/other lists still render mock rows until their server actions
- * land.
+ * Documents tab — Identity card (ID photo), Booking documents (real upload),
+ * and Other documents (still mock until its own task lands).
  *
- * Upload flow (Identity ID photo, images only):
+ * Upload flow (used by Identity + Booking):
  *   1. presignContactDocumentUploads → presigned PUT URL
  *   2. PUT the file directly to MinIO (bypasses Next's 2 MB action body cap)
  *   3. confirmContactDocumentUploads → writes the contact_documents row
- *   4. router.refresh() so the new photo appears in the slot
+ *   4. router.refresh() so the new row appears in the list
  */
 import {
   useEffect,
@@ -19,20 +17,28 @@ import {
   type ChangeEvent,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Button, Card, IconButton, Pill } from "@/components/ui/primitives";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/dialog";
 import {
   ALLOWED_MIME_TYPES,
+  MAX_BULK_FILES,
   MAX_FILE_BYTES,
   isAllowedMimeType,
 } from "@/lib/upload-limits";
 import {
   confirmContactDocumentUploads,
+  deleteContactDocument,
+  getContactDocumentDownloadUrlAction,
   presignContactDocumentUploads,
 } from "@/modules/contact-documents/actions";
-import type { ContactDocumentWithPreview } from "@/modules/contact-documents/types";
+import type {
+  ContactDocumentType,
+  ContactDocumentWithPreview,
+} from "@/modules/contact-documents/types";
 import { CONTACT_ID_TYPE_LABELS, type ContactIdType } from "../types";
 import { DatePicker } from "./date-picker";
 import { SearchSelect } from "./search-select";
@@ -45,29 +51,13 @@ import {
   YES_NO_OPTIONS,
 } from "./contact-detail-fields";
 
-// Mock document lists — wiring the booking/other lists to real uploads lands
-// in a follow-up. Identity is wired first per the task brief.
+// "Other documents" still renders mock rows pending its own wiring task.
 type DocItem = {
   name: string;
   size: string;
   when: string;
   type: string;
 };
-
-const BOOKING_DOCS: DocItem[] = [
-  {
-    name: "Booking confirmation R-5453.pdf",
-    size: "82 KB",
-    when: "17 Nov 2026",
-    type: "Booking",
-  },
-  {
-    name: "Payment receipt R-5311.pdf",
-    size: "62 KB",
-    when: "14 Jun 2025",
-    type: "Receipt",
-  },
-];
 
 const OTHER_DOCS: DocItem[] = [
   {
@@ -102,6 +92,8 @@ export function DocumentsTab({
   );
   const latestIdPhoto = idPhotos[0] ?? null;
 
+  const bookingDocs = documents.filter((d) => d.type === "booking_documents");
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <IdentityCard
@@ -111,10 +103,13 @@ export function DocumentsTab({
         contactId={contactId}
         latestIdPhoto={latestIdPhoto}
       />
-      <DocList
+      <DocumentsCard
         title="Booking documents"
-        docs={BOOKING_DOCS}
         addLabel="Add booking doc"
+        dialogTitle="Add booking document"
+        docType="booking_documents"
+        contactId={contactId}
+        documents={bookingDocs}
       />
       <DocList
         title="Other documents"
@@ -598,7 +593,632 @@ function ImageLightbox({
   );
 }
 
-// ─── Document list ────────────────────────────────────────────
+// ─── Wired document card (booking docs, and other wired sections) ────
+
+/**
+ * Real document section backed by `contact_documents` rows. Renders the list
+ * for a single `docType` and opens `UploadDocumentDialog` for the multi-file
+ * upload flow. Subtype is free text and persisted into `description` per the
+ * subtype-in-description convention (see contact-documents schema).
+ */
+function DocumentsCard({
+  title,
+  addLabel,
+  dialogTitle,
+  docType,
+  contactId,
+  documents,
+}: {
+  title: string;
+  addLabel: string;
+  dialogTitle: string;
+  docType: ContactDocumentType;
+  contactId: string | null;
+  documents: ContactDocumentWithPreview[];
+}) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const canUpload = contactId !== null;
+
+  return (
+    <Card pad={0}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "18px 22px",
+          borderBottom: "1px solid var(--line-soft)",
+        }}
+      >
+        <Icon name="Sparkline" size={16} />
+        <div
+          style={{
+            flex: 1,
+            fontFamily: "var(--font-display), serif",
+            fontWeight: 400,
+            fontSize: 17,
+            letterSpacing: "var(--tight)",
+          }}
+        >
+          {title}
+        </div>
+        <span
+          title={
+            canUpload
+              ? `Upload one or more ${title.toLowerCase()}`
+              : "Save the contact first, then attach a document"
+          }
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<Icon name="Plus" size={13} />}
+            disabled={!canUpload}
+            onClick={() => setDialogOpen(true)}
+          >
+            {addLabel}
+          </Button>
+        </span>
+      </div>
+
+      <DocListHeader />
+
+      {documents.length === 0 ? (
+        <div
+          style={{
+            padding: "30px 22px",
+            textAlign: "center",
+            color: "var(--ink-faint)",
+            fontFamily: "var(--font-display), serif",
+            fontStyle: "italic",
+            fontSize: 16,
+          }}
+        >
+          No documents yet
+        </div>
+      ) : (
+        documents.map((d) => <WiredDocRow key={d.id} doc={d} />)
+      )}
+
+      {dialogOpen && canUpload && (
+        <UploadDocumentDialog
+          title={dialogTitle}
+          docType={docType}
+          contactId={contactId!}
+          onClose={() => setDialogOpen(false)}
+        />
+      )}
+    </Card>
+  );
+}
+
+function WiredDocRow({ doc }: { doc: ContactDocumentWithPreview }) {
+  const router = useRouter();
+  const toast = useToast();
+  const confirm = useConfirm();
+  const [opening, setOpening] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const openFile = async () => {
+    // Eager-signed URL exists for images; non-images get a fresh GET URL on
+    // click. Keeps signing calls bounded to actual user intent.
+    if (doc.previewUrl) {
+      window.open(doc.previewUrl, "_blank", "noopener");
+      return;
+    }
+    setOpening(true);
+    const res = await getContactDocumentDownloadUrlAction(doc.id);
+    setOpening(false);
+    if (!res.ok) {
+      toast.error({
+        title: "Couldn't open document",
+        message: res.error.message,
+      });
+      return;
+    }
+    window.open(res.data.url, "_blank", "noopener");
+  };
+
+  const handleDelete = async () => {
+    const label = doc.fileName ?? doc.title;
+    const ok = await confirm({
+      tone: "danger",
+      title: "Delete document?",
+      message: `${label} will be removed from this contact's documents. The original file is kept and can be restored by an admin.`,
+      confirmLabel: "Delete document",
+      cancelLabel: "Cancel",
+    });
+    if (!ok) return;
+    setDeleting(true);
+    const res = await deleteContactDocument(doc.id);
+    setDeleting(false);
+    if (!res.ok) {
+      toast.error({
+        title: "Couldn't delete document",
+        message: res.error.message,
+      });
+      return;
+    }
+    toast.success({
+      title: "Document deleted",
+      message: label,
+    });
+    router.refresh();
+  };
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: DOC_GRID,
+        gap: 12,
+        alignItems: "center",
+        padding: "12px 22px",
+        borderTop: "1px solid var(--line-soft)",
+      }}
+    >
+      <div
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: "var(--r-2)",
+          background: "var(--shell)",
+          border: "1px solid var(--line-soft)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <DocIcon />
+      </div>
+      <button
+        type="button"
+        onClick={openFile}
+        disabled={opening}
+        style={{
+          textAlign: "left",
+          background: "transparent",
+          border: "none",
+          padding: 0,
+          cursor: opening ? "wait" : "pointer",
+          fontFamily: "var(--font-display), serif",
+          fontSize: 14,
+          color: "var(--ink)",
+          minWidth: 0,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+        title={doc.fileName ?? doc.title}
+      >
+        {doc.fileName ?? doc.title}
+      </button>
+      <Pill tone="neutral" size="sm">
+        {doc.description?.trim() ? doc.description : "—"}
+      </Pill>
+      <span className="mono" style={{ fontSize: 11, color: "var(--ink-faint)" }}>
+        {formatBytes(doc.sizeBytes)}
+      </span>
+      <span style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>
+        {formatUploadedAt(doc.createdAt)}
+      </span>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 4 }}>
+        <IconButton size={28} variant="quiet" title="View" onClick={openFile}>
+          <ViewIcon />
+        </IconButton>
+        <IconButton
+          size={28}
+          variant="quiet"
+          title={deleting ? "Deleting…" : "Delete"}
+          onClick={handleDelete}
+        >
+          <Icon name="Trash" size={13} />
+        </IconButton>
+      </div>
+    </div>
+  );
+}
+
+function formatBytes(bytes: number | null): string {
+  if (bytes === null || bytes <= 0) return "—";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function formatUploadedAt(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-AU", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+// ─── Upload dialog ────────────────────────────────────────────
+
+/**
+ * Multi-file upload modal. Lets staff pick N files and tag the whole batch
+ * with an optional free-text subtype that's stored in `description`. Same
+ * presign → PUT → confirm pattern as the Identity card.
+ */
+function UploadDocumentDialog({
+  title,
+  docType,
+  contactId,
+  onClose,
+}: {
+  title: string;
+  docType: ContactDocumentType;
+  contactId: string;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const toast = useToast();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [subtype, setSubtype] = useState("");
+  const [uploading, setUploading] = useState(false);
+
+  // Esc to close + body scroll lock.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !uploading) onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose, uploading]);
+
+  const onPickFiles = (e: ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (!picked.length) return;
+
+    // Merge with current selection so a user can pick from multiple folders.
+    // De-dupe by name+size — simple and good enough.
+    const merged = [...files];
+    for (const f of picked) {
+      if (!merged.some((m) => m.name === f.name && m.size === f.size)) {
+        merged.push(f);
+      }
+    }
+    if (merged.length > MAX_BULK_FILES) {
+      toast.warn({
+        title: "Too many files",
+        message: `Pick up to ${MAX_BULK_FILES} files at a time.`,
+      });
+      return;
+    }
+    setFiles(merged);
+  };
+
+  const removeFile = (idx: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const submit = async () => {
+    if (!files.length) return;
+
+    for (const f of files) {
+      if (!isAllowedMimeType(f.type)) {
+        toast.error({
+          title: "File type not supported",
+          message: `${f.name} isn't a file type we accept. Allowed: PDF, images, Word, Excel, text.`,
+        });
+        return;
+      }
+      if (f.size > MAX_FILE_BYTES) {
+        toast.error({
+          title: "File too large",
+          message: `${f.name} is over ${Math.floor(MAX_FILE_BYTES / 1024 / 1024)} MB.`,
+        });
+        return;
+      }
+    }
+
+    setUploading(true);
+    try {
+      const presignRes = await presignContactDocumentUploads({
+        contactId,
+        files: files.map((f) => ({
+          fileName: f.name,
+          mimeType: f.type,
+          sizeBytes: f.size,
+        })),
+      });
+      if (!presignRes.ok) {
+        toast.error({
+          title: "Couldn't start upload",
+          message: presignRes.error.message,
+        });
+        return;
+      }
+
+      const uploads = await Promise.all(
+        presignRes.data.map(async (slot, i) => {
+          const file = files[i]!;
+          const res = await fetch(slot.uploadUrl, {
+            method: "PUT",
+            headers: slot.headers,
+            body: file,
+          });
+          if (!res.ok) {
+            throw new Error(`Upload failed for ${file.name} (${res.status})`);
+          }
+          return slot;
+        }),
+      );
+
+      const subtypeText = subtype.trim();
+      const confirmRes = await confirmContactDocumentUploads({
+        contactId,
+        items: uploads.map((slot) => ({
+          key: slot.key,
+          type: docType,
+          title: slot.fileName,
+          description: subtypeText ? subtypeText : undefined,
+          fileName: slot.fileName,
+          mimeType: slot.mimeType,
+          sizeBytes: slot.sizeBytes,
+        })),
+      });
+
+      if (!confirmRes.ok) {
+        toast.error({
+          title: "Couldn't save documents",
+          message: confirmRes.error.message,
+        });
+        return;
+      }
+
+      toast.success({
+        title: files.length === 1 ? "Document uploaded" : "Documents uploaded",
+        message:
+          files.length === 1
+            ? files[0]!.name
+            : `${files.length} files attached to this contact`,
+      });
+      router.refresh();
+      onClose();
+    } catch (err) {
+      toast.error({
+        title: "Upload failed",
+        message: err instanceof Error ? err.message : "Try again in a moment.",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // This component is mounted only after a click in a "use client" tree, so
+  // `document` is guaranteed; the SSR guard is belt-and-braces.
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !uploading) onClose();
+      }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 10000,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(31,42,42,.78)",
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
+        padding: 16,
+      }}
+    >
+      <div
+        style={{
+          background: "#FFFFFF",
+          borderRadius: 18,
+          width: 540,
+          maxWidth: "100%",
+          maxHeight: "90vh",
+          display: "flex",
+          flexDirection: "column",
+          boxShadow:
+            "0 1px 0 rgba(255,255,255,.5) inset, 0 28px 60px -20px rgba(31,42,42,.4), 0 0 0 1px rgba(31,42,42,.05)",
+          fontFamily: "var(--font-sans), sans-serif",
+        }}
+      >
+        <div
+          style={{
+            padding: "20px 24px 14px",
+            borderBottom: "1px solid var(--line-soft)",
+            fontFamily: "var(--font-display), serif",
+            fontWeight: 400,
+            fontSize: 21,
+            letterSpacing: "-.01em",
+            color: "var(--ink)",
+          }}
+        >
+          {title}
+        </div>
+
+        <div
+          style={{
+            padding: 24,
+            display: "flex",
+            flexDirection: "column",
+            gap: 18,
+            overflow: "auto",
+          }}
+        >
+          {/* File picker */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept={ALLOWED_MIME_TYPES.join(",")}
+            onChange={onPickFiles}
+            hidden
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            style={{
+              padding: "20px",
+              borderRadius: "var(--r-2)",
+              background: "var(--shell)",
+              border: "1px dashed var(--line-strong)",
+              cursor: uploading ? "not-allowed" : "pointer",
+              color: "var(--ink-soft)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 6,
+              font: "inherit",
+            }}
+          >
+            <Icon name="Plus" size={20} />
+            <span style={{ fontSize: 13 }}>Click to choose files</span>
+            <span
+              className="mono"
+              style={{ fontSize: 10.5, color: "var(--ink-faint)" }}
+            >
+              Up to {MAX_BULK_FILES} files, {Math.floor(MAX_FILE_BYTES / 1024 / 1024)} MB each
+            </span>
+          </button>
+
+          {/* Picked file list */}
+          {files.length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+                maxHeight: 180,
+                overflowY: "auto",
+                padding: "4px 0",
+              }}
+            >
+              {files.map((f, i) => (
+                <div
+                  key={`${f.name}-${i}`}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "8px 10px",
+                    borderRadius: "var(--r-1)",
+                    border: "1px solid var(--line-soft)",
+                    background: "var(--paper)",
+                  }}
+                >
+                  <span
+                    style={{
+                      flex: 1,
+                      fontSize: 13,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                    title={f.name}
+                  >
+                    {f.name}
+                  </span>
+                  <span
+                    className="mono"
+                    style={{ fontSize: 11, color: "var(--ink-faint)" }}
+                  >
+                    {formatBytes(f.size)}
+                  </span>
+                  <IconButton
+                    size={24}
+                    variant="quiet"
+                    title="Remove"
+                    onClick={() => removeFile(i)}
+                  >
+                    <Icon name="X" size={12} />
+                  </IconButton>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Subtype — optional free text */}
+          <label
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+            }}
+          >
+            <span
+              className="caps"
+              style={{
+                fontSize: 10,
+                letterSpacing: "var(--tracked)",
+                color: "var(--ink-soft)",
+              }}
+            >
+              Subtype (optional)
+            </span>
+            <input
+              type="text"
+              value={subtype}
+              onChange={(e) => setSubtype(e.target.value)}
+              placeholder="e.g. Booking confirmation, Payment receipt"
+              maxLength={200}
+              disabled={uploading}
+              style={{
+                padding: "10px 12px",
+                borderRadius: "var(--r-1)",
+                border: "1px solid var(--line)",
+                background: "var(--paper)",
+                font: "inherit",
+                fontSize: 14,
+                color: "var(--ink)",
+              }}
+            />
+          </label>
+        </div>
+
+        <div
+          style={{
+            padding: "14px 20px",
+            borderTop: "1px solid var(--line-soft)",
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 8,
+          }}
+        >
+          <Button variant="paper" onClick={onClose} disabled={uploading}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={submit}
+            disabled={uploading || files.length === 0}
+          >
+            {uploading
+              ? "Uploading…"
+              : files.length > 1
+                ? `Upload ${files.length} files`
+                : "Upload"}
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+// ─── Document list (mock placeholder, kept for "Other documents") ────
 
 function DocList({
   title,
