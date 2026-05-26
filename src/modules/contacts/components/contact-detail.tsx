@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/primitives";
@@ -18,7 +18,11 @@ import type {
   ContactEmailRow,
   MessageRow,
 } from "@/modules/communications/types";
-import { createContact, updateContact } from "../actions";
+import {
+  createContact,
+  getGroupMembersAction,
+  updateContact,
+} from "../actions";
 import {
   initialForm,
   toPayload,
@@ -70,6 +74,30 @@ export function ContactDetail({
   // the existing create/update actions. Schema-level validation runs server
   // side, mirroring what the modal does.
   const [form, setForm] = useState(() => initialForm(contact));
+
+  // Members of the currently selected group. Seeded from the server with the
+  // contact's saved group; refetched when the user picks a different group in
+  // the Group section so primary/secondary auto-populate before save.
+  const [members, setMembers] = useState<GroupMember[]>(groupMembers);
+  const savedGroupId = contact?.groupId ?? "";
+  useEffect(() => {
+    if (form.groupId === savedGroupId) {
+      setMembers(groupMembers);
+      return;
+    }
+    if (!form.groupId) {
+      setMembers([]);
+      return;
+    }
+    let cancelled = false;
+    getGroupMembersAction(form.groupId).then((res) => {
+      if (cancelled) return;
+      setMembers(res.ok ? res.data : []);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [form.groupId, savedGroupId, groupMembers]);
 
   // Last contact = most recent timestamp across portal messages and outbound
   // emails. System-derived; users do not edit this directly.
@@ -279,7 +307,7 @@ export function ContactDetail({
           contactTypes={contactTypes}
           contactSources={contactSources}
           groups={groups}
-          groupMembers={groupMembers}
+          groupMembers={members}
           contactOptions={contactOptions}
           currentContactId={contact?.id ?? null}
           lastContactDate={lastContactDate}

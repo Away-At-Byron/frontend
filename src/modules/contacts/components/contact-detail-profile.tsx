@@ -250,32 +250,6 @@ export function ProfileTab({
               ]}
             />
           </Row>
-          <Row label="Group">
-            <SelectInput
-              value={form.groupId}
-              onChange={onField("groupId")}
-              options={[
-                { value: "", label: "— No group" },
-                ...groups.map((g) => ({ value: g.id, label: g.groupName })),
-              ]}
-            />
-          </Row>
-          <Row label="Related contact">
-            <SearchSelect
-              value={form.relatedClientId}
-              onChange={(v) => setField("relatedClientId", v)}
-              options={contactOptions.map((o) => ({
-                value: o.id,
-                label:
-                  `${o.firstName} ${o.lastName}`.trim() +
-                  (o.email ? ` · ${o.email}` : ""),
-              }))}
-              placeholder="Search contacts"
-              searchPlaceholder="Type a name or email"
-              clearLabel="Clear related contact"
-              emptyLabel="No matching contact"
-            />
-          </Row>
           <Row label="Last contact">
             <TextInput value={lastContactDate ?? ""} disabled />
           </Row>
@@ -284,6 +258,10 @@ export function ProfileTab({
         <GroupSection
           groups={groups}
           groupId={form.groupId}
+          onGroupChange={onField("groupId")}
+          relatedClientId={form.relatedClientId}
+          onRelatedClientChange={(v) => setField("relatedClientId", v)}
+          contactOptions={contactOptions}
           members={groupMembers}
           currentContactId={currentContactId}
         />
@@ -297,16 +275,22 @@ export function ProfileTab({
 function GroupSection({
   groups,
   groupId,
+  onGroupChange,
+  relatedClientId,
+  onRelatedClientChange,
+  contactOptions,
   members,
   currentContactId,
 }: {
   groups: GroupOption[];
   groupId: string;
+  onGroupChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  relatedClientId: string;
+  onRelatedClientChange: (v: string) => void;
+  contactOptions: ContactOption[];
   members: GroupMember[];
   currentContactId: string | null;
 }) {
-  const groupName = groups.find((g) => g.id === groupId)?.groupName ?? null;
-
   // "Primary vs Standard is encoded in the member's contact type" (groups
   // schema). Pick the first member whose type name contains "Primary"; fall
   // back to the oldest member.
@@ -320,57 +304,63 @@ function GroupSection({
 
   return (
     <SectionCard icon="User" title="Group">
-      {!groupId || !groupName ? (
-        <div
-          style={{
-            padding: "20px 22px",
-            color: "var(--ink-soft)",
-            fontSize: 13.5,
-            borderTop: "1px solid var(--line-soft)",
-          }}
-        >
-          This contact isn’t in a group. Pick one under Contact › Group.
-        </div>
-      ) : (
-        <>
-          <Row label="Group name">
-            <span style={{ fontSize: 13.5, color: "var(--ink)" }}>
-              {groupName}
-            </span>
-          </Row>
-          <Row label="Primary contact">
-            {primary ? (
+      <Row label="Group name">
+        <SelectInput
+          value={groupId}
+          onChange={onGroupChange}
+          options={[
+            { value: "", label: "— No group" },
+            ...groups.map((g) => ({ value: g.id, label: g.groupName })),
+          ]}
+        />
+      </Row>
+      <Row label="Related contact">
+        <SearchSelect
+          value={relatedClientId}
+          onChange={onRelatedClientChange}
+          options={contactOptions.map((o) => ({
+            value: o.id,
+            label:
+              `${o.firstName} ${o.lastName}`.trim() +
+              (o.email ? ` · ${o.email}` : ""),
+          }))}
+          placeholder="Search contacts"
+          searchPlaceholder="Type a name or email"
+          clearLabel="Clear related contact"
+          emptyLabel="No matching contact"
+        />
+      </Row>
+      <Row label="Primary contact">
+        {primary ? (
+          <MemberLink
+            member={primary}
+            isCurrent={primary.id === currentContactId}
+          />
+        ) : (
+          <span style={{ color: "var(--ink-faint)" }}>—</span>
+        )}
+      </Row>
+      <Row label="Secondary contacts">
+        {secondaries.length === 0 ? (
+          <span style={{ color: "var(--ink-faint)" }}>None</span>
+        ) : (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+            }}
+          >
+            {secondaries.map((m) => (
               <MemberLink
-                member={primary}
-                isCurrent={primary.id === currentContactId}
+                key={m.id}
+                member={m}
+                isCurrent={m.id === currentContactId}
               />
-            ) : (
-              <span style={{ color: "var(--ink-faint)" }}>—</span>
-            )}
-          </Row>
-          <Row label="Secondary contacts">
-            {secondaries.length === 0 ? (
-              <span style={{ color: "var(--ink-faint)" }}>None</span>
-            ) : (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 6,
-                }}
-              >
-                {secondaries.map((m) => (
-                  <MemberLink
-                    key={m.id}
-                    member={m}
-                    isCurrent={m.id === currentContactId}
-                  />
-                ))}
-              </div>
-            )}
-          </Row>
-        </>
-      )}
+            ))}
+          </div>
+        )}
+      </Row>
     </SectionCard>
   );
 }

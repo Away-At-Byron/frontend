@@ -13,7 +13,12 @@ import {
 } from "./schemas"
 import { CONTACT_PERMISSIONS } from "./permissions"
 import type { ContactRow } from "./types"
-import { contactSelection, mapContactRow } from "./queries"
+import {
+  contactSelection,
+  mapContactRow,
+  listGroupMembers,
+  type GroupMember,
+} from "./queries"
 
 type Tx = Parameters<Parameters<typeof withTenant>[0]>[0]
 
@@ -248,4 +253,13 @@ export async function deleteContact(
       return ok({ id: contactId })
     }),
   )
+}
+
+/** Client-callable wrapper around listGroupMembers; used by the contact
+ * detail page to refresh the Group section when the user picks a different
+ * group before saving. */
+export async function getGroupMembersAction(
+  groupId: string,
+): Promise<ActionResult<GroupMember[]>> {
+  return listGroupMembers(groupId)
 }
