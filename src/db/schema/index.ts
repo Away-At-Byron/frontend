@@ -14,6 +14,7 @@ export * from "./contact-types" // module 4 — admin-managed contact type catal
 export * from "./contact-sources" // module 4 — admin-managed contact source catalogue
 export * from "./groups" // module 4 — group bookings
 export * from "./contacts" // module 4
+export * from "./communications" // module 24 — in-portal staff↔contact chat (loaded early because contact-documents FKs it)
 export * from "./contact-documents" // module 4 — files + comms per contact
 // export * from "./room-types"      // module 5
 // export * from "./rooms"           // module 6
@@ -34,7 +35,7 @@ export * from "./contact-documents" // module 4 — files + comms per contact
 // ── Layer 4 — operations (Stage 5) ─────────────────────────
 // export * from "./housekeeping"    // module 22
 // export * from "./maintenance"     // module 23
-// export * from "./communications"  // module 24
+// (communications exported above with module 4 to satisfy contact_documents FK ordering)
 
 // ── Layer 5 — background + read (Stage 6) ──────────────────
 // export * from "./night-audits"    // module 25

@@ -10,6 +10,7 @@ import {
 } from "drizzle-orm/pg-core"
 import { users } from "./auth"
 import { contacts } from "./contacts"
+import { messages } from "./communications"
 
 /**
  * Document categories. Open list — extend the enum when a new category is
@@ -49,11 +50,22 @@ export const contactDocuments = pgTable(
     mimeType: text("mime_type"),
     sizeBytes: integer("size_bytes"),
     uploadedBy: uuid("uploaded_by").references(() => users.id),
+    /**
+     * Attachment link for `type='communication'` rows. The server action that
+     * creates the message and its attachments writes both in one transaction;
+     * non-comms rows leave this null.
+     */
+    messageId: uuid("message_id").references(() => messages.id, {
+      onDelete: "cascade",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     isDeleted: boolean("is_deleted").notNull().default(false),
   },
-  (t) => [index("contact_documents_contact_id_idx").on(t.contactId)],
+  (t) => [
+    index("contact_documents_contact_id_idx").on(t.contactId),
+    index("contact_documents_message_id_idx").on(t.messageId),
+  ],
 )
 
 export type ContactDocument = typeof contactDocuments.$inferSelect
