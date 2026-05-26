@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/primitives";
@@ -70,6 +70,24 @@ export function ContactDetail({
   // the existing create/update actions. Schema-level validation runs server
   // side, mirroring what the modal does.
   const [form, setForm] = useState(() => initialForm(contact));
+
+  // Last contact = most recent timestamp across portal messages and outbound
+  // emails. System-derived; users do not edit this directly.
+  const lastContactDate = useMemo(() => {
+    let latest: number | null = null;
+    for (const m of messages) {
+      const t = Date.parse(m.createdAt);
+      if (!Number.isNaN(t) && (latest === null || t > latest)) latest = t;
+    }
+    for (const e of emails) {
+      const stamp = e.sentAt ?? e.createdAt;
+      const t = Date.parse(stamp);
+      if (!Number.isNaN(t) && (latest === null || t > latest)) latest = t;
+    }
+    return latest === null
+      ? null
+      : new Date(latest).toISOString().slice(0, 10);
+  }, [messages, emails]);
 
   const handleField =
     <K extends keyof FormState>(key: K) =>
@@ -264,6 +282,7 @@ export function ContactDetail({
           groupMembers={groupMembers}
           contactOptions={contactOptions}
           currentContactId={contact?.id ?? null}
+          lastContactDate={lastContactDate}
         />
       )}
       {tab === "history" && <GuestHistoryTab />}

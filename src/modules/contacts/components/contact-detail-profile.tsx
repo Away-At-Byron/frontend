@@ -16,7 +16,6 @@ import {
 } from "../types";
 import type { ContactOption, GroupMember } from "../queries";
 import { BirthdayPicker } from "./birthday-picker";
-import { DatePicker } from "./date-picker";
 import { SearchSelect } from "./search-select";
 import { SuburbAutocomplete } from "./suburb-autocomplete";
 import type { FormState, OnField, SetField } from "./contact-detail-form";
@@ -40,6 +39,7 @@ export function ProfileTab({
   groupMembers,
   contactOptions,
   currentContactId,
+  lastContactDate,
 }: {
   form: FormState;
   onField: OnField;
@@ -50,6 +50,7 @@ export function ProfileTab({
   contactOptions: ContactOption[];
   currentContactId: string | null;
   groups: GroupOption[];
+  lastContactDate: string | null;
 }) {
   const isAustralia = form.addressCountry === "AU";
   return (
@@ -79,9 +80,6 @@ export function ProfileTab({
                 } as React.ChangeEvent<HTMLInputElement>)
               }
             />
-          </Row>
-          <Row label="Client #">
-            <TextInput value={form.clientNumber} disabled />
           </Row>
           <Row label="Tier">
             <SelectInput
@@ -279,10 +277,7 @@ export function ProfileTab({
             />
           </Row>
           <Row label="Last contact">
-            <DatePicker
-              value={form.lastContactDate}
-              onChange={(v) => setField("lastContactDate", v)}
-            />
+            <TextInput value={lastContactDate ?? ""} disabled />
           </Row>
         </SectionCard>
 

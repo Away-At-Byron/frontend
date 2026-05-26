@@ -330,28 +330,16 @@ export function ContactFormFields({
       {showBookingProfile && (
         <>
           <SectionLabel>Booking profile</SectionLabel>
-          <TwoCol>
-            <Field
-              label="First booking date"
-              error={errors.firstBookingDate?.message}
-            >
-              <input
-                {...register("firstBookingDate")}
-                type="date"
-                style={inputStyle}
-              />
-            </Field>
-            <Field
-              label="Last contact date"
-              error={errors.lastContactDate?.message}
-            >
-              <input
-                {...register("lastContactDate")}
-                type="date"
-                style={inputStyle}
-              />
-            </Field>
-          </TwoCol>
+          <Field
+            label="First booking date"
+            error={errors.firstBookingDate?.message}
+          >
+            <input
+              {...register("firstBookingDate")}
+              type="date"
+              style={inputStyle}
+            />
+          </Field>
           <Field
             label="Preferred booking channel"
             error={errors.preferredBookingChannel?.message}
