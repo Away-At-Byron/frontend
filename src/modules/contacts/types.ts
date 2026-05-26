@@ -16,12 +16,13 @@ export const COMMUNICATION_PREFERENCE_LABELS: Record<CommunicationPreference, st
   unsubscribed: "Unsubscribed",
 }
 
-export const CONTACT_ID_TYPES = ["passport", "drivers_license", "national_id"] as const
+export const CONTACT_ID_TYPES = ["passport", "drivers_license", "national_id", "other"] as const
 export type ContactIdType = (typeof CONTACT_ID_TYPES)[number]
 export const CONTACT_ID_TYPE_LABELS: Record<ContactIdType, string> = {
   passport: "Passport",
   drivers_license: "Driver's licence",
   national_id: "National ID",
+  other: "Other",
 }
 
 export const CONTACT_TIERS = ["bronze", "silver", "gold", "vip"] as const
@@ -87,9 +88,6 @@ export type ContactRow = {
   idVerificationDate: string | null
   firstBookingDate: string | null
   preferredBookingChannel: string | null
-  otaUser: boolean
-  directBookingGuest: boolean
-  corporateGuest: boolean
   specialRequests: string | null
   accessibilityRequirements: string | null
   lastContactDate: string | null
@@ -114,6 +112,8 @@ export type GroupRow = {
   id: string
   groupName: string
   relationships: string | null
+  reason: string | null
+  groupAge: string | null
   companyName: string | null
   corporateAccountId: string | null
   travelAgentId: string | null

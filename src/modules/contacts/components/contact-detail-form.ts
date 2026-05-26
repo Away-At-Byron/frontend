@@ -28,9 +28,6 @@ export type FormState = {
   contactTypeId: string;
   contactSourceId: string;
   groupId: string;
-  otaUser: string;
-  directBookingGuest: string;
-  corporateGuest: string;
   relatedClientId: string;
   lastContactDate: string;
   addressStreet: string;
@@ -69,9 +66,6 @@ export function initialForm(c: ContactRow | null): FormState {
     contactTypeId: c?.contactTypeId ?? "",
     contactSourceId: c?.contactSourceId ?? "",
     groupId: c?.groupId ?? "",
-    otaUser: c?.otaUser ? "yes" : "no",
-    directBookingGuest: c?.directBookingGuest ? "yes" : "no",
-    corporateGuest: c?.corporateGuest ? "yes" : "no",
     relatedClientId: c?.relatedClientId ?? "",
     lastContactDate: c?.lastContactDate ?? "",
     addressStreet: c?.addressStreet ?? "",
@@ -116,9 +110,6 @@ export function toPayload(f: FormState) {
     marketingOptIn: f.marketingOptIn === "yes",
     returningGuest: f.returningGuest === "yes",
     portalEnabled: f.portalEnabled === "yes",
-    otaUser: f.otaUser === "yes",
-    directBookingGuest: f.directBookingGuest === "yes",
-    corporateGuest: f.corporateGuest === "yes",
     idVerified: f.idVerified === "yes",
     doNotRebook: f.doNotRebook === "yes",
     tier: (f.tier as "bronze" | "silver" | "gold" | "vip") || undefined,
@@ -141,7 +132,8 @@ export function toPayload(f: FormState) {
     contactSourceId: f.contactSourceId || undefined,
     groupId: f.groupId || undefined,
     idType:
-      (f.idType as "passport" | "drivers_license" | "national_id") || undefined,
+      (f.idType as "passport" | "drivers_license" | "national_id" | "other") ||
+      undefined,
     idNumber: f.idNumber || undefined,
     idCountry: f.idCountry || undefined,
     idVerificationDate: f.idVerificationDate || undefined,

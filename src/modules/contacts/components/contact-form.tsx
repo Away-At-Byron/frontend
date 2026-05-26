@@ -250,17 +250,6 @@ export function ContactFormFields({
           field="returningGuest"
           label="Returning guest"
         />
-        <Check register={register} field="otaUser" label="OTA user" />
-        <Check
-          register={register}
-          field="directBookingGuest"
-          label="Direct booking guest"
-        />
-        <Check
-          register={register}
-          field="corporateGuest"
-          label="Corporate guest"
-        />
         <Check register={register} field="doNotRebook" label="Do not rebook" />
         <Check
           register={register}

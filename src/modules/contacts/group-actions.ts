@@ -23,6 +23,8 @@ async function fetchGroupRow(tx: Tx, id: string): Promise<GroupRow | null> {
       id: groups.id,
       groupName: groups.groupName,
       relationships: groups.relationships,
+      reason: groups.reason,
+      groupAge: groups.groupAge,
       companyName: groups.companyName,
       corporateAccountId: groups.corporateAccountId,
       travelAgentId: groups.travelAgentId,
@@ -90,6 +92,8 @@ export async function createGroup(
         .values({
           groupName: data.groupName,
           relationships: data.relationships ?? null,
+          reason: data.reason ?? null,
+          groupAge: data.groupAge ?? null,
           companyName: data.companyName ?? null,
           corporateAccountId: data.corporateAccountId ?? null,
           travelAgentId: data.travelAgentId ?? null,
@@ -153,6 +157,8 @@ export async function updateGroup(
         .set({
           groupName: data.groupName,
           relationships: data.relationships ?? null,
+          reason: data.reason ?? null,
+          groupAge: data.groupAge ?? null,
           companyName: data.companyName ?? null,
           corporateAccountId: data.corporateAccountId ?? null,
           travelAgentId: data.travelAgentId ?? null,

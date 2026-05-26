@@ -262,27 +262,6 @@ export function ProfileTab({
               ]}
             />
           </Row>
-          <Row label="OTA user">
-            <SelectInput
-              value={form.otaUser}
-              onChange={onField("otaUser")}
-              options={YES_NO_OPTIONS}
-            />
-          </Row>
-          <Row label="Direct booking">
-            <SelectInput
-              value={form.directBookingGuest}
-              onChange={onField("directBookingGuest")}
-              options={YES_NO_OPTIONS}
-            />
-          </Row>
-          <Row label="Corporate guest">
-            <SelectInput
-              value={form.corporateGuest}
-              onChange={onField("corporateGuest")}
-              options={YES_NO_OPTIONS}
-            />
-          </Row>
           <Row label="Related contact">
             <SearchSelect
               value={form.relatedClientId}

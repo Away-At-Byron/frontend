@@ -29,6 +29,7 @@ export const contactIdTypeEnum = pgEnum("contact_id_type", [
   "passport",
   "drivers_license",
   "national_id",
+  "other",
 ])
 
 /** Loyalty tier. Stored — replaces the old derived new/returning/vip logic. */
@@ -104,9 +105,6 @@ export const contacts = pgTable(
     // ── Booking profile ───────────────────────────────────────
     firstBookingDate: date("first_booking_date"),
     preferredBookingChannel: text("preferred_booking_channel"),
-    otaUser: boolean("ota_user").notNull().default(false),
-    directBookingGuest: boolean("direct_booking_guest").notNull().default(false),
-    corporateGuest: boolean("corporate_guest").notNull().default(false),
     specialRequests: text("special_requests"),
     accessibilityRequirements: text("accessibility_requirements"),
     lastContactDate: date("last_contact_date"),

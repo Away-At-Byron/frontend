@@ -74,6 +74,20 @@ function Body({
           {...register("relationships")}
         />
       </Field>
+      <Field label="Reason for booking" error={errors.reason?.message}>
+        <textarea
+          style={textareaStyle}
+          placeholder="e.g. family getaway, friends getaway"
+          {...register("reason")}
+        />
+      </Field>
+      <Field label="Group age" error={errors.groupAge?.message}>
+        <input
+          style={inputStyle}
+          placeholder="e.g. 30s and 40s, two kids under 10"
+          {...register("groupAge")}
+        />
+      </Field>
       <div
         style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}
       >
@@ -133,6 +147,8 @@ export function NewGroupModal({
     defaultValues: {
       groupName: "",
       relationships: "",
+      reason: "",
+      groupAge: "",
       companyName: "",
       corporateAccountId: "",
       travelAgentId: "",
@@ -248,6 +264,8 @@ export function EditGroupModal({
     reset({
       groupName: group.groupName,
       relationships: group.relationships ?? "",
+      reason: group.reason ?? "",
+      groupAge: group.groupAge ?? "",
       companyName: group.companyName ?? "",
       corporateAccountId: group.corporateAccountId ?? "",
       travelAgentId: group.travelAgentId ?? "",

@@ -14,6 +14,7 @@ export * from "./contact-types" // module 4 — admin-managed contact type catal
 export * from "./contact-sources" // module 4 — admin-managed contact source catalogue
 export * from "./groups" // module 4 — group bookings
 export * from "./contacts" // module 4
+export * from "./contact-documents" // module 4 — files + comms per contact
 // export * from "./room-types"      // module 5
 // export * from "./rooms"           // module 6
 // export * from "./common-areas"    // module 7

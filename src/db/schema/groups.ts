@@ -22,6 +22,10 @@ export const groups = pgTable(
     groupName: text("group_name").notNull(),
     /** Free-text notes on how the group members relate. */
     relationships: text("relationships"),
+    /** Free-text reason for the group booking, e.g. "family getaway". */
+    reason: text("reason"),
+    /** Free-text age summary, e.g. "30s and 40s, two kids under 10". */
+    groupAge: text("group_age"),
     companyName: text("company_name"),
     corporateAccountId: text("corporate_account_id"),
     travelAgentId: text("travel_agent_id"),

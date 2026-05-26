@@ -87,9 +87,6 @@ const contactFields = {
   // Booking profile.
   firstBookingDate: optionalDate,
   preferredBookingChannel: optionalText,
-  otaUser: z.boolean().default(false),
-  directBookingGuest: z.boolean().default(false),
-  corporateGuest: z.boolean().default(false),
   specialRequests: longText,
   accessibilityRequirements: longText,
   lastContactDate: optionalDate,
@@ -117,6 +114,8 @@ const groupName = z
 const groupFields = {
   groupName,
   relationships: longText,
+  reason: longText,
+  groupAge: optionalText,
   companyName: optionalText,
   corporateAccountId: optionalText,
   travelAgentId: optionalText,
