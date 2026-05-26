@@ -75,29 +75,34 @@ export function ContactDetail({
   // side, mirroring what the modal does.
   const [form, setForm] = useState(() => initialForm(contact));
 
-  // Members of the currently selected group. Seeded from the server with the
-  // contact's saved group; refetched when the user picks a different group in
-  // the Group section so primary/secondary auto-populate before save.
-  const [members, setMembers] = useState<GroupMember[]>(groupMembers);
+  // Members of the currently selected group. The saved group's members come
+  // from the server; picking a different group in the Group section triggers
+  // an async fetch so primary/secondary auto-populate before save.
   const savedGroupId = contact?.groupId ?? "";
+  const [fetched, setFetched] = useState<{
+    groupId: string;
+    members: GroupMember[];
+  } | null>(null);
   useEffect(() => {
-    if (form.groupId === savedGroupId) {
-      setMembers(groupMembers);
-      return;
-    }
-    if (!form.groupId) {
-      setMembers([]);
-      return;
-    }
+    if (!form.groupId || form.groupId === savedGroupId) return;
+    if (fetched?.groupId === form.groupId) return;
     let cancelled = false;
-    getGroupMembersAction(form.groupId).then((res) => {
+    const targetGroupId = form.groupId;
+    getGroupMembersAction(targetGroupId).then((res) => {
       if (cancelled) return;
-      setMembers(res.ok ? res.data : []);
+      setFetched({ groupId: targetGroupId, members: res.ok ? res.data : [] });
     });
     return () => {
       cancelled = true;
     };
-  }, [form.groupId, savedGroupId, groupMembers]);
+  }, [form.groupId, savedGroupId, fetched?.groupId]);
+  const members: GroupMember[] = !form.groupId
+    ? []
+    : form.groupId === savedGroupId
+      ? groupMembers
+      : fetched?.groupId === form.groupId
+        ? fetched.members
+        : [];
 
   // Last contact = most recent timestamp across portal messages and outbound
   // emails. System-derived; users do not edit this directly.

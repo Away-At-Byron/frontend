@@ -6,8 +6,8 @@
  * are mocked until the Booking module (FRS §6.5) lands.
  * Design ref: docs/design-reference/guest-history.jsx.
  */
-import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Avatar, Button, Card, FilterPill, Pill, Stat } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icon";
 import type { ContactRow } from "../types";
@@ -92,23 +92,22 @@ function sinceFromContact(c: ContactRow): string {
 
 export function GuestHistory({ contacts }: { contacts: ContactRow[] }) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const requestedGuest = searchParams.get("guest");
-  const initialId =
-    (requestedGuest && contacts.find((c) => c.id === requestedGuest)?.id) ||
-    contacts[0]?.id ||
-    "";
-  const [selectedId, setSelectedId] = useState(initialId);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<BookingFilter>("all");
 
-  // Keep selection in sync when the user navigates here from the Contacts
-  // table with a different ?guest=... value.
-  useEffect(() => {
-    if (requestedGuest && contacts.some((c) => c.id === requestedGuest)) {
-      setSelectedId(requestedGuest);
-    }
-  }, [requestedGuest, contacts]);
+  // URL is the source of truth for the selected guest — clicking a row in
+  // the Contacts table pushes ?guest=<id> here, and clicking the rail below
+  // replaces the same param.
+  const requestedGuest = searchParams.get("guest");
+  const selectedId =
+    (requestedGuest && contacts.some((c) => c.id === requestedGuest)
+      ? requestedGuest
+      : contacts[0]?.id) ?? "";
+  const selectGuest = (id: string) => {
+    router.replace(`${pathname}?guest=${id}`, { scroll: false });
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -289,7 +288,7 @@ export function GuestHistory({ contacts }: { contacts: ContactRow[] }) {
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => setSelectedId(c.id)}
+                  onClick={() => selectGuest(c.id)}
                   style={{
                     width: "100%",
                     textAlign: "left",
