@@ -15,6 +15,10 @@ import {
   listGroupOptions,
 } from "@/modules/contacts/queries";
 import { listContactDocuments } from "@/modules/contact-documents/queries";
+import {
+  getConversationByContact,
+  listMessages,
+} from "@/modules/communications/queries";
 import { presignDownload } from "@/lib/storage";
 import { ContactDetail } from "@/modules/contacts/components/contact-detail";
 
@@ -87,6 +91,13 @@ export default async function ContactDetailPage({
     }),
   );
 
+  // Conversation + message history for the Communication tab. Both calls fail
+  // soft so a comms outage doesn't blank the whole contact page.
+  const convoRes = isNew ? null : await getConversationByContact(contactRes.data!.id);
+  const conversation = convoRes && convoRes.ok ? convoRes.data : null;
+  const messagesRes = conversation ? await listMessages(conversation.id) : null;
+  const messages = messagesRes && messagesRes.ok ? messagesRes.data : [];
+
   // Exclude self from the related-contact picker to stop a contact pointing
   // at itself.
   const contactOptions = optionsRes.data.filter(
@@ -103,6 +114,7 @@ export default async function ContactDetailPage({
       groupMembers={groupMembers}
       contactOptions={contactOptions}
       documents={documents}
+      messages={messages}
     />
   );
 }

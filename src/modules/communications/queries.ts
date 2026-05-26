@@ -8,6 +8,8 @@ import {
   messages,
   users,
 } from "@/db/schema"
+import { db } from "@/db"
+import { auth } from "@/lib/auth"
 import { withTenant, withPermission } from "@/lib/rls"
 import { ok, err, type ActionResult } from "@/lib/result"
 import { presignDownload } from "@/lib/storage"
@@ -70,6 +72,98 @@ export async function getConversationByContact(
   )
 }
 
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
+
+/**
+ * Shared loader — joins sender names from users/contacts, eager-signs image
+ * attachments, returns MessageRow[]. Used by both the staff and contact-side
+ * queries so the join shape doesn't drift between them.
+ */
+async function loadMessages(
+  tx: Tx,
+  conversationId: string,
+): Promise<MessageRow[]> {
+  const msgRows = await tx
+    .select({
+      id: messages.id,
+      conversationId: messages.conversationId,
+      senderType: messages.senderType,
+      senderUserId: messages.senderUserId,
+      senderContactId: messages.senderContactId,
+      userFirst: users.firstName,
+      userLast: users.lastName,
+      contactFirst: contacts.firstName,
+      contactLast: contacts.lastName,
+      body: messages.body,
+      createdAt: messages.createdAt,
+    })
+    .from(messages)
+    .leftJoin(users, eq(messages.senderUserId, users.id))
+    .leftJoin(contacts, eq(messages.senderContactId, contacts.id))
+    .where(eq(messages.conversationId, conversationId))
+    .orderBy(asc(messages.createdAt))
+
+  if (msgRows.length === 0) return []
+
+  const messageIds = msgRows.map((m) => m.id)
+  const attRows = await tx
+    .select({
+      id: contactDocuments.id,
+      messageId: contactDocuments.messageId,
+      fileKey: contactDocuments.fileKey,
+      fileName: contactDocuments.fileName,
+      mimeType: contactDocuments.mimeType,
+      sizeBytes: contactDocuments.sizeBytes,
+    })
+    .from(contactDocuments)
+    .where(
+      and(
+        sql`${contactDocuments.messageId} IN ${messageIds}`,
+        eq(contactDocuments.isDeleted, false),
+      ),
+    )
+
+  const attachmentsByMessage = new Map<string, MessageAttachment[]>()
+  for (const a of attRows) {
+    const previewUrl =
+      a.fileKey && a.mimeType?.startsWith("image/")
+        ? await presignDownload(a.fileKey)
+        : null
+    const att: MessageAttachment = {
+      id: a.id,
+      fileName: a.fileName,
+      mimeType: a.mimeType,
+      sizeBytes: a.sizeBytes,
+      previewUrl,
+    }
+    const list = attachmentsByMessage.get(a.messageId!) ?? []
+    list.push(att)
+    attachmentsByMessage.set(a.messageId!, list)
+  }
+
+  return msgRows.map((m): MessageRow => {
+    const senderName =
+      m.senderType === "user"
+        ? m.userFirst && m.userLast
+          ? `${m.userFirst} ${m.userLast}`
+          : null
+        : m.contactFirst && m.contactLast
+          ? `${m.contactFirst} ${m.contactLast}`
+          : null
+    return {
+      id: m.id,
+      conversationId: m.conversationId,
+      senderType: m.senderType,
+      senderUserId: m.senderUserId,
+      senderContactId: m.senderContactId,
+      senderName,
+      body: m.body,
+      createdAt: m.createdAt.toISOString(),
+      attachments: attachmentsByMessage.get(m.id) ?? [],
+    }
+  })
+}
+
 /**
  * Returns the messages in a conversation, oldest first (chat-bubble order).
  * Each message includes its attachments inlined; image attachments get
@@ -80,87 +174,48 @@ export async function listMessages(
 ): Promise<ActionResult<MessageRow[]>> {
   return withTenant(async (tx, ctx) =>
     withPermission(MESSAGE_PERMISSIONS.read, ctx, async () => {
-      const msgRows = await tx
-        .select({
-          id: messages.id,
-          conversationId: messages.conversationId,
-          senderType: messages.senderType,
-          senderUserId: messages.senderUserId,
-          senderContactId: messages.senderContactId,
-          userFirst: users.firstName,
-          userLast: users.lastName,
-          contactFirst: contacts.firstName,
-          contactLast: contacts.lastName,
-          body: messages.body,
-          createdAt: messages.createdAt,
-        })
-        .from(messages)
-        .leftJoin(users, eq(messages.senderUserId, users.id))
-        .leftJoin(contacts, eq(messages.senderContactId, contacts.id))
-        .where(eq(messages.conversationId, conversationId))
-        .orderBy(asc(messages.createdAt))
-
-      if (msgRows.length === 0) return ok([])
-
-      const messageIds = msgRows.map((m) => m.id)
-      const attRows = await tx
-        .select({
-          id: contactDocuments.id,
-          messageId: contactDocuments.messageId,
-          fileKey: contactDocuments.fileKey,
-          fileName: contactDocuments.fileName,
-          mimeType: contactDocuments.mimeType,
-          sizeBytes: contactDocuments.sizeBytes,
-        })
-        .from(contactDocuments)
-        .where(
-          and(
-            sql`${contactDocuments.messageId} IN ${messageIds}`,
-            eq(contactDocuments.isDeleted, false),
-          ),
-        )
-
-      const attachmentsByMessage = new Map<string, MessageAttachment[]>()
-      for (const a of attRows) {
-        const previewUrl =
-          a.fileKey && a.mimeType?.startsWith("image/")
-            ? await presignDownload(a.fileKey)
-            : null
-        const att: MessageAttachment = {
-          id: a.id,
-          fileName: a.fileName,
-          mimeType: a.mimeType,
-          sizeBytes: a.sizeBytes,
-          previewUrl,
-        }
-        const list = attachmentsByMessage.get(a.messageId!) ?? []
-        list.push(att)
-        attachmentsByMessage.set(a.messageId!, list)
-      }
-
-      return ok(
-        msgRows.map((m): MessageRow => {
-          const senderName =
-            m.senderType === "user"
-              ? m.userFirst && m.userLast
-                ? `${m.userFirst} ${m.userLast}`
-                : null
-              : m.contactFirst && m.contactLast
-                ? `${m.contactFirst} ${m.contactLast}`
-                : null
-          return {
-            id: m.id,
-            conversationId: m.conversationId,
-            senderType: m.senderType,
-            senderUserId: m.senderUserId,
-            senderContactId: m.senderContactId,
-            senderName,
-            body: m.body,
-            createdAt: m.createdAt.toISOString(),
-            attachments: attachmentsByMessage.get(m.id) ?? [],
-          }
-        }),
-      )
+      return ok(await loadMessages(tx, conversationId))
     }),
   )
+}
+
+/**
+ * Contact-portal counterpart to getConversationByContact + listMessages.
+ * Single round trip from `/portal/messages`. The contact id comes from the
+ * signed-in session, never input — same security boundary as
+ * `sendMessageAsContact`.
+ */
+export async function getMyConversationWithMessages(): Promise<
+  ActionResult<{ conversation: ConversationRow | null; messages: MessageRow[] }>
+> {
+  const session = await auth()
+  if (
+    !session?.user?.id ||
+    session.user.subjectType !== "contact"
+  ) {
+    return err("UNAUTHENTICATED", "You are not signed in.")
+  }
+  const contactId = session.user.id
+
+  return db.transaction(async (tx) => {
+    const exists = await tx
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(and(eq(contacts.id, contactId), eq(contacts.isDeleted, false)))
+      .limit(1)
+    if (!exists[0]) {
+      return err("NOT_FOUND", "Your contact record no longer exists.")
+    }
+
+    const convRows = await tx
+      .select()
+      .from(conversations)
+      .where(eq(conversations.contactId, contactId))
+      .limit(1)
+    const convRow = convRows[0] ?? null
+    const conversation = convRow ? mapConversation(convRow) : null
+
+    const msgs = conversation ? await loadMessages(tx, conversation.id) : []
+    return ok({ conversation, messages: msgs })
+  })
 }

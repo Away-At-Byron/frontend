@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 
@@ -34,6 +35,24 @@ export default async function PortalDashboardPage() {
         <p style={{ color: "var(--ink-soft)", fontSize: 14.5, lineHeight: 1.6 }}>
           You are signed in. Your portal will appear here soon.
         </p>
+        <div style={{ marginTop: 24 }}>
+          <Link
+            href="/portal/messages"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "10px 18px",
+              borderRadius: "var(--r-pill)",
+              background: "var(--ink)",
+              color: "var(--linen)",
+              fontSize: 13,
+              textDecoration: "none",
+            }}
+          >
+            Open messages
+          </Link>
+        </div>
       </div>
     </div>
   )

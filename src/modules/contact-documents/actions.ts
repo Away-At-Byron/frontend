@@ -2,9 +2,11 @@
 
 import { and, eq, inArray } from "drizzle-orm"
 import { contactDocuments, contacts } from "@/db/schema"
+import { auth } from "@/lib/auth"
 import { withTenant, withPermission } from "@/lib/rls"
 import { writeAudit } from "@/lib/audit"
 import { ok, err, type ActionResult } from "@/lib/result"
+import { z } from "zod"
 import {
   buildContactDocumentKey,
   deleteObject,
@@ -47,6 +49,34 @@ export type PresignedUploadForFile = PresignedUpload & {
 }
 
 /**
+ * Shared body — caller has already established who the contact id belongs to.
+ * Both `presignContactDocumentUploads` (staff, contactId from input) and
+ * `presignContactDocumentUploadsAsContact` (contact, contactId from session)
+ * end up here.
+ */
+async function presignBatch(
+  contactId: string,
+  files: { fileName: string; mimeType: string; sizeBytes: number }[],
+): Promise<PresignedUploadForFile[]> {
+  return Promise.all(
+    files.map(async (f) => {
+      const key = buildContactDocumentKey(contactId, f.fileName)
+      const signed = await presignUpload({
+        key,
+        contentType: f.mimeType,
+        contentLength: f.sizeBytes,
+      })
+      return {
+        ...signed,
+        fileName: f.fileName,
+        mimeType: f.mimeType,
+        sizeBytes: f.sizeBytes,
+      }
+    }),
+  )
+}
+
+/**
  * Step 1 of the upload flow. Returns one presigned PUT URL per requested file
  * so the client can upload bytes directly to MinIO in parallel — keeping large
  * payloads off the Next server (CLAUDE.md serverActions.bodySizeLimit = 2 MB).
@@ -69,26 +99,39 @@ export async function presignContactDocumentUploads(
       const contactCheck = await assertContactExists(tx, contactId)
       if (!contactCheck.ok) return contactCheck
 
-      const presigned = await Promise.all(
-        files.map(async (f) => {
-          const key = buildContactDocumentKey(contactId, f.fileName)
-          const signed = await presignUpload({
-            key,
-            contentType: f.mimeType,
-            contentLength: f.sizeBytes,
-          })
-          return {
-            ...signed,
-            fileName: f.fileName,
-            mimeType: f.mimeType,
-            sizeBytes: f.sizeBytes,
-          }
-        }),
-      )
-
-      return ok(presigned)
+      return ok(await presignBatch(contactId, files))
     }),
   )
+}
+
+/**
+ * Contact-portal counterpart. The contact id is derived from the signed-in
+ * session — a contact cannot presign uploads under another contact's prefix.
+ * Used by the portal Messages composer when attaching files to a reply.
+ */
+const presignFilesOnlySchema = z.object({
+  files: presignUploadsSchema.shape.files,
+})
+
+export async function presignContactDocumentUploadsAsContact(input: {
+  files: PresignUploadsInput["files"]
+}): Promise<ActionResult<PresignedUploadForFile[]>> {
+  const session = await auth()
+  if (!session?.user?.id || session.user.subjectType !== "contact") {
+    return err("UNAUTHENTICATED", "You are not signed in.")
+  }
+  const contactId = session.user.id
+
+  const parsed = presignFilesOnlySchema.safeParse(input)
+  if (!parsed.success) {
+    return err(
+      "VALIDATION",
+      "Check the highlighted fields.",
+      parsed.error.flatten().fieldErrors,
+    )
+  }
+
+  return ok(await presignBatch(contactId, parsed.data.files))
 }
 
 /**

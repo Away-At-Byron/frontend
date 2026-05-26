@@ -50,3 +50,13 @@ export const sendMessageSchema = z.object({
 })
 
 export type SendMessageInput = z.infer<typeof sendMessageSchema>
+
+/**
+ * Contact-side variant. The contact id is derived from the signed-in session,
+ * not user input — a contact can never address a thread they don't own.
+ */
+export const sendMessageAsContactSchema = sendMessageSchema.omit({
+  contactId: true,
+})
+
+export type SendMessageAsContactInput = z.infer<typeof sendMessageAsContactSchema>

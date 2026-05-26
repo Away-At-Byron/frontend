@@ -2,59 +2,51 @@
 
 /**
  * Communication tab — 4-quadrant layout ported from
- * `docs/design-reference/contact-details.jsx`. Three of the quadrants
- * (In-portal messages, Emails, SMS) render the design-reference mock data
- * verbatim; wiring to real conversations lands later. The Notes &
+ * `docs/design-reference/contact-details.jsx`. The In-portal messages
+ * quadrant is wired to the real `messages`/`conversations` schema; Emails
+ * and SMS still render mock data until those channels exist. The Notes &
  * Preferences quadrant is bound to the live form fields.
  */
-import type { ReactNode } from "react";
-import { Button, Card, Pill } from "@/components/ui/primitives";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ReactNode,
+} from "react";
+import { useRouter } from "next/navigation";
+import { Button, Card, IconButton, Pill } from "@/components/ui/primitives";
 import { Icon, type IconName } from "@/components/ui/icon";
+import { useToast } from "@/components/ui/toast";
+import {
+  ALLOWED_MIME_TYPES,
+  MAX_BULK_FILES,
+  MAX_FILE_BYTES,
+  isAllowedMimeType,
+} from "@/lib/upload-limits";
+import {
+  presignContactDocumentUploads,
+  getContactDocumentDownloadUrlAction,
+} from "@/modules/contact-documents/actions";
+import { sendMessage } from "@/modules/communications/actions";
+import type {
+  MessageAttachment,
+  MessageRow,
+} from "@/modules/communications/types";
 import { DatePicker } from "./date-picker";
 import type { FormState, OnField, SetField } from "./contact-detail-form";
 import { Row, Textarea } from "./contact-detail-fields";
 
-// ─── Mock data (from design-reference / contact-details.jsx) ────
+// ─── Mock data (Emails + SMS quadrants — wire when those channels exist) ────
 
-type ChatMessage = {
+type MockChatMessage = {
   who: "guest" | "staff";
   t: string;
   text: string;
   author?: string;
   photos?: string[];
 };
-
-const PORTAL_MESSAGES: ChatMessage[] = [
-  {
-    who: "guest",
-    t: "19 Nov · 11:21",
-    text: "Confirming arrival on Thursday — flight lands 10pm.",
-  },
-  {
-    who: "staff",
-    t: "19 Nov · 11:32",
-    text: "Late check-in is fine. Keys in the lockbox, code 4421.",
-    author: "Mia",
-  },
-  {
-    who: "guest",
-    t: "19 Nov · 11:35",
-    text: "Sending a photo of my ID for check-in records.",
-    photos: ["id"],
-  },
-  {
-    who: "staff",
-    t: "20 Nov · 09:00",
-    text: "Step-by-step check-in photos for tonight.",
-    author: "Mia",
-    photos: ["lockbox", "wifi", "room"],
-  },
-  {
-    who: "guest",
-    t: "20 Nov · 09:14",
-    text: "Got it — really helpful. See you tomorrow.",
-  },
-];
 
 type EmailItem = {
   kind: "auto" | "manual";
@@ -101,7 +93,7 @@ const EMAILS: EmailItem[] = [
   },
 ];
 
-const SMS_MESSAGES: ChatMessage[] = [
+const SMS_MESSAGES: MockChatMessage[] = [
   {
     who: "staff",
     t: "18 Nov · 19:02",
@@ -141,11 +133,22 @@ export function CommunicationTab({
   form,
   onField,
   setField,
+  contactId,
+  messages,
 }: {
   form: FormState;
   onField: OnField;
   setField: SetField;
+  contactId: string | null;
+  messages: MessageRow[];
 }) {
+  const portalMeta = useMemo(() => {
+    if (messages.length === 0) return "No messages yet";
+    const last = messages[messages.length - 1]!;
+    const when = formatBubbleTime(last.createdAt);
+    return `${messages.length} ${messages.length === 1 ? "message" : "messages"} · last ${when}`;
+  }, [messages]);
+
   return (
     <div
       style={{
@@ -161,13 +164,10 @@ export function CommunicationTab({
         title="In-portal messages"
         sub="In-app thread between guest & staff"
         footer={
-          <Composer
-            placeholder="Reply via portal…"
-            meta={`${PORTAL_MESSAGES.length} messages · last 09:14 today`}
-          />
+          <PortalComposer contactId={contactId} meta={portalMeta} />
         }
       >
-        <ChatThread messages={PORTAL_MESSAGES} />
+        <PortalThread messages={messages} contactId={contactId} />
       </Quadrant>
 
       <Quadrant
@@ -284,9 +284,543 @@ function NotesAndPreferences({
   );
 }
 
-// ─── Chat thread (Portal + SMS) ──────────────────────────────
+// ─── In-portal chat (real, backed by messages/conversations) ────
 
-function ChatThread({ messages }: { messages: ChatMessage[] }) {
+/**
+ * Real message thread for the in-portal Communication quadrant. Auto-scrolls
+ * to the latest message on mount and whenever new messages land. Empty state
+ * tells staff that the contact hasn't started a thread yet, or prompts them
+ * to send the first message.
+ */
+function PortalThread({
+  messages,
+  contactId,
+}: {
+  messages: MessageRow[];
+  contactId: string | null;
+}) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [messages.length]);
+
+  if (messages.length === 0) {
+    return (
+      <div
+        style={{
+          padding: "40px 22px",
+          textAlign: "center",
+          color: "var(--ink-faint)",
+          fontFamily: "var(--font-display), serif",
+          fontStyle: "italic",
+          fontSize: 16,
+        }}
+      >
+        {contactId
+          ? "No messages yet. Send the first one below."
+          : "Save the contact first, then start a conversation."}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={scrollRef}
+      style={{
+        padding: "14px 18px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        overflowY: "auto",
+        height: "100%",
+      }}
+    >
+      {messages.map((m) => (
+        <PortalBubble key={m.id} m={m} />
+      ))}
+    </div>
+  );
+}
+
+function PortalBubble({ m }: { m: MessageRow }) {
+  const me = m.senderType === "user";
+  const author = m.senderName ?? (me ? "Staff" : "Guest");
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: me ? "flex-end" : "flex-start",
+      }}
+    >
+      <div
+        className="caps"
+        style={{
+          color: "var(--ink-faint)",
+          fontSize: 8.5,
+          marginBottom: 3,
+          marginLeft: me ? 0 : 10,
+          marginRight: me ? 10 : 0,
+        }}
+      >
+        {author} · {formatBubbleTime(m.createdAt)}
+      </div>
+      <div
+        style={{
+          maxWidth: "82%",
+          padding: "9px 13px",
+          fontSize: 12.5,
+          lineHeight: 1.45,
+          background: me ? "var(--ink)" : "var(--paper)",
+          color: me ? "var(--linen)" : "var(--ink)",
+          border: me ? "none" : "1px solid var(--line)",
+          borderRadius: me ? "12px 12px 4px 12px" : "12px 12px 12px 4px",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+        }}
+      >
+        {m.body}
+        {m.attachments.length > 0 && (
+          <AttachmentStrip attachments={m.attachments} me={me} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AttachmentStrip({
+  attachments,
+  me,
+}: {
+  attachments: MessageAttachment[];
+  me: boolean;
+}) {
+  const images = attachments.filter(
+    (a) => a.previewUrl && a.mimeType?.startsWith("image/"),
+  );
+  const files = attachments.filter(
+    (a) => !a.previewUrl || !a.mimeType?.startsWith("image/"),
+  );
+
+  return (
+    <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+      {images.length > 0 && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns:
+              images.length === 1
+                ? "160px"
+                : `repeat(${Math.min(images.length, 3)}, 1fr)`,
+            gap: 5,
+          }}
+        >
+          {images.map((a) => (
+            <a
+              key={a.id}
+              href={a.previewUrl!}
+              target="_blank"
+              rel="noopener"
+              style={{
+                aspectRatio: "1",
+                borderRadius: "var(--r-2)",
+                background: "var(--shell)",
+                border: "1px solid var(--line-soft)",
+                overflow: "hidden",
+                display: "block",
+              }}
+              title={a.fileName ?? "Image"}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={a.previewUrl!}
+                alt={a.fileName ?? "attachment"}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                }}
+              />
+            </a>
+          ))}
+        </div>
+      )}
+      {files.map((a) => (
+        <FileChip key={a.id} attachment={a} me={me} />
+      ))}
+    </div>
+  );
+}
+
+function FileChip({
+  attachment,
+  me,
+}: {
+  attachment: MessageAttachment;
+  me: boolean;
+}) {
+  const toast = useToast();
+  const [opening, setOpening] = useState(false);
+  const openFile = async () => {
+    setOpening(true);
+    const res = await getContactDocumentDownloadUrlAction(attachment.id);
+    setOpening(false);
+    if (!res.ok) {
+      toast.error({
+        title: "Couldn't open attachment",
+        message: res.error.message,
+      });
+      return;
+    }
+    window.open(res.data.url, "_blank", "noopener");
+  };
+  return (
+    <button
+      type="button"
+      onClick={openFile}
+      disabled={opening}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "6px 10px",
+        borderRadius: "var(--r-1)",
+        background: me ? "rgba(255,255,255,0.10)" : "var(--shell)",
+        border: me ? "1px solid rgba(255,255,255,0.15)" : "1px solid var(--line-soft)",
+        color: "inherit",
+        font: "inherit",
+        fontSize: 11.5,
+        cursor: opening ? "wait" : "pointer",
+        maxWidth: "100%",
+      }}
+      title={attachment.fileName ?? "Attachment"}
+    >
+      <Icon name="Edit" size={12} />
+      <span
+        style={{
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {attachment.fileName ?? "Attachment"}
+      </span>
+      <span style={{ opacity: 0.6, fontSize: 10 }}>
+        {formatChipSize(attachment.sizeBytes)}
+      </span>
+    </button>
+  );
+}
+
+function formatChipSize(bytes: number | null): string {
+  if (bytes === null || bytes <= 0) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+/** Concise timestamp for chat bubbles — "today 14:32" / "20 Nov · 09:14". */
+function formatBubbleTime(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+  const time = d.toLocaleTimeString("en-AU", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  if (sameDay) return `today ${time}`;
+  const date = d.toLocaleDateString("en-AU", {
+    day: "2-digit",
+    month: "short",
+  });
+  return `${date} · ${time}`;
+}
+
+// ─── Portal composer (real send + multi-file attachments) ────
+
+function PortalComposer({
+  contactId,
+  meta,
+}: {
+  contactId: string | null;
+  meta?: string;
+}) {
+  const router = useRouter();
+  const toast = useToast();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [body, setBody] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [sending, setSending] = useState(false);
+
+  const canSend = contactId !== null && !sending && body.trim().length > 0;
+
+  const onPickFiles = (e: ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (!picked.length) return;
+    // Merge + de-dupe with current selection so the user can add from multiple
+    // folders. Same heuristic as the Documents-tab upload dialog.
+    const merged = [...files];
+    for (const f of picked) {
+      if (!merged.some((m) => m.name === f.name && m.size === f.size)) {
+        merged.push(f);
+      }
+    }
+    if (merged.length > MAX_BULK_FILES) {
+      toast.warn({
+        title: "Too many files",
+        message: `Attach up to ${MAX_BULK_FILES} files per message.`,
+      });
+      return;
+    }
+    for (const f of merged) {
+      if (!isAllowedMimeType(f.type)) {
+        toast.error({
+          title: "File type not supported",
+          message: `${f.name} isn't a file type we accept.`,
+        });
+        return;
+      }
+      if (f.size > MAX_FILE_BYTES) {
+        toast.error({
+          title: "File too large",
+          message: `${f.name} is over ${Math.floor(MAX_FILE_BYTES / 1024 / 1024)} MB.`,
+        });
+        return;
+      }
+    }
+    setFiles(merged);
+  };
+
+  const removeFile = (idx: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSend = async () => {
+    if (!contactId) return;
+    const trimmed = body.trim();
+    if (!trimmed) return;
+
+    setSending(true);
+    try {
+      // 1) If attachments, presign + PUT each before persisting the message.
+      let attachments: {
+        key: string;
+        fileName: string;
+        mimeType: string;
+        sizeBytes: number;
+      }[] = [];
+
+      if (files.length > 0) {
+        const presignRes = await presignContactDocumentUploads({
+          contactId,
+          files: files.map((f) => ({
+            fileName: f.name,
+            mimeType: f.type,
+            sizeBytes: f.size,
+          })),
+        });
+        if (!presignRes.ok) {
+          toast.error({
+            title: "Couldn't attach files",
+            message: presignRes.error.message,
+          });
+          return;
+        }
+        const uploads = await Promise.all(
+          presignRes.data.map(async (slot, i) => {
+            const file = files[i]!;
+            const res = await fetch(slot.uploadUrl, {
+              method: "PUT",
+              headers: slot.headers,
+              body: file,
+            });
+            if (!res.ok) {
+              throw new Error(`Upload failed for ${file.name} (${res.status})`);
+            }
+            return slot;
+          }),
+        );
+        attachments = uploads.map((slot) => ({
+          key: slot.key,
+          fileName: slot.fileName,
+          mimeType: slot.mimeType,
+          sizeBytes: slot.sizeBytes,
+        }));
+      }
+
+      // 2) Persist the message + (optionally) link the attachment rows.
+      const sendRes = await sendMessage({
+        contactId,
+        body: trimmed,
+        attachments: attachments.length ? attachments : undefined,
+      });
+
+      if (!sendRes.ok) {
+        toast.error({
+          title: "Couldn't send message",
+          message: sendRes.error.message,
+        });
+        return;
+      }
+
+      // Reset composer + refresh so the new bubble appears.
+      setBody("");
+      setFiles([]);
+      router.refresh();
+    } catch (err) {
+      toast.error({
+        title: "Couldn't send message",
+        message: err instanceof Error ? err.message : "Try again in a moment.",
+      });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        onKeyDown={(e) => {
+          // Cmd/Ctrl+Enter to send — matches Slack/etc., keeps newline on plain Enter.
+          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+            e.preventDefault();
+            handleSend();
+          }
+        }}
+        placeholder={
+          contactId
+            ? "Reply via portal…"
+            : "Save the contact first to start a conversation."
+        }
+        disabled={!contactId || sending}
+        rows={2}
+        style={{
+          background: "var(--paper)",
+          border: "1px solid var(--line-strong)",
+          borderRadius: "var(--r-2)",
+          padding: "10px 12px",
+          fontSize: 12.5,
+          color: "var(--ink)",
+          fontFamily: "inherit",
+          resize: "vertical",
+          minHeight: 56,
+          width: "100%",
+          boxSizing: "border-box",
+        }}
+      />
+
+      {files.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 6,
+          }}
+        >
+          {files.map((f, i) => (
+            <span
+              key={`${f.name}-${i}`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "4px 6px 4px 10px",
+                borderRadius: "var(--r-pill)",
+                background: "var(--shell)",
+                border: "1px solid var(--line-soft)",
+                fontSize: 11,
+                maxWidth: 220,
+              }}
+              title={f.name}
+            >
+              <span
+                style={{
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {f.name}
+              </span>
+              <IconButton
+                size={20}
+                variant="quiet"
+                title="Remove"
+                onClick={() => removeFile(i)}
+              >
+                <Icon name="X" size={10} />
+              </IconButton>
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept={ALLOWED_MIME_TYPES.join(",")}
+          hidden
+          onChange={onPickFiles}
+        />
+        <button
+          type="button"
+          aria-label="Attach files"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={!contactId || sending}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: "var(--r-1)",
+            border: "1px dashed var(--line-strong)",
+            background: "transparent",
+            cursor: !contactId || sending ? "not-allowed" : "pointer",
+            color: "var(--ink-faint)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Icon name="Plus" size={14} />
+        </button>
+        <span style={{ flex: 1 }} />
+        <Button
+          variant="primary"
+          size="sm"
+          iconRight={<Icon name="ArrowRight" size={13} />}
+          onClick={handleSend}
+          disabled={!canSend}
+        >
+          {sending ? "Sending…" : "Send"}
+        </Button>
+      </div>
+      {meta && (
+        <span
+          className="mono"
+          style={{ fontSize: 10, color: "var(--ink-faint)" }}
+        >
+          {meta}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ─── Chat thread (mock, used by SMS quadrant) ────────────────
+
+function ChatThread({ messages }: { messages: MockChatMessage[] }) {
   return (
     <div
       style={{
@@ -303,7 +837,7 @@ function ChatThread({ messages }: { messages: ChatMessage[] }) {
   );
 }
 
-function ChatBubble({ m }: { m: ChatMessage }) {
+function ChatBubble({ m }: { m: MockChatMessage }) {
   const me = m.who === "staff";
   return (
     <div
