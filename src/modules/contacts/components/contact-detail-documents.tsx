@@ -51,23 +51,6 @@ import {
   YES_NO_OPTIONS,
 } from "./contact-detail-fields";
 
-// "Other documents" still renders mock rows pending its own wiring task.
-type DocItem = {
-  name: string;
-  size: string;
-  when: string;
-  type: string;
-};
-
-const OTHER_DOCS: DocItem[] = [
-  {
-    name: "Loyalty rewards letter.pdf",
-    size: "140 KB",
-    when: "04 Jul 2025",
-    type: "Other",
-  },
-];
-
 export function DocumentsTab({
   form,
   onField,
@@ -93,6 +76,7 @@ export function DocumentsTab({
   const latestIdPhoto = idPhotos[0] ?? null;
 
   const bookingDocs = documents.filter((d) => d.type === "booking_documents");
+  const otherDocs = documents.filter((d) => d.type === "other_documents");
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -111,11 +95,14 @@ export function DocumentsTab({
         contactId={contactId}
         documents={bookingDocs}
       />
-      <DocList
+      <DocumentsCard
         title="Other documents"
-        subtitle="Any other files attached to this contact — letters, agreements, vouchers, photos."
-        docs={OTHER_DOCS}
+        subtitle="Letters, agreements, vouchers, photos, anything else."
         addLabel="Add document"
+        dialogTitle="Add document"
+        docType="other_documents"
+        contactId={contactId}
+        documents={otherDocs}
       />
     </div>
   );
@@ -603,6 +590,7 @@ function ImageLightbox({
  */
 function DocumentsCard({
   title,
+  subtitle,
   addLabel,
   dialogTitle,
   docType,
@@ -610,6 +598,7 @@ function DocumentsCard({
   documents,
 }: {
   title: string;
+  subtitle?: string;
   addLabel: string;
   dialogTitle: string;
   docType: ContactDocumentType;
@@ -634,13 +623,30 @@ function DocumentsCard({
         <div
           style={{
             flex: 1,
-            fontFamily: "var(--font-display), serif",
-            fontWeight: 400,
-            fontSize: 17,
-            letterSpacing: "var(--tight)",
+            display: "flex",
+            alignItems: "baseline",
+            gap: 10,
+            minWidth: 0,
           }}
         >
-          {title}
+          <span
+            style={{
+              fontFamily: "var(--font-display), serif",
+              fontWeight: 400,
+              fontSize: 17,
+              letterSpacing: "var(--tight)",
+            }}
+          >
+            {title}
+          </span>
+          {subtitle && (
+            <span
+              className="mono"
+              style={{ fontSize: 10, color: "var(--ink-faint)" }}
+            >
+              · {subtitle}
+            </span>
+          )}
         </div>
         <span
           title={
@@ -1218,93 +1224,6 @@ function UploadDocumentDialog({
   );
 }
 
-// ─── Document list (mock placeholder, kept for "Other documents") ────
-
-function DocList({
-  title,
-  subtitle,
-  docs,
-  addLabel,
-}: {
-  title: string;
-  subtitle?: string;
-  docs: DocItem[];
-  addLabel: string;
-}) {
-  return (
-    <Card pad={0}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          padding: "18px 22px",
-          borderBottom: "1px solid var(--line-soft)",
-        }}
-      >
-        <Icon name="Sparkline" size={16} />
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "baseline",
-            gap: 10,
-            minWidth: 0,
-          }}
-        >
-          <span
-            style={{
-              fontFamily: "var(--font-display), serif",
-              fontWeight: 400,
-              fontSize: 17,
-              letterSpacing: "var(--tight)",
-            }}
-          >
-            {title}
-          </span>
-          {subtitle && (
-            <span
-              className="mono"
-              style={{
-                fontSize: 10,
-                color: "var(--ink-faint)",
-              }}
-            >
-              · {subtitle}
-            </span>
-          )}
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={<Icon name="Plus" size={13} />}
-        >
-          {addLabel}
-        </Button>
-      </div>
-
-      <DocListHeader />
-
-      {docs.length === 0 ? (
-        <div
-          style={{
-            padding: "30px 22px",
-            textAlign: "center",
-            color: "var(--ink-faint)",
-            fontFamily: "var(--font-display), serif",
-            fontStyle: "italic",
-            fontSize: 16,
-          }}
-        >
-          No documents yet
-        </div>
-      ) : (
-        docs.map((d) => <DocRow key={d.name} doc={d} />)
-      )}
-    </Card>
-  );
-}
-
 const DOC_GRID = "48px 1.6fr 90px 90px 130px 80px";
 
 function DocListHeader() {
@@ -1328,64 +1247,6 @@ function DocListHeader() {
       <span>Size</span>
       <span>Uploaded</span>
       <span />
-    </div>
-  );
-}
-
-function DocRow({ doc }: { doc: DocItem }) {
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: DOC_GRID,
-        gap: 12,
-        alignItems: "center",
-        padding: "12px 22px",
-        borderTop: "1px solid var(--line-soft)",
-      }}
-    >
-      <div
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: "var(--r-2)",
-          background: "var(--shell)",
-          border: "1px solid var(--line-soft)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <DocIcon />
-      </div>
-      <span
-        style={{
-          fontFamily: "var(--font-display), serif",
-          fontSize: 14,
-        }}
-      >
-        {doc.name}
-      </span>
-      <Pill tone="neutral" size="sm">
-        {doc.type}
-      </Pill>
-      <span
-        className="mono"
-        style={{ fontSize: 11, color: "var(--ink-faint)" }}
-      >
-        {doc.size}
-      </span>
-      <span style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>
-        {doc.when}
-      </span>
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 4 }}>
-        <IconButton size={28} variant="quiet" title="View">
-          <ViewIcon />
-        </IconButton>
-        <IconButton size={28} variant="quiet" title="More">
-          <Icon name="MoreVertical" size={13} />
-        </IconButton>
-      </div>
     </div>
   );
 }
