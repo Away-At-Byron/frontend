@@ -284,6 +284,22 @@ export const NAV_ENTRIES: NavEntry[] = [
         module: "settings",
         adminOnly: true,
       },
+      {
+        href: "/settings/tariffs",
+        label: "Tariff Beginning Price",
+        icon: "TrendUp",
+        group: "manage",
+        module: "settings",
+        adminOnly: true,
+      },
+      {
+        href: "/settings/tariff-plans",
+        label: "Tariff",
+        icon: "TrendUp",
+        group: "manage",
+        module: "settings",
+        adminOnly: true,
+      },
     ],
   },
 ];
