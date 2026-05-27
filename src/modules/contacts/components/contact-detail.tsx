@@ -10,6 +10,7 @@ import {
   type ContactRow,
   type ContactSourceOption,
   type ContactTypeOption,
+  type GuestTypeOption,
   type GroupOption,
 } from "../types";
 import type { ContactOption, GroupMember } from "../queries";
@@ -43,6 +44,7 @@ export function ContactDetail({
   mode,
   contactTypes,
   contactSources,
+  guestTypes,
   groups,
   groupMembers,
   contactOptions,
@@ -54,6 +56,7 @@ export function ContactDetail({
   mode: "new" | "edit";
   contactTypes: ContactTypeOption[];
   contactSources: ContactSourceOption[];
+  guestTypes: GuestTypeOption[];
   groups: GroupOption[];
   groupMembers: GroupMember[];
   contactOptions: ContactOption[];
@@ -333,6 +336,7 @@ export function ContactDetail({
           setField={setField}
           contactTypes={contactTypes}
           contactSources={contactSources}
+          guestTypes={guestTypes}
           groups={groups}
           groupMembers={members}
           contactOptions={contactOptions}

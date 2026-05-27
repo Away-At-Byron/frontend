@@ -15,7 +15,7 @@ export type FormState = {
   birthday: string;
   clientNumber: string;
   tier: string;
-  guestType: string;
+  guestTypeId: string;
   returningGuest: string;
   portalEnabled: string;
   doNotRebook: string;
@@ -52,7 +52,7 @@ export function initialForm(c: ContactRow | null): FormState {
     birthday: c?.birthday ?? "",
     clientNumber: c ? `G-${c.id.slice(0, 4).toUpperCase()}` : "",
     tier: c?.tier ?? "",
-    guestType: c?.guestType ?? "",
+    guestTypeId: c?.guestTypeId ?? "",
     returningGuest: c?.returningGuest ? "yes" : "no",
     portalEnabled: c?.portalEnabled ? "yes" : "no",
     doNotRebook: c?.doNotRebook ? "yes" : "no",
@@ -109,15 +109,7 @@ export function toPayload(f: FormState) {
     idVerified: f.idVerified === "yes",
     doNotRebook: f.doNotRebook === "yes",
     tier: (f.tier as "bronze" | "silver" | "gold" | "vip") || undefined,
-    guestType:
-      (f.guestType as
-        | "leisure"
-        | "corporate"
-        | "family"
-        | "couple"
-        | "group"
-        | "vip"
-        | "event_guest") || undefined,
+    guestTypeId: f.guestTypeId || undefined,
     preferredBookingChannel: f.preferredBookingChannel || undefined,
     firstBookingDate: f.firstBookingDate || undefined,
     notes: f.notes || undefined,

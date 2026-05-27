@@ -11,6 +11,7 @@ import {
   listContactOptions,
   listContactSources,
   listContactTypes,
+  listGuestTypeOptions,
   listGroupMembers,
   listGroupOptions,
 } from "@/modules/contacts/queries";
@@ -35,17 +36,20 @@ export default async function ContactDetailPage({
   const { id } = await params;
   const isNew = id === "new";
 
-  const [contactRes, typesRes, sourcesRes, groupsRes, optionsRes] = await Promise.all([
-    isNew ? Promise.resolve({ ok: true as const, data: null }) : getContact(id),
-    listContactTypes(),
-    listContactSources(),
-    listGroupOptions(),
-    listContactOptions(),
-  ]);
+  const [contactRes, typesRes, sourcesRes, guestTypesRes, groupsRes, optionsRes] =
+    await Promise.all([
+      isNew ? Promise.resolve({ ok: true as const, data: null }) : getContact(id),
+      listContactTypes(),
+      listContactSources(),
+      listGuestTypeOptions(),
+      listGroupOptions(),
+      listContactOptions(),
+    ]);
 
   if (
     !typesRes.ok ||
     !sourcesRes.ok ||
+    !guestTypesRes.ok ||
     !groupsRes.ok ||
     !contactRes.ok ||
     !optionsRes.ok
@@ -56,11 +60,13 @@ export default async function ContactDetailPage({
         ? typesRes.error.message
         : !sourcesRes.ok
           ? sourcesRes.error.message
-          : !groupsRes.ok
-            ? groupsRes.error.message
-            : !optionsRes.ok
-              ? optionsRes.error.message
-              : "";
+          : !guestTypesRes.ok
+            ? guestTypesRes.error.message
+            : !groupsRes.ok
+              ? groupsRes.error.message
+              : !optionsRes.ok
+                ? optionsRes.error.message
+                : "";
     return (
       <div style={{ padding: "40px 32px", color: "var(--ink-soft)" }}>
         Could not load contact. {message}
@@ -116,6 +122,7 @@ export default async function ContactDetailPage({
       mode={isNew ? "new" : "edit"}
       contactTypes={typesRes.data}
       contactSources={sourcesRes.data}
+      guestTypes={guestTypesRes.data}
       groups={groupsRes.data}
       groupMembers={groupMembers}
       contactOptions={contactOptions}

@@ -16,6 +16,7 @@ import {
   type ContactSourceOption,
   type ContactTier,
   type ContactTypeOption,
+  type GuestTypeOption,
   type GroupOption,
   CONTACT_TIERS,
   CONTACT_TIER_LABELS,
@@ -217,12 +218,14 @@ export function ContactManagement({
   initialContacts,
   contactTypes,
   contactSources,
+  guestTypes,
   groups,
   canDelete,
 }: {
   initialContacts: ContactRow[];
   contactTypes: ContactTypeOption[];
   contactSources: ContactSourceOption[];
+  guestTypes: GuestTypeOption[];
   groups: GroupOption[];
   canDelete: boolean;
 }) {
@@ -739,6 +742,7 @@ export function ContactManagement({
         onClose={() => setNewOpen(false)}
         contactTypes={contactTypes}
         contactSources={contactSources}
+        guestTypes={guestTypes}
         groups={groups}
         onSave={handleCreate}
       />

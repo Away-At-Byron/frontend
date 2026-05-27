@@ -14,6 +14,7 @@ import type {
   ContactRow,
   ContactSourceOption,
   ContactTypeOption,
+  GuestTypeOption,
   GroupOption,
 } from "../types"
 import type { ActionResult } from "@/lib/result"
@@ -51,7 +52,7 @@ const defaults: CreateContactInput = {
   doNotRebook: false,
   tier: undefined,
   contactSourceId: "",
-  guestType: undefined,
+  guestTypeId: "",
 }
 
 export function NewContactModal({
@@ -59,6 +60,7 @@ export function NewContactModal({
   onClose,
   contactTypes,
   contactSources,
+  guestTypes,
   groups,
   onSave,
 }: {
@@ -66,6 +68,7 @@ export function NewContactModal({
   onClose: () => void
   contactTypes: ContactTypeOption[]
   contactSources: ContactSourceOption[]
+  guestTypes: GuestTypeOption[]
   groups: GroupOption[]
   onSave: (values: CreateContactInput) => Promise<ActionResult<ContactRow>>
 }) {
@@ -127,7 +130,7 @@ export function NewContactModal({
               {errors.root.message}
             </div>
           )}
-          <ContactFormFields register={register} control={control} errors={errors} setValue={setValue} contactTypes={contactTypes} contactSources={contactSources} groups={groups} showIdentity={false} showBookingProfile={false} />
+          <ContactFormFields register={register} control={control} errors={errors} setValue={setValue} contactTypes={contactTypes} contactSources={contactSources} guestTypes={guestTypes} groups={groups} showIdentity={false} showBookingProfile={false} />
         </div>
         <div style={{ padding: "14px 24px 22px", display: "flex", justifyContent: "flex-end", gap: 10, borderTop: "1px solid var(--line-soft)" }}>
           <Button variant="ghost" type="button" onClick={close} disabled={isSubmitting}>
@@ -148,6 +151,7 @@ export function EditContactModal({
   contact,
   contactTypes,
   contactSources,
+  guestTypes,
   groups,
   onSave,
 }: {
@@ -156,6 +160,7 @@ export function EditContactModal({
   contact: ContactRow | null
   contactTypes: ContactTypeOption[]
   contactSources: ContactSourceOption[]
+  guestTypes: GuestTypeOption[]
   groups: GroupOption[]
   onSave: (id: string, values: UpdateContactInput) => Promise<ActionResult<ContactRow>>
 }) {
@@ -201,7 +206,7 @@ export function EditContactModal({
           doNotRebook: contact.doNotRebook,
           tier: contact.tier ?? undefined,
           contactSourceId: contact.contactSourceId ?? "",
-          guestType: contact.guestType ?? undefined,
+          guestTypeId: contact.guestTypeId ?? "",
         }
       : undefined,
   })
@@ -247,7 +252,7 @@ export function EditContactModal({
               {errors.root.message}
             </div>
           )}
-          <ContactFormFields register={register} control={control} errors={errors} setValue={setValue} contactTypes={contactTypes} contactSources={contactSources} groups={groups} />
+          <ContactFormFields register={register} control={control} errors={errors} setValue={setValue} contactTypes={contactTypes} contactSources={contactSources} guestTypes={guestTypes} groups={groups} />
         </div>
         <div style={{ padding: "14px 24px 22px", display: "flex", justifyContent: "flex-end", gap: 10, borderTop: "1px solid var(--line-soft)" }}>
           <Button variant="ghost" type="button" onClick={close} disabled={isSubmitting}>

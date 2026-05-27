@@ -13,9 +13,9 @@ import { useToast } from "@/components/ui/toast";
 import {
   CONTACT_TIER_LABELS,
   COMMUNICATION_PREFERENCE_LABELS,
-  GUEST_TYPE_LABELS,
   type ContactSourceOption,
   type ContactTypeOption,
+  type GuestTypeOption,
   type GroupOption,
   type GroupRow,
 } from "../types";
@@ -43,6 +43,7 @@ export function ProfileTab({
   setField,
   contactTypes,
   contactSources,
+  guestTypes,
   groups,
   groupMembers,
   contactOptions,
@@ -56,6 +57,7 @@ export function ProfileTab({
   setField: SetField;
   contactTypes: ContactTypeOption[];
   contactSources: ContactSourceOption[];
+  guestTypes: GuestTypeOption[];
   groupMembers: GroupMember[];
   contactOptions: ContactOption[];
   currentContactId: string | null;
@@ -133,13 +135,13 @@ export function ProfileTab({
           </Row>
           <Row label="Guest type">
             <SelectInput
-              value={form.guestType}
-              onChange={onField("guestType")}
+              value={form.guestTypeId}
+              onChange={onField("guestTypeId")}
               options={[
                 { value: "", label: "—" },
-                ...Object.entries(GUEST_TYPE_LABELS).map(([v, l]) => ({
-                  value: v,
-                  label: l,
+                ...guestTypes.map((t) => ({
+                  value: t.id,
+                  label: t.name,
                 })),
               ]}
             />

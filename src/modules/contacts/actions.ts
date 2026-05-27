@@ -1,7 +1,7 @@
 "use server"
 
 import { and, eq, inArray, sql } from "drizzle-orm"
-import { contacts, contactTypes, contactSources, groups } from "@/db/schema"
+import { contacts, contactTypes, contactSources, guestTypes, groups } from "@/db/schema"
 import { withTenant, withPermission } from "@/lib/rls"
 import { writeAudit } from "@/lib/audit"
 import { ok, err, type ActionResult } from "@/lib/result"
@@ -69,6 +69,7 @@ async function fetchContactRow(tx: Tx, id: string): Promise<ContactRow | null> {
     .from(contacts)
     .leftJoin(contactTypes, eq(contacts.contactTypeId, contactTypes.id))
     .leftJoin(contactSources, eq(contacts.contactSourceId, contactSources.id))
+    .leftJoin(guestTypes, eq(contacts.guestTypeId, guestTypes.id))
     .leftJoin(groups, eq(contacts.groupId, groups.id))
     .where(eq(contacts.id, id))
     .limit(1)
@@ -109,7 +110,7 @@ function contactValues(data: CreateContactInput) {
     doNotRebook: data.doNotRebook,
     tier: data.tier ?? null,
     contactSourceId: data.contactSourceId ?? null,
-    guestType: data.guestType ?? null,
+    guestTypeId: data.guestTypeId ?? null,
     portalEnabled: data.portalEnabled,
   }
 }

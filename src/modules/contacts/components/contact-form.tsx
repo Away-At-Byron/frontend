@@ -32,10 +32,9 @@ import {
   CONTACT_ID_TYPE_LABELS,
   CONTACT_TIERS,
   CONTACT_TIER_LABELS,
-  GUEST_TYPES,
-  GUEST_TYPE_LABELS,
   type ContactSourceOption,
   type ContactTypeOption,
+  type GuestTypeOption,
   type GroupOption,
 } from "../types";
 
@@ -89,6 +88,7 @@ export function ContactFormFields({
   setValue,
   contactTypes,
   contactSources,
+  guestTypes,
   groups,
   showIdentity = true,
   showBookingProfile = true,
@@ -99,6 +99,7 @@ export function ContactFormFields({
   setValue: UseFormSetValue<CreateContactInput>;
   contactTypes: ContactTypeOption[];
   contactSources: ContactSourceOption[];
+  guestTypes: GuestTypeOption[];
   groups: GroupOption[];
   showIdentity?: boolean;
   showBookingProfile?: boolean;
@@ -185,15 +186,15 @@ export function ContactFormFields({
             ))}
           </select>
         </Field>
-        <Field label="Guest type" error={errors.guestType?.message}>
+        <Field label="Guest type" error={errors.guestTypeId?.message}>
           <select
-            {...register("guestType")}
+            {...register("guestTypeId")}
             style={{ ...inputStyle, width: "100%" }}
           >
             <option value="">—</option>
-            {GUEST_TYPES.map((v) => (
-              <option key={v} value={v}>
-                {GUEST_TYPE_LABELS[v]}
+            {guestTypes.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
               </option>
             ))}
           </select>

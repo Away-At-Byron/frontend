@@ -13,6 +13,7 @@ import { sql } from "drizzle-orm"
 import { users } from "./auth"
 import { contactTypes } from "./contact-types"
 import { contactSources } from "./contact-sources"
+import { guestTypes } from "./guest-types"
 import { groups } from "./groups"
 
 /** Communication Preference (Email, SMS, Both, None, Unsubscribed). */
@@ -38,17 +39,6 @@ export const contactTierEnum = pgEnum("contact_tier", [
   "silver",
   "gold",
   "vip",
-])
-
-/** Guest classification. */
-export const guestTypeEnum = pgEnum("guest_type", [
-  "leisure",
-  "corporate",
-  "family",
-  "couple",
-  "group",
-  "vip",
-  "event_guest",
 ])
 
 /**
@@ -111,7 +101,8 @@ export const contacts = pgTable(
     tier: contactTierEnum("tier"),
     /** FK to the admin-managed contact_sources catalogue. */
     contactSourceId: uuid("contact_source_id").references(() => contactSources.id),
-    guestType: guestTypeEnum("guest_type"),
+    /** FK to the admin-managed guest_types catalogue. */
+    guestTypeId: uuid("guest_type_id").references(() => guestTypes.id),
 
     /**
      * Portal access opt-in. OFF by default so the guest address book is not

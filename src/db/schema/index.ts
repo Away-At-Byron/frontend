@@ -12,6 +12,7 @@ export * from "./audit" // Layer 0 — cross-cutting
 // ── Layer 1 — domain reference data (Stage 2) ──────────────
 export * from "./contact-types" // module 4 — admin-managed contact type catalogue
 export * from "./contact-sources" // module 4 — admin-managed contact source catalogue
+export * from "./guest-types" // module 4 — admin-managed guest type catalogue (replaces guest_type enum)
 export * from "./groups" // module 4 — group bookings
 export * from "./contacts" // module 4
 export * from "./communications" // module 24 — in-portal staff↔contact chat (loaded early because contact-documents FKs it)

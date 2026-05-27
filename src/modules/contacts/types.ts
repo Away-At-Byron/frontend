@@ -34,28 +34,9 @@ export const CONTACT_TIER_LABELS: Record<ContactTier, string> = {
   vip: "VIP",
 }
 
-export const GUEST_TYPES = [
-  "leisure",
-  "corporate",
-  "family",
-  "couple",
-  "group",
-  "vip",
-  "event_guest",
-] as const
-export type GuestType = (typeof GUEST_TYPES)[number]
-export const GUEST_TYPE_LABELS: Record<GuestType, string> = {
-  leisure: "Leisure",
-  corporate: "Corporate",
-  family: "Family",
-  couple: "Couple",
-  group: "Group",
-  vip: "VIP",
-  event_guest: "Event Guest",
-}
-
 export type ContactTypeOption = { id: string; name: string }
 export type ContactSourceOption = { id: string; name: string }
+export type GuestTypeOption = { id: string; name: string }
 
 export type ContactRow = {
   id: string
@@ -94,7 +75,8 @@ export type ContactRow = {
   tier: ContactTier | null
   contactSourceId: string | null
   contactSourceName: string | null
-  guestType: GuestType | null
+  guestTypeId: string | null
+  guestTypeName: string | null
   /** Derived from bookings (Booking module); 0 until that module lands. */
   stayCount: number
   lastStayLabel: string | null

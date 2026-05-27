@@ -1,7 +1,7 @@
 import "server-only"
 
 import { eq, asc, desc, sql } from "drizzle-orm"
-import { contacts, contactTypes, contactSources, groups } from "@/db/schema"
+import { contacts, contactTypes, contactSources, guestTypes, groups } from "@/db/schema"
 import { withTenant, withPermission } from "@/lib/rls"
 import { ok, type ActionResult } from "@/lib/result"
 import { CONTACT_PERMISSIONS } from "./permissions"
@@ -9,6 +9,7 @@ import type {
   ContactRow,
   ContactSourceOption,
   ContactTypeOption,
+  GuestTypeOption,
   GroupOption,
   GroupRow,
 } from "./types"
@@ -17,6 +18,7 @@ export type {
   ContactRow,
   ContactSourceOption,
   ContactTypeOption,
+  GuestTypeOption,
   GroupOption,
   GroupRow,
 } from "./types"
@@ -58,7 +60,8 @@ export const contactSelection = {
   tier: contacts.tier,
   contactSourceId: contacts.contactSourceId,
   contactSourceName: contactSources.name,
-  guestType: contacts.guestType,
+  guestTypeId: contacts.guestTypeId,
+  guestTypeName: guestTypes.name,
 } as const
 
 export function mapContactRow(
@@ -146,6 +149,7 @@ export async function getContact(
         .from(contacts)
         .leftJoin(contactTypes, eq(contacts.contactTypeId, contactTypes.id))
         .leftJoin(contactSources, eq(contacts.contactSourceId, contactSources.id))
+        .leftJoin(guestTypes, eq(contacts.guestTypeId, guestTypes.id))
         .leftJoin(groups, eq(contacts.groupId, groups.id))
         .where(eq(contacts.id, id))
         .limit(1)
@@ -163,6 +167,7 @@ export async function listContacts(): Promise<ActionResult<ContactRow[]>> {
         .from(contacts)
         .leftJoin(contactTypes, eq(contacts.contactTypeId, contactTypes.id))
         .leftJoin(contactSources, eq(contacts.contactSourceId, contactSources.id))
+        .leftJoin(guestTypes, eq(contacts.guestTypeId, guestTypes.id))
         .leftJoin(groups, eq(contacts.groupId, groups.id))
         .where(eq(contacts.isDeleted, false))
         // Newest contacts first.
@@ -182,6 +187,22 @@ export async function listContactTypes(): Promise<ActionResult<ContactTypeOption
         .from(contactTypes)
         .where(eq(contactTypes.isDeleted, false))
         .orderBy(asc(contactTypes.name))
+      return ok(rows)
+    }),
+  )
+}
+
+/** Active (non-deleted) guest types for the contact form select. */
+export async function listGuestTypeOptions(): Promise<
+  ActionResult<GuestTypeOption[]>
+> {
+  return withTenant(async (tx, ctx) =>
+    withPermission(CONTACT_PERMISSIONS.read, ctx, async () => {
+      const rows = await tx
+        .select({ id: guestTypes.id, name: guestTypes.name })
+        .from(guestTypes)
+        .where(eq(guestTypes.isDeleted, false))
+        .orderBy(asc(guestTypes.name))
       return ok(rows)
     }),
   )
