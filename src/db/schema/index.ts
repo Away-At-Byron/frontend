@@ -20,6 +20,7 @@ export * from "./contact-documents" // module 4 — files + comms per contact
 export * from "./room-types" // module 5 — admin-managed room type catalogue (global, ADR-007)
 export * from "./room-configurations" // module 5 — admin-managed room configuration catalogue (global, ADR-008)
 export * from "./property-amenities" // module 5 — admin-managed amenity catalogue (global single table, ADR-009)
+export * from "./room-amenities" // module 5 — admin-managed per-room amenity catalogue (global, follows ADR-007)
 // export * from "./rooms"           // module 6
 // export * from "./common-areas"    // module 7
 // export * from "./booking-sources" // module 8
