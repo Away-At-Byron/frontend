@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Button, Card, IconButton, Pill } from "@/components/ui/primitives"
+import { Button, Card, Pill } from "@/components/ui/primitives"
 import { Icon } from "@/components/ui/icon"
+import { useConfirm } from "@/components/ui/dialog"
+import { useToast } from "@/components/ui/toast"
 import {
   createDiscountType,
   updateDiscountType,
@@ -82,6 +84,8 @@ export function DiscountTypeManagement({
   initialDiscounts: DiscountTypeRow[]
 }) {
   const router = useRouter()
+  const confirm = useConfirm()
+  const toast = useToast()
   const [rows, setRows] = useState<DiscountTypeRow[]>(initialDiscounts)
   const [syncedFrom, setSyncedFrom] = useState(initialDiscounts)
   if (initialDiscounts !== syncedFrom) {
@@ -95,7 +99,6 @@ export function DiscountTypeManagement({
   const [newOpen, setNewOpen] = useState(false)
   const [editRow, setEditRow] = useState<DiscountTypeRow | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(searchTerm), 300)
@@ -117,7 +120,6 @@ export function DiscountTypeManagement({
 
   const handleCreate = useCallback(
     async (values: Parameters<typeof createDiscountType>[0]) => {
-      setError(null)
       const res = await createDiscountType(values)
       if (res.ok) {
         setRows((prev) => sortByName([...prev, res.data]))
@@ -130,7 +132,6 @@ export function DiscountTypeManagement({
 
   const handleUpdate = useCallback(
     async (id: string, values: Parameters<typeof updateDiscountType>[1]) => {
-      setError(null)
       const res = await updateDiscountType(id, values)
       if (res.ok) {
         setRows((prev) =>
@@ -145,24 +146,32 @@ export function DiscountTypeManagement({
 
   const handleDelete = useCallback(
     async (r: DiscountTypeRow) => {
-      if (
-        !window.confirm(
-          `Delete the "${r.name}" discount (${r.code})? Bookings that already used it keep the saving.`,
-        )
-      )
-        return
+      const ok = await confirm({
+        tone: "danger",
+        title: `Delete ${r.name}?`,
+        message: `Code ${r.code}. Bookings that already used it keep the saving.`,
+        confirmLabel: "Delete discount",
+        cancelLabel: "Cancel",
+      })
+      if (!ok) return
       setDeletingId(r.id)
-      setError(null)
       const res = await deleteDiscountType(r.id)
       if (res.ok) {
         setRows((prev) => prev.filter((x) => x.id !== r.id))
         router.refresh()
+        toast.success({
+          title: "Discount deleted",
+          message: `${r.name} has been removed.`,
+        })
       } else {
-        setError(res.error.message)
+        toast.error({
+          title: "Could not delete",
+          message: res.error.message,
+        })
       }
       setDeletingId(null)
     },
-    [router],
+    [router, confirm, toast],
   )
 
   return (
@@ -202,31 +211,6 @@ export function DiscountTypeManagement({
           New discount
         </Button>
       </div>
-
-      {error && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "12px 16px",
-            borderRadius: "var(--r-2)",
-            background: "var(--bad-bg)",
-            color: "var(--bad-fg)",
-            fontSize: 13.5,
-          }}
-        >
-          {error}
-          <IconButton
-            size={28}
-            variant="quiet"
-            title="Dismiss"
-            onClick={() => setError(null)}
-          >
-            <Icon name="X" size={14} />
-          </IconButton>
-        </div>
-      )}
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
         <div

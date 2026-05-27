@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Button, Card, IconButton, Pill } from "@/components/ui/primitives"
+import { Button, Card, Pill } from "@/components/ui/primitives"
 import { Icon } from "@/components/ui/icon"
+import { useConfirm } from "@/components/ui/dialog"
+import { useToast } from "@/components/ui/toast"
 import {
   createContactSource,
   updateContactSource,
@@ -39,6 +41,8 @@ export function ContactSourceManagement({
   initialSources: ContactSourceRow[]
 }) {
   const router = useRouter()
+  const confirm = useConfirm()
+  const toast = useToast()
   const [sources, setSources] = useState<ContactSourceRow[]>(initialSources)
   const [syncedFrom, setSyncedFrom] = useState(initialSources)
   // Reconcile with fresh server data after router.refresh() — the
@@ -53,7 +57,6 @@ export function ContactSourceManagement({
   const [newOpen, setNewOpen] = useState(false)
   const [editSource, setEditSource] = useState<ContactSourceRow | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
   // 300 ms debounced search, matching the other management screens.
   useEffect(() => {
@@ -69,8 +72,7 @@ export function ContactSourceManagement({
 
   const handleCreate = useCallback(
     async (values: Parameters<typeof createContactSource>[0]) => {
-      setError(null)
-      const res = await createContactSource(values)
+      const res =await createContactSource(values)
       if (res.ok) {
         setSources((prev) => sortByName([...prev, res.data]))
         router.refresh()
@@ -82,8 +84,7 @@ export function ContactSourceManagement({
 
   const handleUpdate = useCallback(
     async (id: string, values: Parameters<typeof updateContactSource>[1]) => {
-      setError(null)
-      const res = await updateContactSource(id, values)
+      const res =await updateContactSource(id, values)
       if (res.ok) {
         setSources((prev) =>
           sortByName(prev.map((t) => (t.id === id ? res.data : t))),
@@ -97,28 +98,38 @@ export function ContactSourceManagement({
 
   const handleDelete = useCallback(
     async (s: ContactSourceRow) => {
-      const inUse =
+      const inUseLine =
         s.contactCount > 0
           ? ` ${s.contactCount} contact${
               s.contactCount === 1 ? "" : "s"
             } will keep this source on their record.`
           : ""
-      if (
-        !window.confirm(`Delete the "${s.name}" contact source?${inUse}`)
-      )
-        return
+      const ok = await confirm({
+        tone: "danger",
+        title: `Delete ${s.name}?`,
+        message: `The contact source will be removed from the list.${inUseLine}`,
+        confirmLabel: "Delete contact source",
+        cancelLabel: "Cancel",
+      })
+      if (!ok) return
       setDeletingId(s.id)
-      setError(null)
       const res = await deleteContactSource(s.id)
       if (res.ok) {
         setSources((prev) => prev.filter((x) => x.id !== s.id))
         router.refresh()
+        toast.success({
+          title: "Contact source deleted",
+          message: `${s.name} has been removed.`,
+        })
       } else {
-        setError(res.error.message)
+        toast.error({
+          title: "Could not delete",
+          message: res.error.message,
+        })
       }
       setDeletingId(null)
     },
-    [router],
+    [router, confirm, toast],
   )
 
   return (
@@ -159,31 +170,6 @@ export function ContactSourceManagement({
           New contact source
         </Button>
       </div>
-
-      {error && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "12px 16px",
-            borderRadius: "var(--r-2)",
-            background: "var(--bad-bg)",
-            color: "var(--bad-fg)",
-            fontSize: 13.5,
-          }}
-        >
-          {error}
-          <IconButton
-            size={28}
-            variant="quiet"
-            title="Dismiss"
-            onClick={() => setError(null)}
-          >
-            <Icon name="X" size={14} />
-          </IconButton>
-        </div>
-      )}
 
       {/* Search */}
       <div

@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Button, Card, IconButton, Pill } from "@/components/ui/primitives"
+import { Button, Card, Pill } from "@/components/ui/primitives"
 import { Icon } from "@/components/ui/icon"
+import { useConfirm } from "@/components/ui/dialog"
+import { useToast } from "@/components/ui/toast"
 import {
   createRoomConfiguration,
   updateRoomConfiguration,
@@ -38,6 +40,8 @@ export function RoomConfigurationManagement({
   initialConfigurations: RoomConfigurationRow[]
 }) {
   const router = useRouter()
+  const confirm = useConfirm()
+  const toast = useToast()
   const [rows, setRows] = useState<RoomConfigurationRow[]>(initialConfigurations)
   const [syncedFrom, setSyncedFrom] = useState(initialConfigurations)
   if (initialConfigurations !== syncedFrom) {
@@ -50,7 +54,6 @@ export function RoomConfigurationManagement({
   const [newOpen, setNewOpen] = useState(false)
   const [editRow, setEditRow] = useState<RoomConfigurationRow | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(searchTerm), 300)
@@ -65,7 +68,6 @@ export function RoomConfigurationManagement({
 
   const handleCreate = useCallback(
     async (values: Parameters<typeof createRoomConfiguration>[0]) => {
-      setError(null)
       const res = await createRoomConfiguration(values)
       if (res.ok) {
         setRows((prev) => sortByName([...prev, res.data]))
@@ -78,7 +80,6 @@ export function RoomConfigurationManagement({
 
   const handleUpdate = useCallback(
     async (id: string, values: Parameters<typeof updateRoomConfiguration>[1]) => {
-      setError(null)
       const res = await updateRoomConfiguration(id, values)
       if (res.ok) {
         setRows((prev) =>
@@ -93,28 +94,38 @@ export function RoomConfigurationManagement({
 
   const handleDelete = useCallback(
     async (r: RoomConfigurationRow) => {
-      const inUse =
+      const inUseLine =
         r.roomCount > 0
           ? ` ${r.roomCount} room${
               r.roomCount === 1 ? "" : "s"
             } will keep this configuration on their record.`
           : ""
-      if (
-        !window.confirm(`Delete the "${r.name}" room configuration?${inUse}`)
-      )
-        return
+      const ok = await confirm({
+        tone: "danger",
+        title: `Delete ${r.name}?`,
+        message: `The room configuration will be removed from the list.${inUseLine}`,
+        confirmLabel: "Delete room configuration",
+        cancelLabel: "Cancel",
+      })
+      if (!ok) return
       setDeletingId(r.id)
-      setError(null)
       const res = await deleteRoomConfiguration(r.id)
       if (res.ok) {
         setRows((prev) => prev.filter((x) => x.id !== r.id))
         router.refresh()
+        toast.success({
+          title: "Room configuration deleted",
+          message: `${r.name} has been removed.`,
+        })
       } else {
-        setError(res.error.message)
+        toast.error({
+          title: "Could not delete",
+          message: res.error.message,
+        })
       }
       setDeletingId(null)
     },
-    [router],
+    [router, confirm, toast],
   )
 
   return (
@@ -154,31 +165,6 @@ export function RoomConfigurationManagement({
           New room configuration
         </Button>
       </div>
-
-      {error && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "12px 16px",
-            borderRadius: "var(--r-2)",
-            background: "var(--bad-bg)",
-            color: "var(--bad-fg)",
-            fontSize: 13.5,
-          }}
-        >
-          {error}
-          <IconButton
-            size={28}
-            variant="quiet"
-            title="Dismiss"
-            onClick={() => setError(null)}
-          >
-            <Icon name="X" size={14} />
-          </IconButton>
-        </div>
-      )}
 
       <div
         style={{

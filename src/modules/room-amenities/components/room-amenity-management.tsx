@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Button, Card, IconButton, Pill } from "@/components/ui/primitives"
+import { Button, Card, Pill } from "@/components/ui/primitives"
 import { Icon } from "@/components/ui/icon"
+import { useConfirm } from "@/components/ui/dialog"
+import { useToast } from "@/components/ui/toast"
 import {
   createRoomAmenity,
   updateRoomAmenity,
@@ -37,6 +39,8 @@ export function RoomAmenityManagement({
   initialAmenities: RoomAmenityRow[]
 }) {
   const router = useRouter()
+  const confirm = useConfirm()
+  const toast = useToast()
   const [rows, setRows] = useState<RoomAmenityRow[]>(initialAmenities)
   const [syncedFrom, setSyncedFrom] = useState(initialAmenities)
   if (initialAmenities !== syncedFrom) {
@@ -49,7 +53,6 @@ export function RoomAmenityManagement({
   const [newOpen, setNewOpen] = useState(false)
   const [editRow, setEditRow] = useState<RoomAmenityRow | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(searchTerm), 300)
@@ -64,7 +67,6 @@ export function RoomAmenityManagement({
 
   const handleCreate = useCallback(
     async (values: Parameters<typeof createRoomAmenity>[0]) => {
-      setError(null)
       const res = await createRoomAmenity(values)
       if (res.ok) {
         setRows((prev) => sortByName([...prev, res.data]))
@@ -77,7 +79,6 @@ export function RoomAmenityManagement({
 
   const handleUpdate = useCallback(
     async (id: string, values: Parameters<typeof updateRoomAmenity>[1]) => {
-      setError(null)
       const res = await updateRoomAmenity(id, values)
       if (res.ok) {
         setRows((prev) =>
@@ -92,19 +93,32 @@ export function RoomAmenityManagement({
 
   const handleDelete = useCallback(
     async (r: RoomAmenityRow) => {
-      if (!window.confirm(`Delete the "${r.name}" room amenity?`)) return
+      const ok = await confirm({
+        tone: "danger",
+        title: `Delete ${r.name}?`,
+        message: `The room amenity will be removed from the list.`,
+        confirmLabel: "Delete room amenity",
+        cancelLabel: "Cancel",
+      })
+      if (!ok) return
       setDeletingId(r.id)
-      setError(null)
       const res = await deleteRoomAmenity(r.id)
       if (res.ok) {
         setRows((prev) => prev.filter((x) => x.id !== r.id))
         router.refresh()
+        toast.success({
+          title: "Room amenity deleted",
+          message: `${r.name} has been removed.`,
+        })
       } else {
-        setError(res.error.message)
+        toast.error({
+          title: "Could not delete",
+          message: res.error.message,
+        })
       }
       setDeletingId(null)
     },
-    [router],
+    [router, confirm, toast],
   )
 
   return (
@@ -144,31 +158,6 @@ export function RoomAmenityManagement({
           New room amenity
         </Button>
       </div>
-
-      {error && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "12px 16px",
-            borderRadius: "var(--r-2)",
-            background: "var(--bad-bg)",
-            color: "var(--bad-fg)",
-            fontSize: 13.5,
-          }}
-        >
-          {error}
-          <IconButton
-            size={28}
-            variant="quiet"
-            title="Dismiss"
-            onClick={() => setError(null)}
-          >
-            <Icon name="X" size={14} />
-          </IconButton>
-        </div>
-      )}
 
       <div
         style={{

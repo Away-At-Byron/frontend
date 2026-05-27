@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Button, Card, IconButton, Pill } from "@/components/ui/primitives"
+import { Button, Card, Pill } from "@/components/ui/primitives"
 import { Icon } from "@/components/ui/icon"
+import { useConfirm } from "@/components/ui/dialog"
+import { useToast } from "@/components/ui/toast"
 import {
   createRoomType,
   updateRoomType,
@@ -35,6 +37,8 @@ export function RoomTypeManagement({
   initialTypes: RoomTypeRow[]
 }) {
   const router = useRouter()
+  const confirm = useConfirm()
+  const toast = useToast()
   const [types, setTypes] = useState<RoomTypeRow[]>(initialTypes)
   const [syncedFrom, setSyncedFrom] = useState(initialTypes)
   if (initialTypes !== syncedFrom) {
@@ -47,7 +51,6 @@ export function RoomTypeManagement({
   const [newOpen, setNewOpen] = useState(false)
   const [editType, setEditType] = useState<RoomTypeRow | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(searchTerm), 300)
@@ -62,7 +65,6 @@ export function RoomTypeManagement({
 
   const handleCreate = useCallback(
     async (values: Parameters<typeof createRoomType>[0]) => {
-      setError(null)
       const res = await createRoomType(values)
       if (res.ok) {
         setTypes((prev) => sortByName([...prev, res.data]))
@@ -75,7 +77,6 @@ export function RoomTypeManagement({
 
   const handleUpdate = useCallback(
     async (id: string, values: Parameters<typeof updateRoomType>[1]) => {
-      setError(null)
       const res = await updateRoomType(id, values)
       if (res.ok) {
         setTypes((prev) =>
@@ -90,25 +91,38 @@ export function RoomTypeManagement({
 
   const handleDelete = useCallback(
     async (t: RoomTypeRow) => {
-      const inUse =
+      const inUseLine =
         t.roomCount > 0
           ? ` ${t.roomCount} room${
               t.roomCount === 1 ? "" : "s"
             } will keep this type on their record.`
           : ""
-      if (!window.confirm(`Delete the "${t.name}" room type?${inUse}`)) return
+      const ok = await confirm({
+        tone: "danger",
+        title: `Delete ${t.name}?`,
+        message: `The room type will be removed from the list.${inUseLine}`,
+        confirmLabel: "Delete room type",
+        cancelLabel: "Cancel",
+      })
+      if (!ok) return
       setDeletingId(t.id)
-      setError(null)
       const res = await deleteRoomType(t.id)
       if (res.ok) {
         setTypes((prev) => prev.filter((x) => x.id !== t.id))
         router.refresh()
+        toast.success({
+          title: "Room type deleted",
+          message: `${t.name} has been removed.`,
+        })
       } else {
-        setError(res.error.message)
+        toast.error({
+          title: "Could not delete",
+          message: res.error.message,
+        })
       }
       setDeletingId(null)
     },
-    [router],
+    [router, confirm, toast],
   )
 
   return (
@@ -149,31 +163,6 @@ export function RoomTypeManagement({
           New room type
         </Button>
       </div>
-
-      {error && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "12px 16px",
-            borderRadius: "var(--r-2)",
-            background: "var(--bad-bg)",
-            color: "var(--bad-fg)",
-            fontSize: 13.5,
-          }}
-        >
-          {error}
-          <IconButton
-            size={28}
-            variant="quiet"
-            title="Dismiss"
-            onClick={() => setError(null)}
-          >
-            <Icon name="X" size={14} />
-          </IconButton>
-        </div>
-      )}
 
       {/* Search */}
       <div

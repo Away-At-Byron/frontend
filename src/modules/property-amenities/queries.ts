@@ -1,6 +1,6 @@
 import "server-only"
 
-import { asc, eq, sql } from "drizzle-orm"
+import { asc, eq } from "drizzle-orm"
 import { propertyAmenities } from "@/db/schema"
 import { withTenant } from "@/lib/rls"
 import { ok, err, type ActionResult } from "@/lib/result"

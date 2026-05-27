@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useState } from "react"
 import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@/components/ui/primitives"
@@ -85,10 +85,11 @@ function DiscountForm({
     defaultValues: initialValues,
   })
 
-  // Re-sync defaults whenever the modal opens for a different row.
-  const initialSig = useRef<FormValues | null>(null)
-  if (initialSig.current !== initialValues) {
-    initialSig.current = initialValues
+  // Re-sync defaults whenever a new row's values come in. Same
+  // "adjust state during render" pattern the management screens use.
+  const [syncedFrom, setSyncedFrom] = useState(initialValues)
+  if (initialValues !== syncedFrom) {
+    setSyncedFrom(initialValues)
     reset(initialValues)
   }
 

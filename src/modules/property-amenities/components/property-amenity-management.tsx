@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Button, Card, IconButton, Pill } from "@/components/ui/primitives"
+import { Button, Card, Pill } from "@/components/ui/primitives"
 import { Icon } from "@/components/ui/icon"
+import { useConfirm } from "@/components/ui/dialog"
+import { useToast } from "@/components/ui/toast"
 import {
   createPropertyAmenity,
   updatePropertyAmenity,
@@ -94,6 +96,8 @@ export function PropertyAmenityManagement({
   initialCategories: string[]
 }) {
   const router = useRouter()
+  const confirm = useConfirm()
+  const toast = useToast()
   const [rows, setRows] = useState<PropertyAmenityRow[]>(initialAmenities)
   const [syncedRows, setSyncedRows] = useState(initialAmenities)
   if (initialAmenities !== syncedRows) {
@@ -115,7 +119,6 @@ export function PropertyAmenityManagement({
   const [editRow, setEditRow] = useState<PropertyAmenityRow | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [movingId, setMovingId] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(searchTerm), 300)
@@ -157,7 +160,6 @@ export function PropertyAmenityManagement({
 
   const handleCreate = useCallback(
     async (values: Parameters<typeof createPropertyAmenity>[0]) => {
-      setError(null)
       const res = await createPropertyAmenity(values)
       if (res.ok) {
         const next = sortRows([...rows, res.data])
@@ -172,7 +174,6 @@ export function PropertyAmenityManagement({
 
   const handleUpdate = useCallback(
     async (id: string, values: Parameters<typeof updatePropertyAmenity>[1]) => {
-      setError(null)
       const res = await updatePropertyAmenity(id, values)
       if (res.ok) {
         const next = sortRows(rows.map((r) => (r.id === id ? res.data : r)))
@@ -187,38 +188,52 @@ export function PropertyAmenityManagement({
 
   const handleDelete = useCallback(
     async (r: PropertyAmenityRow) => {
-      if (!window.confirm(`Delete the "${r.name}" amenity from ${r.category}?`))
-        return
+      const ok = await confirm({
+        tone: "danger",
+        title: `Delete ${r.name}?`,
+        message: `The "${r.name}" amenity will be removed from ${r.category}.`,
+        confirmLabel: "Delete amenity",
+        cancelLabel: "Cancel",
+      })
+      if (!ok) return
       setDeletingId(r.id)
-      setError(null)
       const res = await deletePropertyAmenity(r.id)
       if (res.ok) {
         const next = rows.filter((x) => x.id !== r.id)
         setRows(next)
         refreshCategoriesFrom(next)
         router.refresh()
+        toast.success({
+          title: "Amenity deleted",
+          message: `${r.name} has been removed from ${r.category}.`,
+        })
       } else {
-        setError(res.error.message)
+        toast.error({
+          title: "Could not delete",
+          message: res.error.message,
+        })
       }
       setDeletingId(null)
     },
-    [router, rows, refreshCategoriesFrom],
+    [router, rows, refreshCategoriesFrom, confirm, toast],
   )
 
   const handleMove = useCallback(
     async (r: PropertyAmenityRow, direction: "up" | "down") => {
       setMovingId(r.id)
-      setError(null)
       const res = await reorderPropertyAmenity(r.id, direction)
       if (res.ok) {
         setRows((prev) => withSwap(prev, r.id, res.data))
         router.refresh()
       } else {
-        setError(res.error.message)
+        toast.error({
+          title: "Could not reorder",
+          message: res.error.message,
+        })
       }
       setMovingId(null)
     },
-    [router],
+    [router, toast],
   )
 
   const filterOptions = useMemo(() => {
@@ -267,31 +282,6 @@ export function PropertyAmenityManagement({
           New amenity
         </Button>
       </div>
-
-      {error && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "12px 16px",
-            borderRadius: "var(--r-2)",
-            background: "var(--bad-bg)",
-            color: "var(--bad-fg)",
-            fontSize: 13.5,
-          }}
-        >
-          {error}
-          <IconButton
-            size={28}
-            variant="quiet"
-            title="Dismiss"
-            onClick={() => setError(null)}
-          >
-            <Icon name="X" size={14} />
-          </IconButton>
-        </div>
-      )}
 
       {/* Search + category filter */}
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
