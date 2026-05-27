@@ -10,7 +10,7 @@ import {
   LayoutDashboard, CalendarRange, Plus, Sparkles, BedDouble, User, MessageCircle,
   LineChart, Settings, Home, ChevronDown, Search, Bell, ArrowRight, Clock,
   Calendar, MapPin, TriangleAlert, MoreVertical, LogOut, DollarSign,
-  TrendingUp, Check, X, Pencil, Trash2, type LucideIcon,
+  TrendingUp, Check, X, Pencil, Trash2, FileText, type LucideIcon,
 } from "lucide-react"
 
 const MAP = {
@@ -40,6 +40,7 @@ const MAP = {
   X,
   Edit: Pencil,
   Trash: Trash2,
+  File: FileText,
 } satisfies Record<string, LucideIcon>
 
 export type IconName = keyof typeof MAP

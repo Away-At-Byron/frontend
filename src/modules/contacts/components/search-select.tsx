@@ -190,7 +190,7 @@ export function SearchSelect({
                       fontSize: 13.5,
                       fontWeight: isSelected ? 600 : 400,
                       cursor: "pointer",
-                      font: "inherit",
+                      fontFamily: "inherit",
                       textAlign: "left",
                     }}
                   >

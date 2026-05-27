@@ -30,10 +30,12 @@ export const YES_NO_OPTIONS = [
 export function SectionCard({
   icon,
   title,
+  headerAction,
   children,
 }: {
   icon: IconName;
   title: string;
+  headerAction?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -58,6 +60,9 @@ export function SectionCard({
         >
           {title}
         </div>
+        {headerAction ? (
+          <div style={{ marginLeft: "auto" }}>{headerAction}</div>
+        ) : null}
       </div>
       <div style={{ padding: 0 }}>{children}</div>
     </Card>
@@ -170,16 +175,24 @@ export function SelectInput({
   value,
   onChange,
   options,
+  disabled,
 }: {
   value: string;
   onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   options: { value: string; label: string }[];
+  disabled?: boolean;
 }) {
   return (
     <select
       value={value}
       onChange={onChange}
-      style={{ ...fieldStyle, appearance: "auto" }}
+      disabled={disabled}
+      style={{
+        ...fieldStyle,
+        appearance: "auto",
+        opacity: disabled ? 0.7 : 1,
+        cursor: disabled ? "not-allowed" : undefined,
+      }}
     >
       {options.map((o) => (
         <option key={o.value} value={o.value}>

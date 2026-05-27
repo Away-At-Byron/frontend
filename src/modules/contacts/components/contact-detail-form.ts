@@ -28,7 +28,6 @@ export type FormState = {
   contactTypeId: string;
   contactSourceId: string;
   groupId: string;
-  relatedClientId: string;
   addressStreet: string;
   addressCity: string;
   addressSuburb: string;
@@ -65,7 +64,6 @@ export function initialForm(c: ContactRow | null): FormState {
     contactTypeId: c?.contactTypeId ?? "",
     contactSourceId: c?.contactSourceId ?? "",
     groupId: c?.groupId ?? "",
-    relatedClientId: c?.relatedClientId ?? "",
     addressStreet: c?.addressStreet ?? "",
     addressCity: c?.addressCity ?? "",
     addressSuburb: c?.addressSuburb ?? "",
@@ -121,7 +119,6 @@ export function toPayload(f: FormState) {
         | "vip"
         | "event_guest") || undefined,
     preferredBookingChannel: f.preferredBookingChannel || undefined,
-    relatedClientId: f.relatedClientId || undefined,
     firstBookingDate: f.firstBookingDate || undefined,
     notes: f.notes || undefined,
     specialRequests: f.specialRequests || undefined,

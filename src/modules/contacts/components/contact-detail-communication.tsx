@@ -38,9 +38,9 @@ import type {
   MessageRow,
 } from "@/modules/communications/types";
 import { ComposeEmailModal } from "./compose-email-modal";
-import { DatePicker } from "./date-picker";
+import { Modal } from "@/modules/users/components/modal";
 import type { FormState, OnField, SetField } from "./contact-detail-form";
-import { Row, Textarea } from "./contact-detail-fields";
+import { Row, Textarea, TextInput } from "./contact-detail-fields";
 
 // ─── Mock data (SMS quadrant — Twilio integration is scheduled late) ────
 
@@ -108,28 +108,14 @@ export function CommunicationTab({
   emails: ContactEmailRow[];
 }) {
   const portalMeta = useMemo(() => {
-    if (messages.length === 0) return "No messages yet";
+    if (messages.length === 0) return undefined;
     const last = messages[messages.length - 1]!;
     const when = formatBubbleTime(last.createdAt);
     return `${messages.length} ${messages.length === 1 ? "message" : "messages"} · last ${when}`;
   }, [messages]);
 
-  const [emailFilter, setEmailFilter] = useState<"all" | "sent" | "failed">(
-    "all",
-  );
   const [composeOpen, setComposeOpen] = useState(false);
-  const visibleEmails = useMemo(() => {
-    if (emailFilter === "all") return emails;
-    return emails.filter((e) => e.status === emailFilter);
-  }, [emails, emailFilter]);
-  const sentCount = useMemo(
-    () => emails.filter((e) => e.status === "sent").length,
-    [emails],
-  );
-  const failedCount = useMemo(
-    () => emails.filter((e) => e.status === "failed").length,
-    [emails],
-  );
+  const [openEmail, setOpenEmail] = useState<ContactEmailRow | null>(null);
 
   return (
     <div
@@ -143,8 +129,7 @@ export function CommunicationTab({
         icon="Message"
         iconBg="rgba(157,201,196,.32)"
         iconFg="var(--teal-ink)"
-        title="In-portal messages"
-        sub="In-app thread between guest & staff"
+        title="App Messages"
         footer={<PortalComposer contactId={contactId} meta={portalMeta} />}
       >
         <PortalThread messages={messages} contactId={contactId} />
@@ -155,32 +140,6 @@ export function CommunicationTab({
         iconBg="rgba(232,183,158,.42)"
         iconFg="var(--terra-deep)"
         title="Emails"
-        sub="Outbound only · reply threading coming later"
-        right={
-          <div style={{ display: "flex", gap: 6 }}>
-            <MiniFilter
-              on={emailFilter === "all"}
-              count={emails.length}
-              onClick={() => setEmailFilter("all")}
-            >
-              All
-            </MiniFilter>
-            <MiniFilter
-              on={emailFilter === "sent"}
-              count={sentCount}
-              onClick={() => setEmailFilter("sent")}
-            >
-              Sent
-            </MiniFilter>
-            <MiniFilter
-              on={emailFilter === "failed"}
-              count={failedCount}
-              onClick={() => setEmailFilter("failed")}
-            >
-              Failed
-            </MiniFilter>
-          </div>
-        }
         footer={
           <div
             style={{
@@ -207,7 +166,11 @@ export function CommunicationTab({
           </div>
         }
       >
-        <EmailList emails={visibleEmails} contactId={contactId} />
+        <EmailList
+          emails={emails}
+          contactId={contactId}
+          onOpen={setOpenEmail}
+        />
       </Quadrant>
 
       {contactId && (
@@ -219,6 +182,11 @@ export function CommunicationTab({
           contactEmail={contactEmail}
         />
       )}
+
+      <EmailViewerModal
+        email={openEmail}
+        onClose={() => setOpenEmail(null)}
+      />
 
       <Quadrant
         icon="Bell"
@@ -275,11 +243,11 @@ function NotesAndPreferences({
       <Row label="Notes">
         <Textarea value={form.notes} onChange={onText("notes")} rows={3} />
       </Row>
+      {/* System-derived: earliest booking date for this guest. Disabled
+          until the Booking module lands (FRS §6.5); the stored value is shown
+          read-only in the meantime. */}
       <Row label="First booking">
-        <DatePicker
-          value={form.firstBookingDate}
-          onChange={(v) => setField("firstBookingDate", v)}
-        />
+        <TextInput value={form.firstBookingDate} disabled />
       </Row>
       <Row label="Special requests">
         <Textarea
@@ -719,7 +687,7 @@ function PortalComposer({
         }}
         placeholder={
           contactId
-            ? "Reply via portal…"
+            ? "Reply or send new message"
             : "Save the contact first to start a conversation."
         }
         disabled={!contactId || sending}
@@ -796,23 +764,26 @@ function PortalComposer({
         />
         <button
           type="button"
-          aria-label="Attach files"
+          aria-label="Attach images"
           onClick={() => fileInputRef.current?.click()}
           disabled={!contactId || sending}
           style={{
-            width: 36,
             height: 36,
+            padding: "0 12px 0 10px",
             borderRadius: "var(--r-1)",
             border: "1px dashed var(--line-strong)",
             background: "transparent",
             cursor: !contactId || sending ? "not-allowed" : "pointer",
             color: "var(--ink-faint)",
-            display: "flex",
+            display: "inline-flex",
             alignItems: "center",
-            justifyContent: "center",
+            gap: 6,
+            fontSize: 12.5,
+            fontFamily: "inherit",
           }}
         >
           <Icon name="Plus" size={14} />
+          <span>Images</span>
         </button>
         <span style={{ flex: 1 }} />
         <Button
@@ -934,9 +905,11 @@ function ChatBubble({ m }: { m: MockChatMessage }) {
 function EmailList({
   emails,
   contactId,
+  onOpen,
 }: {
   emails: ContactEmailRow[];
   contactId: string | null;
+  onOpen: (email: ContactEmailRow) => void;
 }) {
   if (emails.length === 0) {
     return (
@@ -973,8 +946,10 @@ function EmailList({
               ? "bad"
               : "neutral";
         return (
-          <div
+          <button
             key={e.id}
+            type="button"
+            onClick={() => onOpen(e)}
             style={{
               padding: "12px 14px",
               borderRadius: "var(--r-2)",
@@ -983,6 +958,11 @@ function EmailList({
               display: "flex",
               flexDirection: "column",
               gap: 5,
+              textAlign: "left",
+              cursor: "pointer",
+              font: "inherit",
+              color: "inherit",
+              width: "100%",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1067,10 +1047,130 @@ function EmailList({
                   `bcc ${e.bccAddresses.join(", ")}`}
               </div>
             )}
-          </div>
+          </button>
         );
       })}
     </div>
+  );
+}
+
+// ─── Email viewer ────────────────────────────────────────────
+
+function EmailViewerModal({
+  email,
+  onClose,
+}: {
+  email: ContactEmailRow | null;
+  onClose: () => void;
+}) {
+  if (!email) return null;
+  const sentLabel = formatBubbleTime(email.sentAt ?? email.createdAt);
+  return (
+    <Modal isOpen={!!email} onClose={onClose}>
+      <div
+        style={{
+          maxHeight: "calc(100vh - 128px)",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <div style={{ padding: "22px 24px 6px" }}>
+          <h2
+            style={{
+              fontFamily: "var(--font-display), serif",
+              fontWeight: 300,
+              fontSize: 22,
+              letterSpacing: "var(--tight)",
+              margin: 0,
+            }}
+          >
+            {email.subject || "(no subject)"}
+          </h2>
+        </div>
+        <div
+          style={{
+            padding: "10px 24px 14px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+            fontSize: 12,
+            color: "var(--ink-soft)",
+            borderBottom: "1px solid var(--line-soft)",
+          }}
+        >
+          <div>
+            <span style={{ color: "var(--ink-faint)" }}>From </span>
+            {email.fromAddress}
+            {email.sentByName ? ` · ${email.sentByName}` : ""}
+          </div>
+          <div>
+            <span style={{ color: "var(--ink-faint)" }}>To </span>
+            {email.toAddresses.join(", ")}
+          </div>
+          {email.ccAddresses.length > 0 && (
+            <div>
+              <span style={{ color: "var(--ink-faint)" }}>Cc </span>
+              {email.ccAddresses.join(", ")}
+            </div>
+          )}
+          {email.bccAddresses.length > 0 && (
+            <div>
+              <span style={{ color: "var(--ink-faint)" }}>Bcc </span>
+              {email.bccAddresses.join(", ")}
+            </div>
+          )}
+          <div
+            className="mono"
+            style={{ fontSize: 10, color: "var(--ink-faint)", marginTop: 2 }}
+          >
+            {sentLabel} · {email.status}
+            {email.attachmentCount > 0
+              ? ` · ${email.attachmentCount} ${
+                  email.attachmentCount === 1 ? "file" : "files"
+                }`
+              : ""}
+          </div>
+        </div>
+        <div
+          style={{
+            padding: "16px 24px",
+            overflow: "auto",
+            fontSize: 13.5,
+            lineHeight: 1.55,
+            color: "var(--ink)",
+            whiteSpace: "pre-wrap",
+            fontFamily: "inherit",
+          }}
+        >
+          {email.bodyText}
+        </div>
+        {email.status === "failed" && email.errorMessage && (
+          <div
+            style={{
+              padding: "10px 24px",
+              fontSize: 12,
+              color: "var(--bad-fg, var(--terra-deep))",
+              borderTop: "1px solid var(--line-soft)",
+            }}
+          >
+            {email.errorMessage}
+          </div>
+        )}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 10,
+            padding: "14px 24px 20px",
+            borderTop: "1px solid var(--line-soft)",
+          }}
+        >
+          <Button variant="ghost" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -1090,7 +1190,7 @@ function Quadrant({
   iconBg: string;
   iconFg: string;
   title: string;
-  sub: string;
+  sub?: string;
   right?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
@@ -1141,17 +1241,19 @@ function Quadrant({
           >
             {title}
           </div>
-          <div
-            className="mono"
-            style={{
-              fontSize: 9.5,
-              color: "var(--ink-faint)",
-              marginTop: 2,
-              letterSpacing: ".04em",
-            }}
-          >
-            {sub}
-          </div>
+          {sub && (
+            <div
+              className="mono"
+              style={{
+                fontSize: 9.5,
+                color: "var(--ink-faint)",
+                marginTop: 2,
+                letterSpacing: ".04em",
+              }}
+            >
+              {sub}
+            </div>
+          )}
         </div>
         {right}
       </div>
@@ -1260,49 +1362,3 @@ function Composer({
   );
 }
 
-function MiniFilter({
-  on,
-  count,
-  children,
-  onClick,
-}: {
-  on?: boolean;
-  count?: number;
-  children: ReactNode;
-  onClick?: () => void;
-}) {
-  const style: React.CSSProperties = {
-    height: 24,
-    padding: "0 10px",
-    borderRadius: "var(--r-pill)",
-    background: on ? "var(--ink)" : "transparent",
-    color: on ? "var(--linen)" : "var(--ink)",
-    border: on ? "none" : "1px solid var(--line-strong)",
-    fontFamily: "var(--font-sans), sans-serif",
-    fontSize: 9.5,
-    fontWeight: 600,
-    letterSpacing: "var(--tracked)",
-    textTransform: "uppercase",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 5,
-    whiteSpace: "nowrap",
-    cursor: onClick ? "pointer" : "default",
-  };
-  const inner = (
-    <>
-      {children}
-      {count != null && (
-        <span style={{ opacity: on ? 0.7 : 0.5 }}>· {count}</span>
-      )}
-    </>
-  );
-  if (onClick) {
-    return (
-      <button type="button" onClick={onClick} style={style}>
-        {inner}
-      </button>
-    );
-  }
-  return <span style={style}>{inner}</span>;
-}

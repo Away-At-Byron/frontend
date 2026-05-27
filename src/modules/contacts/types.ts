@@ -78,7 +78,6 @@ export type ContactRow = {
   addressState: string | null
   addressPostcode: string | null
   addressCountry: string | null
-  relatedClientId: string | null
   groupId: string | null
   groupName: string | null
   idType: ContactIdType | null

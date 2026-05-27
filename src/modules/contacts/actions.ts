@@ -1,6 +1,6 @@
 "use server"
 
-import { and, eq } from "drizzle-orm"
+import { and, eq, inArray, sql } from "drizzle-orm"
 import { contacts, contactTypes, contactSources, groups } from "@/db/schema"
 import { withTenant, withPermission } from "@/lib/rls"
 import { writeAudit } from "@/lib/audit"
@@ -19,6 +19,10 @@ import {
   listGroupMembers,
   type GroupMember,
 } from "./queries"
+
+/** Contact type name applied when adding a related contact to a group. */
+const SECONDARY_GROUP_MEMBER_TYPE = "Guest - Group Standard"
+const PRIMARY_GROUP_MEMBER_TYPE = "Guest - Group Primary"
 
 type Tx = Parameters<Parameters<typeof withTenant>[0]>[0]
 
@@ -89,7 +93,6 @@ function contactValues(data: CreateContactInput) {
     birthday: data.birthday ?? null,
     communicationPreference: data.communicationPreference,
     marketingOptIn: data.marketingOptIn,
-    relatedClientId: data.relatedClientId ?? null,
     groupId: data.groupId ?? null,
     notes: data.notes ?? null,
     returningGuest: data.returningGuest,
@@ -262,4 +265,183 @@ export async function getGroupMembersAction(
   groupId: string,
 ): Promise<ActionResult<GroupMember[]>> {
   return listGroupMembers(groupId)
+}
+
+/**
+ * Add a set of existing contacts to `groupId` as "Guest - Group Standard"
+ * secondaries. Backs the multi-select "Related contacts" picker on the
+ * Profile tab — picking N contacts there means "drop them into this group as
+ * standard members" rather than persisting a link on the current contact.
+ *
+ * Idempotent: ids already in the group with the same type are still updated
+ * (same values) and excluded contacts (the group's primary, the current
+ * contact itself) must be filtered by the caller.
+ */
+export async function addContactsToGroup(input: {
+  groupId: string
+  contactIds: string[]
+}): Promise<ActionResult<{ updatedIds: string[] }>> {
+  return withTenant(async (tx, ctx) =>
+    withPermission(CONTACT_PERMISSIONS.update, ctx, async () => {
+      const ids = Array.from(
+        new Set(input.contactIds.filter((id) => typeof id === "string" && id)),
+      )
+      if (ids.length === 0) return ok({ updatedIds: [] })
+
+      const groupRow = await tx
+        .select({ id: groups.id })
+        .from(groups)
+        .where(and(eq(groups.id, input.groupId), eq(groups.isDeleted, false)))
+        .limit(1)
+      if (!groupRow[0]) {
+        return err("NOT_FOUND", "That group no longer exists.")
+      }
+
+      const typeRow = await tx
+        .select({ id: contactTypes.id })
+        .from(contactTypes)
+        .where(
+          and(
+            eq(contactTypes.isDeleted, false),
+            sql`lower(${contactTypes.name}) = lower(${SECONDARY_GROUP_MEMBER_TYPE})`,
+          ),
+        )
+        .limit(1)
+      if (!typeRow[0]) {
+        return err(
+          "VALIDATION",
+          `Contact type "${SECONDARY_GROUP_MEMBER_TYPE}" is missing. Create it in Settings first.`,
+        )
+      }
+
+      const updated = await tx
+        .update(contacts)
+        .set({
+          groupId: input.groupId,
+          contactTypeId: typeRow[0].id,
+          updatedAt: new Date(),
+        })
+        .where(and(inArray(contacts.id, ids), eq(contacts.isDeleted, false)))
+        .returning({ id: contacts.id })
+
+      for (const c of updated) {
+        await writeAudit({
+          ctx,
+          entityType: "contact",
+          entityId: c.id,
+          action: "update",
+          newValue: {
+            groupId: input.groupId,
+            contactTypeName: SECONDARY_GROUP_MEMBER_TYPE,
+          },
+        })
+      }
+
+      return ok({ updatedIds: updated.map((c) => c.id) })
+    }),
+  )
+}
+
+/**
+ * Make `newPrimaryId` the group's "Guest - Group Primary" and demote any
+ * existing primary in the same group to "Guest - Group Standard". Pass
+ * `excludeContactIds` for contacts the caller will update locally instead
+ * (typically the current edited contact, whose type lives in unsaved form
+ * state). Returns the two type ids so the client can mirror the change in
+ * form state.
+ */
+export async function setGroupPrimary(input: {
+  groupId: string
+  newPrimaryId: string
+  excludeContactIds?: string[]
+}): Promise<
+  ActionResult<{ primaryTypeId: string; standardTypeId: string }>
+> {
+  return withTenant(async (tx, ctx) =>
+    withPermission(CONTACT_PERMISSIONS.update, ctx, async () => {
+      const exclude = new Set(input.excludeContactIds ?? [])
+
+      const typeRows = await tx
+        .select({ id: contactTypes.id, name: contactTypes.name })
+        .from(contactTypes)
+        .where(
+          and(
+            eq(contactTypes.isDeleted, false),
+            sql`lower(${contactTypes.name}) in (lower(${PRIMARY_GROUP_MEMBER_TYPE}), lower(${SECONDARY_GROUP_MEMBER_TYPE}))`,
+          ),
+        )
+      const primaryType = typeRows.find(
+        (t) => t.name.toLowerCase() === PRIMARY_GROUP_MEMBER_TYPE.toLowerCase(),
+      )
+      const standardType = typeRows.find(
+        (t) =>
+          t.name.toLowerCase() === SECONDARY_GROUP_MEMBER_TYPE.toLowerCase(),
+      )
+      if (!primaryType || !standardType) {
+        return err(
+          "VALIDATION",
+          `Contact types "${PRIMARY_GROUP_MEMBER_TYPE}" and "${SECONDARY_GROUP_MEMBER_TYPE}" must exist.`,
+        )
+      }
+
+      const currentPrimaries = await tx
+        .select({ id: contacts.id })
+        .from(contacts)
+        .where(
+          and(
+            eq(contacts.groupId, input.groupId),
+            eq(contacts.isDeleted, false),
+            eq(contacts.contactTypeId, primaryType.id),
+          ),
+        )
+
+      const demoteIds = currentPrimaries
+        .map((r) => r.id)
+        .filter((id) => id !== input.newPrimaryId && !exclude.has(id))
+      if (demoteIds.length > 0) {
+        await tx
+          .update(contacts)
+          .set({ contactTypeId: standardType.id, updatedAt: new Date() })
+          .where(inArray(contacts.id, demoteIds))
+        for (const id of demoteIds) {
+          await writeAudit({
+            ctx,
+            entityType: "contact",
+            entityId: id,
+            action: "update",
+            newValue: { contactTypeName: SECONDARY_GROUP_MEMBER_TYPE },
+          })
+        }
+      }
+
+      if (!exclude.has(input.newPrimaryId)) {
+        const promoted = await tx
+          .update(contacts)
+          .set({ contactTypeId: primaryType.id, updatedAt: new Date() })
+          .where(
+            and(
+              eq(contacts.id, input.newPrimaryId),
+              eq(contacts.groupId, input.groupId),
+              eq(contacts.isDeleted, false),
+            ),
+          )
+          .returning({ id: contacts.id })
+        if (!promoted[0]) {
+          return err("NOT_FOUND", "That contact isn't in this group.")
+        }
+        await writeAudit({
+          ctx,
+          entityType: "contact",
+          entityId: input.newPrimaryId,
+          action: "update",
+          newValue: { contactTypeName: PRIMARY_GROUP_MEMBER_TYPE },
+        })
+      }
+
+      return ok({
+        primaryTypeId: primaryType.id,
+        standardTypeId: standardType.id,
+      })
+    }),
+  )
 }

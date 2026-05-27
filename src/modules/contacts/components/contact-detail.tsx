@@ -23,11 +23,7 @@ import {
   getGroupMembersAction,
   updateContact,
 } from "../actions";
-import {
-  initialForm,
-  toPayload,
-  type FormState,
-} from "./contact-detail-form";
+import { initialForm, toPayload, type FormState } from "./contact-detail-form";
 import { ProfileTab } from "./contact-detail-profile";
 import { CommunicationTab } from "./contact-detail-communication";
 import { DocumentsTab } from "./contact-detail-documents";
@@ -117,9 +113,7 @@ export function ContactDetail({
       const t = Date.parse(stamp);
       if (!Number.isNaN(t) && (latest === null || t > latest)) latest = t;
     }
-    return latest === null
-      ? null
-      : new Date(latest).toISOString().slice(0, 10);
+    return latest === null ? null : new Date(latest).toISOString().slice(0, 10);
   }, [messages, emails]);
 
   const handleField =
@@ -130,26 +124,57 @@ export function ContactDetail({
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
+  /**
+   * Auto-save the contact whenever the user picks a group. The Related
+   * Contacts picker writes against the *server's* current group, so the
+   * dropdown choice has to be persisted before "add member" calls land
+   * on the right group. New contacts skip auto-save because required
+   * fields (firstName, lastName) may still be empty — the user saves the
+   * record manually first.
+   */
+  const handleGroupChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const nextGroupId = e.target.value;
+    setForm((f) => ({ ...f, groupId: nextGroupId }));
+    if (mode !== "edit" || !contact) return;
+    void (async () => {
+      const payload = {
+        ...toPayload(form),
+        groupId: nextGroupId || undefined,
+      };
+      const res = await updateContact(contact.id, payload);
+      if (!res.ok) {
+        toast.error({
+          title: "Couldn't save group",
+          message: res.error.message,
+        });
+        return;
+      }
+      router.refresh();
+    })();
+  };
+
   const handleSave = async () => {
     setSaving(true);
     const payload = toPayload(form);
     const res = await (mode === "new"
       ? createContact(payload)
       : updateContact(contact!.id, payload));
-    setSaving(false);
-    if (res.ok) {
-      toast.success({
-        title: mode === "new" ? "Contact created" : "Contact saved",
-        message: `${res.data.firstName} ${res.data.lastName}`,
-      });
-      router.push(`/contacts/${res.data.id}`);
-      router.refresh();
-    } else {
+    if (!res.ok) {
+      setSaving(false);
       toast.error({
         title: "Couldn't save contact",
         message: res.error.message,
       });
+      return;
     }
+
+    setSaving(false);
+    toast.success({
+      title: mode === "new" ? "Contact created" : "Contact saved",
+      message: `${res.data.firstName} ${res.data.lastName}`,
+    });
+    router.push(`/contacts/${res.data.id}`);
+    router.refresh();
   };
 
   return (
@@ -249,9 +274,6 @@ export function ContactDetail({
             marginTop: 18,
           }}
         >
-          <Button variant="paper" icon={<Icon name="Message" size={15} />}>
-            Message
-          </Button>
           <Button variant="paper" icon={<Icon name="Calendar" size={15} />}>
             New booking
           </Button>
@@ -316,6 +338,8 @@ export function ContactDetail({
           contactOptions={contactOptions}
           currentContactId={contact?.id ?? null}
           lastContactDate={lastContactDate}
+          onGroupChange={handleGroupChange}
+          onMembersChanged={() => setFetched(null)}
         />
       )}
       {tab === "history" && <GuestHistoryTab />}

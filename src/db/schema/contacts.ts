@@ -87,7 +87,6 @@ export const contacts = pgTable(
       .default("email"),
     marketingOptIn: boolean("marketing_opt_in").notNull().default(false),
 
-    relatedClientId: uuid("related_client_id"),
     /** FK to the group this contact belongs to, if any. */
     groupId: uuid("group_id").references(() => groups.id),
     notes: text("notes"),

@@ -42,7 +42,6 @@ export const contactSelection = {
   addressState: contacts.addressState,
   addressPostcode: contacts.addressPostcode,
   addressCountry: contacts.addressCountry,
-  relatedClientId: contacts.relatedClientId,
   groupId: contacts.groupId,
   groupName: groups.groupName,
   idType: contacts.idType,

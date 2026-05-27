@@ -19,7 +19,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Button, Card, IconButton, Pill } from "@/components/ui/primitives";
+import { Button, Card, IconButton } from "@/components/ui/primitives";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { useToast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/dialog";
@@ -75,8 +75,12 @@ export function DocumentsTab({
   );
   const latestIdPhoto = idPhotos[0] ?? null;
 
-  const bookingDocs = documents.filter((d) => d.type === "booking_documents");
-  const otherDocs = documents.filter((d) => d.type === "other_documents");
+  // Single "Documents" card lists both legacy booking_documents and the
+  // current other_documents type so historical uploads stay visible. New
+  // uploads from this card are saved as other_documents.
+  const docs = documents.filter(
+    (d) => d.type === "booking_documents" || d.type === "other_documents",
+  );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -88,21 +92,12 @@ export function DocumentsTab({
         latestIdPhoto={latestIdPhoto}
       />
       <DocumentsCard
-        title="Booking documents"
-        addLabel="Add booking doc"
-        dialogTitle="Add booking document"
-        docType="booking_documents"
-        contactId={contactId}
-        documents={bookingDocs}
-      />
-      <DocumentsCard
-        title="Other documents"
-        subtitle="Letters, agreements, vouchers, photos, anything else."
+        title="Documents"
         addLabel="Add document"
         dialogTitle="Add document"
         docType="other_documents"
         contactId={contactId}
-        documents={otherDocs}
+        documents={docs}
       />
     </div>
   );
@@ -127,14 +122,17 @@ function IdentityCard({
 }) {
   const router = useRouter();
   const toast = useToast();
+  const confirm = useConfirm();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   // Preview the file the user just picked, before the server round trip lands
   // so the slot doesn't go blank mid-upload.
   const [optimisticUrl, setOptimisticUrl] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const canUpload = contactId !== null;
+  const hasPhoto = latestIdPhoto !== null;
 
   const openPicker = () => {
     if (!canUpload || uploading) return;
@@ -254,6 +252,35 @@ function IdentityCard({
     }
   };
 
+  const handleDelete = async () => {
+    if (!latestIdPhoto) return;
+    const label = latestIdPhoto.fileName ?? latestIdPhoto.title;
+    const ok = await confirm({
+      tone: "danger",
+      title: "Delete ID photo?",
+      message: `${label} will be removed from this contact. The original file is kept and can be restored by an admin.`,
+      confirmLabel: "Delete ID photo",
+      cancelLabel: "Cancel",
+    });
+    if (!ok) return;
+    setDeleting(true);
+    const res = await deleteContactDocument(latestIdPhoto.id);
+    setDeleting(false);
+    if (!res.ok) {
+      toast.error({
+        title: "Couldn't delete ID photo",
+        message: res.error.message,
+      });
+      return;
+    }
+    // Clear any stale optimistic preview so the slot doesn't show the file the
+    // user just removed once the server round trip lands.
+    setOptimisticUrl(null);
+    setLightboxOpen(false);
+    toast.success({ title: "ID photo deleted", message: label });
+    router.refresh();
+  };
+
   const photoUrl = optimisticUrl ?? latestIdPhoto?.previewUrl ?? null;
 
   return (
@@ -304,6 +331,17 @@ function IdentityCard({
             {uploading ? "Uploading…" : "Upload ID"}
           </Button>
         </span>
+        {hasPhoto && (
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<Icon name="Trash" size={13} />}
+            onClick={handleDelete}
+            disabled={!canUpload || uploading || deleting}
+          >
+            {deleting ? "Deleting…" : "Delete ID"}
+          </Button>
+        )}
       </div>
 
       <div
@@ -590,7 +628,6 @@ function ImageLightbox({
  */
 function DocumentsCard({
   title,
-  subtitle,
   addLabel,
   dialogTitle,
   docType,
@@ -598,7 +635,6 @@ function DocumentsCard({
   documents,
 }: {
   title: string;
-  subtitle?: string;
   addLabel: string;
   dialogTitle: string;
   docType: ContactDocumentType;
@@ -619,7 +655,7 @@ function DocumentsCard({
           borderBottom: "1px solid var(--line-soft)",
         }}
       >
-        <Icon name="Sparkline" size={16} />
+        <Icon name="File" size={16} />
         <div
           style={{
             flex: 1,
@@ -639,14 +675,6 @@ function DocumentsCard({
           >
             {title}
           </span>
-          {subtitle && (
-            <span
-              className="mono"
-              style={{ fontSize: 10, color: "var(--ink-faint)" }}
-            >
-              · {subtitle}
-            </span>
-          )}
         </div>
         <span
           title={
@@ -799,9 +827,6 @@ function WiredDocRow({ doc }: { doc: ContactDocumentWithPreview }) {
       >
         {doc.fileName ?? doc.title}
       </button>
-      <Pill tone="neutral" size="sm">
-        {doc.description?.trim() ? doc.description : "—"}
-      </Pill>
       <span className="mono" style={{ fontSize: 11, color: "var(--ink-faint)" }}>
         {formatBytes(doc.sizeBytes)}
       </span>
@@ -863,7 +888,6 @@ function UploadDocumentDialog({
   const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [files, setFiles] = useState<File[]>([]);
-  const [subtype, setSubtype] = useState("");
   const [uploading, setUploading] = useState(false);
 
   // Esc to close + body scroll lock.
@@ -960,14 +984,12 @@ function UploadDocumentDialog({
         }),
       );
 
-      const subtypeText = subtype.trim();
       const confirmRes = await confirmContactDocumentUploads({
         contactId,
         items: uploads.map((slot) => ({
           key: slot.key,
           type: docType,
           title: slot.fileName,
-          description: subtypeText ? subtypeText : undefined,
           fileName: slot.fileName,
           mimeType: slot.mimeType,
           sizeBytes: slot.sizeBytes,
@@ -1156,42 +1178,6 @@ function UploadDocumentDialog({
             </div>
           )}
 
-          {/* Subtype — optional free text */}
-          <label
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 6,
-            }}
-          >
-            <span
-              className="caps"
-              style={{
-                fontSize: 10,
-                letterSpacing: "var(--tracked)",
-                color: "var(--ink-soft)",
-              }}
-            >
-              Subtype (optional)
-            </span>
-            <input
-              type="text"
-              value={subtype}
-              onChange={(e) => setSubtype(e.target.value)}
-              placeholder="e.g. Booking confirmation, Payment receipt"
-              maxLength={200}
-              disabled={uploading}
-              style={{
-                padding: "10px 12px",
-                borderRadius: "var(--r-1)",
-                border: "1px solid var(--line)",
-                background: "var(--paper)",
-                font: "inherit",
-                fontSize: 14,
-                color: "var(--ink)",
-              }}
-            />
-          </label>
         </div>
 
         <div
@@ -1224,7 +1210,7 @@ function UploadDocumentDialog({
   );
 }
 
-const DOC_GRID = "48px 1.6fr 90px 90px 130px 80px";
+const DOC_GRID = "48px 1.6fr 90px 130px 80px";
 
 function DocListHeader() {
   return (
@@ -1243,7 +1229,6 @@ function DocListHeader() {
     >
       <span />
       <span>File</span>
-      <span>Type</span>
       <span>Size</span>
       <span>Uploaded</span>
       <span />
@@ -1251,10 +1236,10 @@ function DocListHeader() {
   );
 }
 
-// The icon set doesn't expose a dedicated "document" or "eye" glyph, so
-// the design's PDF tile and Eye action borrow the closest equivalents.
+// The icon set doesn't expose a dedicated "eye" glyph, so the Eye action
+// borrows the closest equivalent.
 function DocIcon(): ReactNode {
-  return <FauxIcon name="Edit" />;
+  return <FauxIcon name="File" />;
 }
 
 function ViewIcon(): ReactNode {

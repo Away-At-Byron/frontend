@@ -2,7 +2,7 @@
 
 /**
  * Guest History tab — top-row stats + Bookings table (mocked until the
- * Booking module lands, FRS §6.5) + Booking patterns side card.
+ * Booking module lands, FRS §6.5).
  */
 import { useState, type ReactNode } from "react";
 import { Card, Pill, Stat } from "@/components/ui/primitives";
@@ -56,9 +56,11 @@ const MOCK_BOOKINGS: BookingRow[] = [
   },
 ];
 
-const PREFERRED_CHANNEL = "Booking.com";
-
 type BookingFilter = "all" | "past" | "active";
+
+// Shared by the header and body rows so columns line up at any card width.
+const BOOKING_COLUMNS =
+  "80px 140px minmax(160px, 1.6fr) 56px 96px minmax(120px, 1fr) 120px 20px";
 
 function aud(n: number): string {
   return `A$${n.toLocaleString("en-AU")}`;
@@ -110,134 +112,95 @@ export function GuestHistoryTab() {
         />
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) 360px",
-          gap: 20,
-          alignItems: "flex-start",
-        }}
-      >
-        <Card pad={0}>
+      <Card pad={0}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "18px 22px",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
           <div
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "18px 22px",
-              gap: 12,
-              flexWrap: "wrap",
-            }}
-          >
-            <div
-              style={{
-                fontFamily: "var(--font-display), serif",
-                fontWeight: 400,
-                fontSize: 20,
-                letterSpacing: "var(--tight)",
-              }}
-            >
-              Bookings
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <BookingFilterPill
-                on={filter === "all"}
-                count={counts.all}
-                onClick={() => setFilter("all")}
-              >
-                All
-              </BookingFilterPill>
-              <BookingFilterPill
-                on={filter === "past"}
-                count={counts.past}
-                onClick={() => setFilter("past")}
-              >
-                Past
-              </BookingFilterPill>
-              <BookingFilterPill
-                on={filter === "active"}
-                count={counts.active}
-                onClick={() => setFilter("active")}
-              >
-                Active & upcoming
-              </BookingFilterPill>
-            </div>
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "70px 110px 1fr 50px 80px 1fr 110px 24px",
-              gap: 12,
-              padding: "10px 22px",
-              borderTop: "1px solid var(--line-soft)",
-              borderBottom: "1px solid var(--line-soft)",
-            }}
-            className="caps"
-          >
-            <span style={{ color: "var(--ink-faint)" }}>Ref</span>
-            <span style={{ color: "var(--ink-faint)" }}>Dates</span>
-            <span style={{ color: "var(--ink-faint)" }}>Property · Room</span>
-            <span style={{ color: "var(--ink-faint)" }}>Nts</span>
-            <span style={{ color: "var(--ink-faint)" }}>Total</span>
-            <span style={{ color: "var(--ink-faint)" }}>Source</span>
-            <span style={{ color: "var(--ink-faint)" }}>Status</span>
-            <span />
-          </div>
-
-          {filtered.length === 0 ? (
-            <div
-              style={{
-                padding: "32px 22px",
-                textAlign: "center",
-                color: "var(--ink-soft)",
-                fontSize: 13.5,
-              }}
-            >
-              No bookings match this filter.
-            </div>
-          ) : (
-            filtered.map((b, i) => (
-              <BookingRowItem key={b.ref} row={b} isFirst={i === 0} />
-            ))
-          )}
-        </Card>
-
-        <Card pad={0}>
-          <div
-            style={{
-              padding: "18px 22px",
               fontFamily: "var(--font-display), serif",
               fontWeight: 400,
               fontSize: 20,
               letterSpacing: "var(--tight)",
             }}
           >
-            Booking patterns
+            Bookings
           </div>
-          <PatternRow label="Total stays">
-            <span
-              style={{
-                fontFamily: "var(--font-display), serif",
-                fontStyle: "italic",
-                fontSize: 18,
-              }}
+          <div style={{ display: "flex", gap: 8 }}>
+            <BookingFilterPill
+              on={filter === "all"}
+              count={counts.all}
+              onClick={() => setFilter("all")}
             >
-              {totalStays}
-            </span>
-          </PatternRow>
-          <PatternRow label="Average stay">
-            {avgStay.toFixed(1)} nights
-          </PatternRow>
-          <PatternRow label="Lifetime revenue">{aud(lifetime)}</PatternRow>
-          <PatternRow label="Avg booking value">{aud(avgValue)}</PatternRow>
-          <PatternRow label="Preferred channel">
-            <Pill tone="paper" size="sm">
-              {PREFERRED_CHANNEL}
-            </Pill>
-          </PatternRow>
-        </Card>
-      </div>
+              All
+            </BookingFilterPill>
+            <BookingFilterPill
+              on={filter === "past"}
+              count={counts.past}
+              onClick={() => setFilter("past")}
+            >
+              Past
+            </BookingFilterPill>
+            <BookingFilterPill
+              on={filter === "active"}
+              count={counts.active}
+              onClick={() => setFilter("active")}
+            >
+              Active & upcoming
+            </BookingFilterPill>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: BOOKING_COLUMNS,
+            gap: 16,
+            padding: "10px 22px",
+            borderTop: "1px solid var(--line-soft)",
+            borderBottom: "1px solid var(--line-soft)",
+            alignItems: "center",
+          }}
+          className="caps"
+        >
+          <span style={{ color: "var(--ink-faint)" }}>Ref</span>
+          <span style={{ color: "var(--ink-faint)" }}>Dates</span>
+          <span style={{ color: "var(--ink-faint)" }}>Property · Room</span>
+          <span style={{ color: "var(--ink-faint)", textAlign: "right" }}>
+            Nts
+          </span>
+          <span style={{ color: "var(--ink-faint)", textAlign: "right" }}>
+            Total
+          </span>
+          <span style={{ color: "var(--ink-faint)" }}>Source</span>
+          <span style={{ color: "var(--ink-faint)" }}>Status</span>
+          <span />
+        </div>
+
+        {filtered.length === 0 ? (
+          <div
+            style={{
+              padding: "32px 22px",
+              textAlign: "center",
+              color: "var(--ink-soft)",
+              fontSize: 13.5,
+            }}
+          >
+            No bookings match this filter.
+          </div>
+        ) : (
+          filtered.map((b, i) => (
+            <BookingRowItem key={b.ref} row={b} isFirst={i === 0} />
+          ))
+        )}
+      </Card>
     </div>
   );
 }
@@ -259,10 +222,10 @@ function BookingRowItem({
       style={{
         position: "relative",
         display: "grid",
-        gridTemplateColumns: "70px 110px 1fr 50px 80px 1fr 110px 24px",
-        gap: 12,
+        gridTemplateColumns: BOOKING_COLUMNS,
+        gap: 16,
         alignItems: "center",
-        padding: "16px 22px",
+        padding: "14px 22px",
         borderTop: isFirst ? "none" : "1px solid var(--line-soft)",
         fontSize: 13.5,
       }}
@@ -291,20 +254,46 @@ function BookingRowItem({
           fontFamily: "var(--font-display), serif",
           fontStyle: "italic",
           fontSize: 15,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
         }}
       >
         {row.propertyRoom}
       </span>
-      <span>{row.nights}</span>
-      <span style={{ color: "var(--ink)" }}>{aud(row.total)}</span>
-      <span style={{ color: "var(--ink-soft)" }}>{row.source}</span>
+      <span
+        className="mono"
+        style={{ textAlign: "right", color: "var(--ink-soft)" }}
+      >
+        {row.nights}
+      </span>
+      <span
+        className="mono"
+        style={{ textAlign: "right", color: "var(--ink)" }}
+      >
+        {aud(row.total)}
+      </span>
+      <span
+        style={{
+          color: "var(--ink-soft)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {row.source}
+      </span>
       <span>
         <BookingStatusPill status={row.status} />
       </span>
       <Icon
         name="ChevronDown"
         size={14}
-        style={{ transform: "rotate(-90deg)", color: "var(--ink-faint)" }}
+        style={{
+          transform: "rotate(-90deg)",
+          color: "var(--ink-faint)",
+          justifySelf: "end",
+        }}
       />
     </div>
   );
@@ -382,35 +371,3 @@ function BookingFilterPill({
   );
 }
 
-function PatternRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "140px 1fr",
-        gap: 16,
-        alignItems: "center",
-        padding: "12px 22px",
-        borderTop: "1px solid var(--line-soft)",
-      }}
-    >
-      <div
-        className="caps"
-        style={{
-          color: "var(--ink-faint)",
-          fontSize: 10,
-          letterSpacing: "var(--tracked)",
-        }}
-      >
-        {label}
-      </div>
-      <div style={{ fontSize: 13.5, color: "var(--ink)" }}>{children}</div>
-    </div>
-  );
-}

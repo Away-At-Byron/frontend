@@ -72,7 +72,6 @@ const contactFields = {
     .transform((v) => (v ? v : undefined)),
   communicationPreference: communicationPreferenceSchema.default("email"),
   marketingOptIn: z.boolean().default(false),
-  relatedClientId: optionalUuid,
   groupId: optionalUuid,
   notes: longText,
   returningGuest: z.boolean().default(false),

@@ -5,7 +5,11 @@
  * holds Contact + the Group section. Address fields swap between AU-aware
  * pickers and free-text when the country isn't AU.
  */
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/primitives";
+import { useToast } from "@/components/ui/toast";
 import {
   CONTACT_TIER_LABELS,
   COMMUNICATION_PREFERENCE_LABELS,
@@ -13,11 +17,15 @@ import {
   type ContactSourceOption,
   type ContactTypeOption,
   type GroupOption,
+  type GroupRow,
 } from "../types";
 import type { ContactOption, GroupMember } from "../queries";
+import { addContactsToGroup, setGroupPrimary } from "../actions";
+import { createGroup } from "../group-actions";
 import { BirthdayPicker } from "./birthday-picker";
 import { SearchSelect } from "./search-select";
 import { SuburbAutocomplete } from "./suburb-autocomplete";
+import { NewGroupModal } from "./group-modal";
 import type { FormState, OnField, SetField } from "./contact-detail-form";
 import {
   COUNTRY_OPTIONS,
@@ -40,6 +48,8 @@ export function ProfileTab({
   contactOptions,
   currentContactId,
   lastContactDate,
+  onGroupChange,
+  onMembersChanged,
 }: {
   form: FormState;
   onField: OnField;
@@ -51,8 +61,27 @@ export function ProfileTab({
   currentContactId: string | null;
   groups: GroupOption[];
   lastContactDate: string | null;
+  /** Group dropdown change handler. Persists the new group id immediately
+   * in edit mode so the Related Contacts picker sees the saved group. */
+  onGroupChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  /** Called after the server swap succeeds so the parent can refetch the
+   * group's members. */
+  onMembersChanged: () => void;
 }) {
   const isAustralia = form.addressCountry === "AU";
+  const [groupList, setGroupList] = useState<GroupOption[]>(groups);
+  useEffect(() => {
+    setGroupList(groups);
+  }, [groups]);
+
+  const handleGroupCreated = (group: GroupRow) => {
+    setGroupList((prev) =>
+      [...prev, { id: group.id, groupName: group.groupName }].sort((a, b) =>
+        a.groupName.localeCompare(b.groupName),
+      ),
+    );
+    setField("groupId", group.id);
+  };
   return (
     <div
       style={{
@@ -144,16 +173,6 @@ export function ProfileTab({
               onChange={onField("addressStreet")}
             />
           </Row>
-          <Row label="Country">
-            <SearchSelect
-              value={form.addressCountry}
-              onChange={(v) => setField("addressCountry", v)}
-              options={COUNTRY_OPTIONS}
-              placeholder="Select country"
-              clearLabel="Clear country"
-              emptyLabel="No matching country"
-            />
-          </Row>
           <Row label="Town / Suburb">
             {isAustralia ? (
               <SuburbAutocomplete
@@ -201,6 +220,16 @@ export function ProfileTab({
               onChange={onField("addressPostcode")}
             />
           </Row>
+          <Row label="Country">
+            <SearchSelect
+              value={form.addressCountry}
+              onChange={(v) => setField("addressCountry", v)}
+              options={COUNTRY_OPTIONS}
+              placeholder="Select country"
+              clearLabel="Clear country"
+              emptyLabel="No matching country"
+            />
+          </Row>
         </SectionCard>
       </div>
 
@@ -233,7 +262,24 @@ export function ProfileTab({
           <Row label="Contact type">
             <SelectInput
               value={form.contactTypeId}
-              onChange={onField("contactTypeId")}
+              onChange={(e) => {
+                const nextId = e.target.value;
+                setField("contactTypeId", nextId);
+                // ID fields are guests-only — the server rejects the whole
+                // save (incl. the new contact type) if idType is set on a
+                // non-Guest type. Clear ID state when the user picks a
+                // non-Guest type so the save goes through.
+                const nextName =
+                  contactTypes.find((t) => t.id === nextId)?.name ?? "";
+                const isGuest = nextName.startsWith("Guest");
+                if (!isGuest) {
+                  setField("idType", "");
+                  setField("idNumber", "");
+                  setField("idCountry", "");
+                  setField("idVerified", "no");
+                  setField("idVerificationDate", "");
+                }
+              }}
               options={[
                 { value: "", label: "—" },
                 ...contactTypes.map((t) => ({ value: t.id, label: t.name })),
@@ -256,14 +302,16 @@ export function ProfileTab({
         </SectionCard>
 
         <GroupSection
-          groups={groups}
+          groups={groupList}
           groupId={form.groupId}
-          onGroupChange={onField("groupId")}
-          relatedClientId={form.relatedClientId}
-          onRelatedClientChange={(v) => setField("relatedClientId", v)}
+          onGroupChange={onGroupChange}
+          onGroupCreated={handleGroupCreated}
           contactOptions={contactOptions}
           members={groupMembers}
           currentContactId={currentContactId}
+          currentContactTypeId={form.contactTypeId}
+          onCurrentContactTypeChange={(id) => setField("contactTypeId", id)}
+          onMembersChanged={onMembersChanged}
         />
       </div>
     </div>
@@ -276,21 +324,46 @@ function GroupSection({
   groups,
   groupId,
   onGroupChange,
-  relatedClientId,
-  onRelatedClientChange,
+  onGroupCreated,
   contactOptions,
   members,
   currentContactId,
+  currentContactTypeId,
+  onCurrentContactTypeChange,
+  onMembersChanged,
 }: {
   groups: GroupOption[];
   groupId: string;
   onGroupChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-  relatedClientId: string;
-  onRelatedClientChange: (v: string) => void;
+  onGroupCreated: (group: GroupRow) => void;
   contactOptions: ContactOption[];
   members: GroupMember[];
   currentContactId: string | null;
+  currentContactTypeId: string;
+  onCurrentContactTypeChange: (id: string) => void;
+  /** Called after a server change to group membership (primary swap or
+   * adding a related contact) so the parent can refresh the members list. */
+  onMembersChanged: () => void;
 }) {
+  const router = useRouter();
+  const toast = useToast();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [savingPrimary, setSavingPrimary] = useState(false);
+  const [addingRelated, setAddingRelated] = useState(false);
+
+  const handleCreate = async (values: Parameters<typeof createGroup>[0]) => {
+    const res = await createGroup(values);
+    if (res.ok) {
+      onGroupCreated(res.data);
+      router.refresh();
+      toast.success({
+        title: "Group added",
+        message: `${res.data.groupName} is selected for this contact.`,
+      });
+    }
+    return res;
+  };
+
   // "Primary vs Standard is encoded in the member's contact type" (groups
   // schema). Pick the first member whose type name contains "Primary"; fall
   // back to the oldest member.
@@ -302,8 +375,60 @@ function GroupSection({
     null;
   const secondaries = members.filter((m) => m.id !== primary?.id);
 
+  const handlePrimaryChange = async (
+    e: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
+    const newPrimaryId = e.target.value;
+    if (!groupId || !newPrimaryId || newPrimaryId === primary?.id) return;
+    setSavingPrimary(true);
+    const exclude = currentContactId ? [currentContactId] : [];
+    const res = await setGroupPrimary({
+      groupId,
+      newPrimaryId,
+      excludeContactIds: exclude,
+    });
+    setSavingPrimary(false);
+    if (!res.ok) {
+      toast.error({
+        title: "Couldn't update primary contact",
+        message: res.error.message,
+      });
+      return;
+    }
+    // Mirror the type change for the current contact (its type lives in
+    // unsaved form state, so the server intentionally skipped it).
+    if (currentContactId) {
+      if (newPrimaryId === currentContactId) {
+        onCurrentContactTypeChange(res.data.primaryTypeId);
+      } else if (
+        primary?.id === currentContactId &&
+        currentContactTypeId === res.data.primaryTypeId
+      ) {
+        onCurrentContactTypeChange(res.data.standardTypeId);
+      }
+    }
+    onMembersChanged();
+    toast.success({
+      title: "Primary contact updated",
+      message: "Group roles are now reassigned.",
+    });
+    router.refresh();
+  };
+
   return (
-    <SectionCard icon="User" title="Group">
+    <SectionCard
+      icon="User"
+      title="Group"
+      headerAction={
+        <Button
+          variant="ghost"
+          onClick={() => setCreateOpen(true)}
+          type="button"
+        >
+          Add group
+        </Button>
+      }
+    >
       <Row label="Group name">
         <SelectInput
           value={groupId}
@@ -314,30 +439,88 @@ function GroupSection({
           ]}
         />
       </Row>
-      <Row label="Related contact">
-        <SearchSelect
-          value={relatedClientId}
-          onChange={onRelatedClientChange}
-          options={contactOptions.map((o) => ({
-            value: o.id,
-            label:
-              `${o.firstName} ${o.lastName}`.trim() +
-              (o.email ? ` · ${o.email}` : ""),
-          }))}
-          placeholder="Search contacts"
-          searchPlaceholder="Type a name or email"
-          clearLabel="Clear related contact"
-          emptyLabel="No matching contact"
-        />
+      <Row label="Related contacts">
+        {groupId ? (
+          (() => {
+            // Hide contacts already in the group from the picker — adding them
+            // is a noop and risks demoting the primary to standard.
+            const inGroup = new Set(members.map((m) => m.id));
+            const pickerOptions = contactOptions
+              .filter((o) => !inGroup.has(o.id))
+              .map((o) => ({
+                value: o.id,
+                label:
+                  `${o.firstName} ${o.lastName}`.trim() +
+                  (o.email ? ` · ${o.email}` : ""),
+              }));
+            // The picker holds no persistent value — selecting a contact
+            // fires the server action and the field resets. value stays "".
+            return (
+              <SearchSelect
+                value=""
+                onChange={async (id) => {
+                  if (!id || addingRelated) return;
+                  setAddingRelated(true);
+                  const res = await addContactsToGroup({
+                    groupId,
+                    contactIds: [id],
+                  });
+                  setAddingRelated(false);
+                  if (!res.ok) {
+                    toast.error({
+                      title: "Couldn't add related contact",
+                      message: res.error.message,
+                    });
+                    return;
+                  }
+                  // Refresh server data + clear the local cache so the
+                  // Secondary contacts row re-renders with the new member.
+                  router.refresh();
+                  onMembersChanged();
+                  toast.success({
+                    title: "Related contact added",
+                    message: "Added to this group as Guest - Group Standard.",
+                  });
+                }}
+                options={pickerOptions}
+                placeholder={
+                  addingRelated ? "Adding…" : "Search contacts"
+                }
+                searchPlaceholder="Type a name or email"
+                clearLabel="Clear"
+                emptyLabel="No matching contact"
+              />
+            );
+          })()
+        ) : (
+          <span
+            style={{
+              fontSize: 13,
+              color: "var(--ink-faint)",
+              fontStyle: "italic",
+            }}
+          >
+            Pick a group first to add related contacts.
+          </span>
+        )}
       </Row>
       <Row label="Primary contact">
-        {primary ? (
-          <MemberLink
-            member={primary}
-            isCurrent={primary.id === currentContactId}
-          />
-        ) : (
+        {members.length === 0 ? (
           <span style={{ color: "var(--ink-faint)" }}>—</span>
+        ) : (
+          <SelectInput
+            value={primary?.id ?? ""}
+            onChange={handlePrimaryChange}
+            disabled={savingPrimary || !groupId}
+            options={members.map((m) => {
+              const name = `${m.firstName} ${m.lastName}`.trim();
+              const isCurrent = m.id === currentContactId;
+              return {
+                value: m.id,
+                label: isCurrent ? `${name} (this contact)` : name,
+              };
+            })}
+          />
         )}
       </Row>
       <Row label="Secondary contacts">
@@ -361,6 +544,11 @@ function GroupSection({
           </div>
         )}
       </Row>
+      <NewGroupModal
+        isOpen={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onSave={handleCreate}
+      />
     </SectionCard>
   );
 }
