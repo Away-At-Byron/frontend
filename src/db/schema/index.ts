@@ -17,7 +17,7 @@ export * from "./contacts" // module 4
 export * from "./communications" // module 24 — in-portal staff↔contact chat (loaded early because contact-documents FKs it)
 export * from "./contact-emails" // module 24 — outbound staff→contact email log (loaded before contact-documents which FKs it)
 export * from "./contact-documents" // module 4 — files + comms per contact
-// export * from "./room-types"      // module 5
+export * from "./room-types" // module 5 — admin-managed room type catalogue (global, ADR-007)
 // export * from "./rooms"           // module 6
 // export * from "./common-areas"    // module 7
 // export * from "./booking-sources" // module 8

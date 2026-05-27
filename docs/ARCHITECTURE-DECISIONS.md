@@ -295,3 +295,41 @@ contact; that join is where the property association belongs.
 - `Stay Number`, `Returning Guest`, and `Average Stay Duration` are
   derived from `bookings` and computed when that module lands — see the
   contacts module README.
+
+## ADR-007 — Room types are global; not property-scoped
+
+**Date:** 2026-05-27 · **Status:** Accepted
+
+**Context.** `docs/schema.md` Layer 1 lists `room_types` alongside
+`rooms`, `common_areas`, etc., which by convention carry `tenantCols`
+(property_id + RLS). On review with the client, the three properties
+(Away at Byron Bay, Away on Shirley Lane, Unwind Guesthouse) share the
+same vocabulary for room categories (Cottage, Studio, Apartment, …); a
+"Cottage" at Shirley Lane and a "Cottage" at Byron Bay are the same
+concept. Per-property duplication of an identical catalogue is friction
+without value — admins would have to add the same entry three times.
+
+**Decision.** `room_types` becomes a **global** table — not tenanted.
+
+- No `property_id`, no RLS policy, no `tenantCols`. Mirrors the
+  `contact_types` / `contact_sources` precedent (ADR-006).
+- Columns: `id`, `name` (unique among active rows, case-insensitive),
+  `default_max_occupancy` (smallint, nullable — admin sets when they
+  care, booking form treats null as "ask user"), `created_by`,
+  `created_at`, `updated_at`, `is_deleted`.
+- Per-property variation lives on the `rooms` row itself (e.g. a room's
+  own `max_occupancy` override), not on the type.
+- Soft delete + in-use guard: when the `rooms` table lands (module 6),
+  the delete action blocks if any room references the type. Until then
+  the guard is vacuous.
+
+**Consequences.**
+- `room_types` is the **second deliberate exception** to CLAUDE.md rule
+  3 after `contacts` (ADR-006). All other Layer 1+ tables still carry
+  `property_id` + RLS.
+- `docs/schema.md` Layer 1 line is updated to mark `room_types` as
+  global (parens annotation), matching how this ADR treats it.
+- Initial seed (7 names, sourced from Jenny's current RMS Cloud setup)
+  ships inline in migration `0017_room_types.sql`, same pattern as
+  `0012_contact_sources`. Admin edits afterwards are not clobbered
+  because migrations are append-only.

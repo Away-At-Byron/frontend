@@ -16,7 +16,7 @@ WHERE get an index. RLS policy added in the same migration as the table.
 
 ## Layers
 - **0 Foundation** — properties, roles, users(+sessions, password_resets), audit_log ✅ implemented
-- **1 Reference** — contacts, room_types, rooms(+history), common_areas(+tasks), booking_sources, channel_mappings, rate_plans(+cancellation_policies), daily_rates, costs, inventory_items(+movements)
+- **1 Reference** — contacts (global, ADR-006), room_types (global, ADR-007), rooms(+history), common_areas(+tasks), booking_sources, channel_mappings, rate_plans(+cancellation_policies), daily_rates, costs, inventory_items(+movements)
 - **2 Booking core** — bookings, booking_rooms, booking_guests + gist exclusion constraint (no overlapping room/date)
 - **3 Money** — booking_charges, payments, invoices, invoice_lines, booking_cost_allocations
 - **4 Operations** — housekeeping_tasks, maintenance_jobs, communications

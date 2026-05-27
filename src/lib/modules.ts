@@ -228,6 +228,14 @@ export const NAV_ENTRIES: NavEntry[] = [
         module: "settings",
         adminOnly: true,
       },
+      {
+        href: "/settings/room-types",
+        label: "Room Types",
+        icon: "House",
+        group: "manage",
+        module: "settings",
+        adminOnly: true,
+      },
     ],
   },
 ];
