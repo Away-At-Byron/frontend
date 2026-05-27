@@ -23,6 +23,7 @@ export * from "./property-amenities" // module 5 — admin-managed amenity catal
 export * from "./room-amenities" // module 5 — admin-managed per-room amenity catalogue (global, follows ADR-007)
 export * from "./discount-types" // module 5 — admin-managed discount catalogue (global, follows ADR-007)
 export * from "./room-requests" // module 5 — admin-managed room request catalogue (global, follows ADR-007)
+export * from "./charge-types" // module 5 — admin-managed invoice charge catalogue (global, follows ADR-007)
 // export * from "./rooms"           // module 6
 // export * from "./common-areas"    // module 7
 // export * from "./booking-sources" // module 8
