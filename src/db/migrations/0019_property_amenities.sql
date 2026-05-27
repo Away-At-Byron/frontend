@@ -1,0 +1,110 @@
+-- property_amenities: admin-managed amenity catalogue, global single table
+-- per ADR-009. `category` is a text column (not a separate categories
+-- table); the UI offers a combobox of existing distinct values.
+CREATE TABLE IF NOT EXISTS "property_amenities" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"category" text NOT NULL,
+	"name" text NOT NULL,
+	"sort_order" smallint DEFAULT 0 NOT NULL,
+	"created_by" uuid,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"is_deleted" boolean DEFAULT false NOT NULL
+);
+--> statement-breakpoint
+ALTER TABLE "property_amenities" ADD CONSTRAINT "property_amenities_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+--> statement-breakpoint
+
+-- Speed up the "distinct categories" combobox query and the per-category
+-- list view (both order by category, sort_order).
+CREATE INDEX IF NOT EXISTS "property_amenities_category_sort_idx"
+  ON "property_amenities" ("category", "sort_order");
+--> statement-breakpoint
+
+-- Seed the amenity catalogue. sort_order preserves the order the client
+-- supplied within each category. The second "Climate" group in the spec
+-- was a typo - bathroom options are seeded under "Bathroom".
+INSERT INTO "property_amenities" ("category", "name", "sort_order") VALUES
+	('Connectivity', 'WiFi', 0),
+	('Connectivity', 'Free WiFi', 1),
+	('Climate', 'Air Conditioning', 0),
+	('Climate', 'Heating', 1),
+	('Climate', 'Ceiling Fan', 2),
+	('Entertainment', 'Television', 0),
+	('Entertainment', 'Smart TV', 1),
+	('Entertainment', 'Streaming Services (Netflix etc.)', 2),
+	('Kitchen', 'Kitchen', 0),
+	('Kitchen', 'Kitchenette', 1),
+	('Kitchen', 'Microwave', 2),
+	('Kitchen', 'Refrigerator', 3),
+	('Kitchen', 'Coffee Machine', 4),
+	('Kitchen', 'Tea / Coffee Making Facilities', 5),
+	('Kitchen', 'Toaster', 6),
+	('Kitchen', 'Oven', 7),
+	('Kitchen', 'Dishwasher', 8),
+	('Laundry & Ironing', 'Washing Machine', 0),
+	('Laundry & Ironing', 'Dryer', 1),
+	('Laundry & Ironing', 'Iron', 2),
+	('Laundry & Ironing', 'Ironing Board', 3),
+	('Laundry & Ironing', 'Hair Dryer', 4),
+	('Bathroom', 'Private Bathroom', 0),
+	('Bathroom', 'Shared Bathroom', 1),
+	('Bathroom', 'Bathtub', 2),
+	('Bathroom', 'Spa Bath / Jacuzzi', 3),
+	('Bathroom', 'Shower', 4),
+	('Bathroom', 'Complimentary Toiletries', 5),
+	('Service & Linen', 'Linen Provided', 0),
+	('Service & Linen', 'Towels Provided', 1),
+	('Service & Linen', 'Daily Housekeeping', 2),
+	('Service & Linen', 'Weekly Housekeeping', 3),
+	('Service & Linen', 'Room Service', 4),
+	('Food & drink', 'Breakfast Included', 0),
+	('Food & drink', 'Continental Breakfast', 1),
+	('Food & drink', 'Cooked Breakfast', 2),
+	('Food & drink', 'Mini Bar', 3),
+	('Food & drink', 'Welcome Pack', 4),
+	('Outdoor & views', 'Balcony', 0),
+	('Outdoor & views', 'Courtyard', 1),
+	('Outdoor & views', 'Garden Access', 2),
+	('Outdoor & views', 'Ocean View', 3),
+	('Outdoor & views', 'Mountain View', 4),
+	('Outdoor & views', 'Pool View', 5),
+	('Outdoor & views', 'City View', 6),
+	('Parking & transport', 'Parking', 0),
+	('Parking & transport', 'Free Parking', 1),
+	('Parking & transport', 'Street Parking', 2),
+	('Parking & transport', 'EV Charging', 3),
+	('Parking & transport', 'Airport Transfer', 4),
+	('Parking & transport', 'Shuttle Service', 5),
+	('Parking & transport', 'Bicycle Hire', 6),
+	('Parking & transport', 'Tour Booking Assistance', 7),
+	('Wellness', 'Swimming Pool', 0),
+	('Wellness', 'Heated Pool', 1),
+	('Wellness', 'Spa', 2),
+	('Wellness', 'Sauna', 3),
+	('Wellness', 'Gym', 4),
+	('Common areas', 'BBQ Facilities', 0),
+	('Common areas', 'Outdoor Dining Area', 1),
+	('Common areas', 'Fireplace', 2),
+	('Common areas', 'Communal Lounge', 3),
+	('Common areas', 'Games Room', 4),
+	('Common areas', 'Library', 5),
+	('Common areas', 'Workspace / Desk', 6),
+	('Common areas', 'Conference Room', 7),
+	('Common areas', 'Non-Smoking Rooms', 8),
+	('Common areas', 'Smoking Area', 9),
+	('Policies', 'Pet Friendly', 0),
+	('Policies', 'Adults Only', 1),
+	('Policies', 'Family Friendly', 2),
+	('Policies', 'Child Friendly', 3),
+	('Policies', 'Cot / Crib Available', 4),
+	('Policies', 'Extra Bed Available', 5),
+	('Accessibility', 'Wheelchair Accessible', 0),
+	('Accessibility', 'Accessible Bathroom', 1),
+	('Accessibility', 'Ground Floor Access', 2),
+	('Check-in & security', 'Self Check-In', 0),
+	('Check-in & security', 'Late Check-In', 1),
+	('Check-in & security', 'Luggage Storage', 2),
+	('Check-in & security', 'Security Cameras', 3),
+	('Check-in & security', 'Gated Property', 4),
+	('Check-in & security', 'Contactless Check-In', 5);

@@ -244,6 +244,14 @@ export const NAV_ENTRIES: NavEntry[] = [
         module: "settings",
         adminOnly: true,
       },
+      {
+        href: "/settings/property-amenities",
+        label: "Property Amenities",
+        icon: "Sparkles",
+        group: "manage",
+        module: "settings",
+        adminOnly: true,
+      },
     ],
   },
 ];

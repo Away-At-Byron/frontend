@@ -8,7 +8,7 @@
  */
 import {
   LayoutDashboard, CalendarRange, Plus, Sparkles, BedDouble, User, MessageCircle,
-  LineChart, Settings, Home, ChevronDown, Search, Bell, ArrowRight, Clock,
+  LineChart, Settings, Home, ChevronDown, ChevronUp, Search, Bell, ArrowRight, Clock,
   Calendar, MapPin, TriangleAlert, MoreVertical, LogOut, DollarSign,
   TrendingUp, Check, X, Pencil, Trash2, FileText, type LucideIcon,
 } from "lucide-react"
@@ -25,6 +25,7 @@ const MAP = {
   Settings,
   House: Home,
   ChevronDown,
+  ChevronUp,
   Search,
   Bell,
   ArrowRight,

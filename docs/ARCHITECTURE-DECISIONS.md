@@ -361,3 +361,48 @@ ADR-006 contacts and ADR-007 room_types). The pattern is now
 established for the remaining settings catalogues that are clearly
 cross-property — each gets its own ADR as it lands so the divergence
 list stays auditable.
+
+## ADR-009 — Property amenities: single global table, category as a column
+
+**Date:** 2026-05-27 · **Status:** Accepted
+
+**Context.** The amenities catalogue is a two-level vocabulary:
+categories (Connectivity, Climate, Bathroom, …) and options under each
+(WiFi, Air Conditioning, Bathtub, …). Two designs were considered:
+
+- **Two tables:** `amenity_categories` + `amenity_options` with a FK.
+  Cleaner normalisation; categories can carry sort order / icon /
+  description.
+- **One table:** `property_amenities` with `category` and `name`
+  columns. Category is denormalised but the UI is simpler and the
+  catalogue is small (~90 rows, 15 categories).
+
+The client framed this as one concept with two columns ("Categories" +
+"Options"). The catalogue is small and rarely edited. Per-category
+metadata is not needed in v1.
+
+**Decision.** Single global `property_amenities` table.
+
+- Columns: `id`, `category` (text, max 50), `name` (text, max 80),
+  `sort_order` (smallint, default 0 — within category, alphabetised
+  fallback), `created_by`, `created_at`, `updated_at`, `is_deleted`.
+- Unique among active rows: `(lower(category), lower(name))` enforced
+  in the server actions; no DB unique constraint in v1.
+- Categories are derived at read time (`SELECT DISTINCT category …`)
+  and offered as a combobox in the create/edit modal. Admin can type a
+  new category name to introduce one.
+- Global, not tenanted - same precedent as ADR-007 / ADR-008.
+- Soft delete + in-use guard, activated when `property_amenity_assignments`
+  (or equivalent room/property join table) lands.
+
+**Consequences.**
+- Renaming a category is a multi-row update (update every row sharing
+  that category text). Acceptable given low edit frequency.
+- The four-table sprawl of categories + options + per-category sort +
+  per-option sort is avoided.
+- If the v2 product gains per-category metadata (icon, colour, ordering
+  rules) the migration is straightforward: extract distinct categories
+  into a new `amenity_categories` table and convert `category` text
+  into a FK. ADR will be revisited then.
+- Initial seed (~90 entries across 15 categories) ships inline in
+  migration `0019_property_amenities.sql`.
