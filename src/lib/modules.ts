@@ -268,6 +268,14 @@ export const NAV_ENTRIES: NavEntry[] = [
         module: "settings",
         adminOnly: true,
       },
+      {
+        href: "/settings/room-requests",
+        label: "Room Requests",
+        icon: "Check",
+        group: "manage",
+        module: "settings",
+        adminOnly: true,
+      },
     ],
   },
 ];
