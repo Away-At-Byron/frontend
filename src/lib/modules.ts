@@ -300,6 +300,22 @@ export const NAV_ENTRIES: NavEntry[] = [
         module: "settings",
         adminOnly: true,
       },
+      {
+        href: "/settings/cost-types",
+        label: "Cost Types",
+        icon: "Dollar",
+        group: "manage",
+        module: "settings",
+        adminOnly: true,
+      },
+      {
+        href: "/settings/cost-categories",
+        label: "Cost Categories",
+        icon: "Dollar",
+        group: "manage",
+        module: "settings",
+        adminOnly: true,
+      },
     ],
   },
 ];
