@@ -347,7 +347,6 @@ export function ContactDetail({
         <CommunicationTab
           form={form}
           onField={handleField}
-          setField={setField}
           contactId={contact?.id ?? null}
           contactName={
             `${form.firstName} ${form.lastName}`.trim() || "this contact"

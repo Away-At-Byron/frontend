@@ -39,7 +39,7 @@ import type {
 } from "@/modules/communications/types";
 import { ComposeEmailModal } from "./compose-email-modal";
 import { Modal } from "@/modules/users/components/modal";
-import type { FormState, OnField, SetField } from "./contact-detail-form";
+import type { FormState, OnField } from "./contact-detail-form";
 import { Row, Textarea, TextInput } from "./contact-detail-fields";
 
 // ─── Mock data (SMS quadrant — Twilio integration is scheduled late) ────
@@ -91,7 +91,6 @@ const SMS_PHONE = "+61 421 990 882";
 export function CommunicationTab({
   form,
   onField,
-  setField,
   contactId,
   contactName,
   contactEmail,
@@ -100,7 +99,6 @@ export function CommunicationTab({
 }: {
   form: FormState;
   onField: OnField;
-  setField: SetField;
   contactId: string | null;
   contactName: string;
   contactEmail: string | null;
@@ -211,11 +209,7 @@ export function CommunicationTab({
         title="Notes & Preferences"
         sub="Everything about this guest in one spot"
       >
-        <NotesAndPreferences
-          form={form}
-          onField={onField}
-          setField={setField}
-        />
+        <NotesAndPreferences form={form} onField={onField} />
       </Quadrant>
     </div>
   );
@@ -226,11 +220,9 @@ export function CommunicationTab({
 function NotesAndPreferences({
   form,
   onField,
-  setField,
 }: {
   form: FormState;
   onField: OnField;
-  setField: SetField;
 }) {
   const onText =
     (key: keyof FormState) => (e: React.ChangeEvent<HTMLTextAreaElement>) =>

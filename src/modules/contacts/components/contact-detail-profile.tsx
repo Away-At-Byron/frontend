@@ -5,7 +5,7 @@
  * holds Contact + the Group section. Address fields swap between AU-aware
  * pickers and free-text when the country isn't AU.
  */
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/primitives";
@@ -69,16 +69,24 @@ export function ProfileTab({
   onMembersChanged: () => void;
 }) {
   const isAustralia = form.addressCountry === "AU";
-  const [groupList, setGroupList] = useState<GroupOption[]>(groups);
-  useEffect(() => {
-    setGroupList(groups);
-  }, [groups]);
+  // Locally appended groups stay visible in the dropdown until router.refresh()
+  // re-emits them via the `groups` prop. Merging in render avoids the
+  // setState-in-effect anti-pattern.
+  const [addedGroups, setAddedGroups] = useState<GroupOption[]>([]);
+  const groupList = useMemo(() => {
+    const existing = new Set(groups.map((g) => g.id));
+    const merged = [
+      ...groups,
+      ...addedGroups.filter((g) => !existing.has(g.id)),
+    ];
+    return merged.sort((a, b) => a.groupName.localeCompare(b.groupName));
+  }, [groups, addedGroups]);
 
   const handleGroupCreated = (group: GroupRow) => {
-    setGroupList((prev) =>
-      [...prev, { id: group.id, groupName: group.groupName }].sort((a, b) =>
-        a.groupName.localeCompare(b.groupName),
-      ),
+    setAddedGroups((prev) =>
+      prev.some((g) => g.id === group.id)
+        ? prev
+        : [...prev, { id: group.id, groupName: group.groupName }],
     );
     setField("groupId", group.id);
   };
