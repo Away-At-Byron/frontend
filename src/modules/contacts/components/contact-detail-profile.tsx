@@ -571,7 +571,6 @@ function MemberLink({
   isCurrent: boolean;
 }) {
   const name = `${member.firstName} ${member.lastName}`.trim();
-  const typeLabel = member.contactTypeName ?? "Contact";
   if (isCurrent) {
     return (
       <span
@@ -582,11 +581,6 @@ function MemberLink({
         }}
       >
         {name} <span style={{ color: "var(--ink-faint)" }}>(this contact)</span>
-        <span
-          style={{ marginLeft: 8, color: "var(--ink-faint)", fontSize: 12 }}
-        >
-          · {typeLabel}
-        </span>
       </span>
     );
   }
@@ -602,9 +596,6 @@ function MemberLink({
       }}
     >
       {name}
-      <span style={{ marginLeft: 8, color: "var(--ink-faint)", fontSize: 12 }}>
-        · {typeLabel}
-      </span>
     </Link>
   );
 }

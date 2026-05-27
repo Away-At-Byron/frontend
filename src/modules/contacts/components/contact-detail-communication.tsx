@@ -84,8 +84,6 @@ const SMS_MESSAGES: MockChatMessage[] = [
   },
 ];
 
-const SMS_PHONE = "+61 421 990 882";
-
 // ─── Tab ─────────────────────────────────────────────────────
 
 export function CommunicationTab({
@@ -181,17 +179,14 @@ export function CommunicationTab({
         />
       )}
 
-      <EmailViewerModal
-        email={openEmail}
-        onClose={() => setOpenEmail(null)}
-      />
+      <EmailViewerModal email={openEmail} onClose={() => setOpenEmail(null)} />
 
       <Quadrant
         icon="Bell"
         iconBg="rgba(199,126,99,.20)"
         iconFg="var(--terra-deep)"
         title="SMS messages"
-        sub={SMS_PHONE}
+        sub={form.phone || "No phone on Profile"}
         footer={
           <Composer
             placeholder="Reply via SMS…"
@@ -207,7 +202,6 @@ export function CommunicationTab({
         iconBg="rgba(110,155,151,.18)"
         iconFg="var(--teal-ink)"
         title="Notes & Preferences"
-        sub="Everything about this guest in one spot"
       >
         <NotesAndPreferences form={form} onField={onField} />
       </Quadrant>
@@ -1353,4 +1347,3 @@ function Composer({
     </div>
   );
 }
-

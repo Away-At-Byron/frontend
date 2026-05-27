@@ -314,34 +314,6 @@ function IdentityCard({
           hidden
           onChange={handleFiles}
         />
-        <span
-          title={
-            canUpload
-              ? "Upload one or more ID photos"
-              : "Save the contact first, then attach an ID photo"
-          }
-        >
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<Icon name="Plus" size={13} />}
-            onClick={openPicker}
-            disabled={!canUpload || uploading}
-          >
-            {uploading ? "Uploading…" : "Upload ID"}
-          </Button>
-        </span>
-        {hasPhoto && (
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<Icon name="Trash" size={13} />}
-            onClick={handleDelete}
-            disabled={!canUpload || uploading || deleting}
-          >
-            {deleting ? "Deleting…" : "Delete ID"}
-          </Button>
-        )}
       </div>
 
       <div
@@ -353,16 +325,28 @@ function IdentityCard({
           alignItems: "start",
         }}
       >
-        <PhotoSlot
-          label="ID photo"
-          imageUrl={photoUrl}
-          uploading={uploading}
-          disabled={!canUpload}
-          // No photo yet → clicking the slot opens the file picker. Once a
-          // photo is set, the slot becomes a preview-on-click; replacing is
-          // still available via the "Upload ID" header button.
-          onClick={photoUrl ? () => setLightboxOpen(true) : openPicker}
-        />
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <PhotoSlot
+            label="ID photo"
+            imageUrl={photoUrl}
+            uploading={uploading}
+            disabled={!canUpload}
+            // No photo yet → clicking the slot opens the file picker. Once a
+            // photo is set, the slot becomes a preview-on-click.
+            onClick={photoUrl ? () => setLightboxOpen(true) : openPicker}
+          />
+          {hasPhoto && (
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<Icon name="Trash" size={13} />}
+              onClick={handleDelete}
+              disabled={!canUpload || uploading || deleting}
+            >
+              {deleting ? "Deleting…" : "Delete ID"}
+            </Button>
+          )}
+        </div>
         {lightboxOpen && photoUrl && (
           <ImageLightbox
             url={photoUrl}
