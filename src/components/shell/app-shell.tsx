@@ -38,6 +38,7 @@ const HIDE_PROPERTY_ROUTES = [
   "/settings/room-configurations",
   "/settings/property-amenities",
   "/settings/room-amenities",
+  "/settings/discount-types",
 ];
 
 // Routes whose page renders its own <h1>, so the topbar title would just
@@ -53,6 +54,7 @@ const HIDE_TITLE_ROUTES = [
   "/settings/room-configurations",
   "/settings/property-amenities",
   "/settings/room-amenities",
+  "/settings/discount-types",
 ];
 
 const PORTAL_LABELS: Record<string, string> = {

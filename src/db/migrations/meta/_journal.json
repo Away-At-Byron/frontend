@@ -148,6 +148,13 @@
       "when": 1780500000000,
       "tag": "0020_room_amenities",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1780600000000,
+      "tag": "0021_discount_types",
+      "breakpoints": true
     }
   ]
 }
