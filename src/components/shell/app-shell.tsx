@@ -27,11 +27,25 @@ const PROPERTIES = [
 // Routes not scoped to a single property (e.g. Users spans every property).
 // The topbar shows just the date on these - add an href here to hide the
 // property name on another page.
-const HIDE_PROPERTY_ROUTES = ["/users", "/settings/contact-types"];
+const HIDE_PROPERTY_ROUTES = [
+  "/users",
+  "/contacts",
+  "/contacts/guest-history",
+  "/contacts/groups",
+  "/settings/contact-types",
+  "/settings/contact-sources",
+];
 
 // Routes whose page renders its own <h1>, so the topbar title would just
 // duplicate it - hide the topbar title (date and controls stay) on these.
-const HIDE_TITLE_ROUTES = ["/users", "/contacts", "/contacts/guest-history"];
+const HIDE_TITLE_ROUTES = [
+  "/users",
+  "/contacts",
+  "/contacts/guest-history",
+  "/contacts/groups",
+  "/settings/contact-types",
+  "/settings/contact-sources",
+];
 
 const PORTAL_LABELS: Record<string, string> = {
   admin: "Admin Portal",

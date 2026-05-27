@@ -166,34 +166,17 @@ export function GuestHistory({ contacts }: { contacts: ContactRow[] }) {
         }}
       >
         <div style={{ minWidth: 0 }}>
-          <div
-            className="caps"
-            style={{ color: "var(--ink-faint)", letterSpacing: "var(--tracked)" }}
-          >
-            Contacts / Guest history
-          </div>
           <h1
             style={{
               fontFamily: "var(--font-display), serif",
               fontWeight: 300,
               fontSize: 32,
               letterSpacing: "var(--tight)",
-              margin: "8px 0 6px",
+              margin: 0,
             }}
           >
             Guest <em style={{ fontStyle: "italic" }}>history</em>
           </h1>
-          <div
-            style={{
-              fontSize: 13.5,
-              color: "var(--ink-soft)",
-              maxWidth: 640,
-              lineHeight: 1.5,
-            }}
-          >
-            Every past booking, current stay, and upcoming reservation tied
-            to each guest. Use the rail to switch between guests.
-          </div>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <Button variant="paper" icon={<Icon name="Calendar" size={14} />}>

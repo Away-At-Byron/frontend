@@ -127,47 +127,34 @@ export function ContactTypeManagement({
         gap: 20,
       }}
     >
-      {/* Page header — title (start) · New button (end) · description */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <div
+      {/* Page header — title (start) · New button (end) */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 16,
+          flexWrap: "wrap",
+        }}
+      >
+        <h1
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 16,
-            flexWrap: "wrap",
-          }}
-        >
-          <h1
-            style={{
-              fontFamily: "var(--font-display), serif",
-              fontWeight: 300,
-              fontSize: 32,
-              letterSpacing: "var(--tight)",
-              margin: 0,
-            }}
-          >
-            Contact Types
-          </h1>
-          <Button
-            variant="primary"
-            icon={<Icon name="Plus" size={15} />}
-            onClick={() => setNewOpen(true)}
-          >
-            New contact type
-          </Button>
-        </div>
-        <p
-          style={{
+            fontFamily: "var(--font-display), serif",
+            fontWeight: 300,
+            fontSize: 32,
+            letterSpacing: "var(--tight)",
             margin: 0,
-            fontSize: 13.5,
-            color: "var(--ink-soft)",
-            maxWidth: 620,
           }}
         >
-          The categories a contact can be filed under, like Guest, Owner or
-          Travel Agent. Editable here so the list keeps up without a developer.
-        </p>
+          Contact Types
+        </h1>
+        <Button
+          variant="primary"
+          icon={<Icon name="Plus" size={15} />}
+          onClick={() => setNewOpen(true)}
+        >
+          New contact type
+        </Button>
       </div>
 
       {error && (

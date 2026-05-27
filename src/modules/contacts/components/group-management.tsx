@@ -151,46 +151,33 @@ export function GroupManagement({
         gap: 20,
       }}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <div
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 16,
+          flexWrap: "wrap",
+        }}
+      >
+        <h1
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 16,
-            flexWrap: "wrap",
-          }}
-        >
-          <h1
-            style={{
-              fontFamily: "var(--font-display), serif",
-              fontWeight: 300,
-              fontSize: 32,
-              letterSpacing: "var(--tight)",
-              margin: 0,
-            }}
-          >
-            Groups
-          </h1>
-          <Button
-            variant="primary"
-            icon={<Icon name="Plus" size={15} />}
-            onClick={() => setNewOpen(true)}
-          >
-            New group
-          </Button>
-        </div>
-        <p
-          style={{
+            fontFamily: "var(--font-display), serif",
+            fontWeight: 300,
+            fontSize: 32,
+            letterSpacing: "var(--tight)",
             margin: 0,
-            fontSize: 13.5,
-            color: "var(--ink-soft)",
-            maxWidth: 620,
           }}
         >
-          Group bookings tie a primary contact to related members. Members are
-          linked from the contact record.
-        </p>
+          Groups
+        </h1>
+        <Button
+          variant="primary"
+          icon={<Icon name="Plus" size={15} />}
+          onClick={() => setNewOpen(true)}
+        >
+          New group
+        </Button>
       </div>
 
       {/* Search */}
