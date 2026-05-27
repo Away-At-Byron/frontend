@@ -333,3 +333,31 @@ without value — admins would have to add the same entry three times.
   ships inline in migration `0017_room_types.sql`, same pattern as
   `0012_contact_sources`. Admin edits afterwards are not clobbered
   because migrations are append-only.
+
+## ADR-008 — Room configurations are global; not property-scoped
+
+**Date:** 2026-05-27 · **Status:** Accepted
+
+**Context.** `room_configurations` is the admin-managed catalogue of
+detailed room layout descriptions (e.g. "King Ensuite, Kitchen, Living"
+or "2 King Rooms, Queen Room, 2 Singles / 1 King, 2 Bathrooms") that
+sit one level below room_type on a room. The same descriptive layouts
+recur across the three properties; per-property duplication adds no
+value.
+
+**Decision.** `room_configurations` becomes a **global** table — same
+precedent as `room_types` (ADR-007). Same shape:
+
+- Columns: `id`, `name` (unique among active rows, case-insensitive,
+  longer max length than room_types because layout strings are long),
+  `default_max_occupancy` (smallint, nullable), `created_by`,
+  `created_at`, `updated_at`, `is_deleted`.
+- Soft delete + in-use guard, activated when `rooms` lands (module 6).
+- Initial seed (8 entries from Jenny's current layouts) ships inline in
+  migration `0018_room_configurations.sql`.
+
+**Consequences.** Third deliberate exception to CLAUDE.md rule 3 (after
+ADR-006 contacts and ADR-007 room_types). The pattern is now
+established for the remaining settings catalogues that are clearly
+cross-property — each gets its own ADR as it lands so the divergence
+list stays auditable.
