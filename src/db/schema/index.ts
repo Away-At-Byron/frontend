@@ -27,6 +27,7 @@ export * from "./room-requests" // module 5 — admin-managed room request catal
 export * from "./charge-types" // module 5 — admin-managed invoice charge catalogue (global, follows ADR-007)
 export * from "./tariffs" // module 5 — admin-managed tariff (rate label) catalogue (global, follows ADR-007)
 export * from "./tariff-plans" // module 5 — admin-managed tariff plans (label × property × room_type), global
+export * from "./tariff-periods" // module 5 — admin-managed tariff period catalogue (global, follows ADR-007)
 export * from "./cost-types" // module 5 — admin-managed cost catalogue (global, follows ADR-007)
 export * from "./cost-categories" // module 5 — named cost-type variants with basis + amount (global, follows ADR-007)
 // export * from "./rooms"           // module 6
