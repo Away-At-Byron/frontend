@@ -1,21 +1,21 @@
-"use client"
+"use client";
 
-import { useEffect } from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Button } from "@/components/ui/primitives"
-import type { ActionResult } from "@/lib/result"
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@/components/ui/primitives";
+import type { ActionResult } from "@/lib/result";
 import {
   createPropertyAmenitySchema,
   updatePropertyAmenitySchema,
   type CreatePropertyAmenityInput,
   type UpdatePropertyAmenityInput,
-} from "../schemas"
-import type { PropertyAmenityRow } from "../types"
-import { Modal, Field, inputStyle } from "./modal"
+} from "../schemas";
+import type { PropertyAmenityRow } from "../types";
+import { Modal, Field, inputStyle } from "./modal";
 
 function ErrorBanner({ message }: { message?: string }) {
-  if (!message) return null
+  if (!message) return null;
   return (
     <div
       style={{
@@ -28,33 +28,21 @@ function ErrorBanner({ message }: { message?: string }) {
     >
       {message}
     </div>
-  )
+  );
 }
 
-/** Native datalist combobox - type a new value or pick an existing category. */
+/** Plain text input - type the category name. */
 function CategoryInput({
-  id,
-  categories,
+  id: _id,
+  categories: _categories,
   ...props
 }: {
-  id: string
-  categories: string[]
+  id: string;
+  categories: string[];
 } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
-    <>
-      <input
-        list={id}
-        style={inputStyle}
-        placeholder="e.g. Connectivity"
-        {...props}
-      />
-      <datalist id={id}>
-        {categories.map((c) => (
-          <option key={c} value={c} />
-        ))}
-      </datalist>
-    </>
-  )
+    <input style={inputStyle} placeholder="e.g. Connectivity" {...props} />
+  );
 }
 
 export function NewPropertyAmenityModal({
@@ -64,13 +52,13 @@ export function NewPropertyAmenityModal({
   categories,
   defaultCategory,
 }: {
-  isOpen: boolean
-  onClose: () => void
+  isOpen: boolean;
+  onClose: () => void;
   onSave: (
     values: CreatePropertyAmenityInput,
-  ) => Promise<ActionResult<PropertyAmenityRow>>
-  categories: string[]
-  defaultCategory?: string
+  ) => Promise<ActionResult<PropertyAmenityRow>>;
+  categories: string[];
+  defaultCategory?: string;
 }) {
   const {
     register,
@@ -81,36 +69,36 @@ export function NewPropertyAmenityModal({
   } = useForm<CreatePropertyAmenityInput>({
     resolver: zodResolver(createPropertyAmenitySchema),
     defaultValues: { category: defaultCategory ?? "", name: "" },
-  })
+  });
 
   useEffect(() => {
     if (isOpen) {
-      reset({ category: defaultCategory ?? "", name: "" })
+      reset({ category: defaultCategory ?? "", name: "" });
     }
-  }, [isOpen, defaultCategory, reset])
+  }, [isOpen, defaultCategory, reset]);
 
   const close = () => {
-    if (isSubmitting) return
-    reset()
-    onClose()
-  }
+    if (isSubmitting) return;
+    reset();
+    onClose();
+  };
 
   const submit = handleSubmit(async (values) => {
-    const res = await onSave(values)
+    const res = await onSave(values);
     if (res.ok) {
-      reset()
-      onClose()
-      return
+      reset();
+      onClose();
+      return;
     }
-    const fields = res.error.fields
+    const fields = res.error.fields;
     if (fields?.category?.[0]) {
-      setError("category", { message: fields.category[0] })
+      setError("category", { message: fields.category[0] });
     } else if (fields?.name?.[0]) {
-      setError("name", { message: fields.name[0] })
+      setError("name", { message: fields.name[0] });
     } else {
-      setError("root", { message: res.error.message })
+      setError("root", { message: res.error.message });
     }
-  })
+  });
 
   return (
     <Modal isOpen={isOpen} onClose={close}>
@@ -140,7 +128,7 @@ export function NewPropertyAmenityModal({
           <ErrorBanner message={errors.root?.message} />
           <Field
             label="Category"
-            hint="Pick an existing category or type a new one."
+            hint="Type the Category Name"
             error={errors.category?.message}
           >
             <CategoryInput
@@ -177,7 +165,7 @@ export function NewPropertyAmenityModal({
         </div>
       </form>
     </Modal>
-  )
+  );
 }
 
 export function EditPropertyAmenityModal({
@@ -187,14 +175,14 @@ export function EditPropertyAmenityModal({
   onSave,
   categories,
 }: {
-  isOpen: boolean
-  onClose: () => void
-  amenity: PropertyAmenityRow | null
+  isOpen: boolean;
+  onClose: () => void;
+  amenity: PropertyAmenityRow | null;
   onSave: (
     id: string,
     values: UpdatePropertyAmenityInput,
-  ) => Promise<ActionResult<PropertyAmenityRow>>
-  categories: string[]
+  ) => Promise<ActionResult<PropertyAmenityRow>>;
+  categories: string[];
 }) {
   const {
     register,
@@ -204,36 +192,36 @@ export function EditPropertyAmenityModal({
     formState: { errors, isSubmitting },
   } = useForm<UpdatePropertyAmenityInput>({
     resolver: zodResolver(updatePropertyAmenitySchema),
-  })
+  });
 
   useEffect(() => {
     if (amenity) {
-      reset({ category: amenity.category, name: amenity.name })
+      reset({ category: amenity.category, name: amenity.name });
     }
-  }, [amenity, reset])
+  }, [amenity, reset]);
 
-  if (!amenity) return null
+  if (!amenity) return null;
 
   const close = () => {
-    if (isSubmitting) return
-    onClose()
-  }
+    if (isSubmitting) return;
+    onClose();
+  };
 
   const submit = handleSubmit(async (values) => {
-    const res = await onSave(amenity.id, values)
+    const res = await onSave(amenity.id, values);
     if (res.ok) {
-      onClose()
-      return
+      onClose();
+      return;
     }
-    const fields = res.error.fields
+    const fields = res.error.fields;
     if (fields?.category?.[0]) {
-      setError("category", { message: fields.category[0] })
+      setError("category", { message: fields.category[0] });
     } else if (fields?.name?.[0]) {
-      setError("name", { message: fields.name[0] })
+      setError("name", { message: fields.name[0] });
     } else {
-      setError("root", { message: res.error.message })
+      setError("root", { message: res.error.message });
     }
-  })
+  });
 
   return (
     <Modal isOpen={isOpen} onClose={close}>
@@ -263,7 +251,7 @@ export function EditPropertyAmenityModal({
           <ErrorBanner message={errors.root?.message} />
           <Field
             label="Category"
-            hint="Changing category moves this amenity to the end of the new one."
+            hint="Type the Category Name"
             error={errors.category?.message}
           >
             <CategoryInput
@@ -296,5 +284,5 @@ export function EditPropertyAmenityModal({
         </div>
       </form>
     </Modal>
-  )
+  );
 }
