@@ -285,16 +285,8 @@ export const NAV_ENTRIES: NavEntry[] = [
         adminOnly: true,
       },
       {
-        href: "/settings/tariffs",
+        href: "/settings/tariff-types",
         label: "Tariff Type",
-        icon: "TrendUp",
-        group: "manage",
-        module: "settings",
-        adminOnly: true,
-      },
-      {
-        href: "/settings/tariff-plans",
-        label: "Tariff",
         icon: "TrendUp",
         group: "manage",
         module: "settings",

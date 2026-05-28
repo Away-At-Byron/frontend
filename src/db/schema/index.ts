@@ -25,11 +25,10 @@ export * from "./room-amenities" // module 5 — admin-managed per-room amenity 
 export * from "./discount-types" // module 5 — admin-managed discount catalogue (global, follows ADR-007)
 export * from "./room-requests" // module 5 — admin-managed room request catalogue (global, follows ADR-007)
 export * from "./charge-types" // module 5 — admin-managed invoice charge catalogue (global, follows ADR-007)
-export * from "./tariffs" // module 5 — admin-managed tariff (rate label) catalogue (global, follows ADR-007)
-export * from "./tariff-plans" // module 5 — admin-managed tariff plans (label × property × room_type), global
 export * from "./tariff-periods" // module 5 — admin-managed tariff period catalogue (global, follows ADR-007)
-export * from "./cost-types" // module 5 — admin-managed cost catalogue (global, follows ADR-007)
-export * from "./cost-categories" // module 5 — named cost-type variants with basis + amount (global, follows ADR-007)
+export * from "./tariffs" // module 5 — admin-managed tariff catalogue (global, follows ADR-007) — FKs tariff_periods
+export * from "./cost-categories" // module 5 — admin-managed cost category buckets (global, follows ADR-007)
+export * from "./cost-types" // module 5 — admin-managed cost types with basis + default value (global, follows ADR-007) — FKs cost_categories
 // export * from "./rooms"           // module 6
 // export * from "./common-areas"    // module 7
 // export * from "./booking-sources" // module 8

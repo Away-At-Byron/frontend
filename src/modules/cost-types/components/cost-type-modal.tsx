@@ -1,17 +1,18 @@
 "use client"
 
 import { useEffect } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@/components/ui/primitives"
 import type { ActionResult } from "@/lib/result"
 import {
   createCostTypeSchema,
   updateCostTypeSchema,
+  BASIS_LABEL,
   type CreateCostTypeInput,
   type UpdateCostTypeInput,
 } from "../schemas"
-import type { CostTypeRow } from "../types"
+import type { CostTypeRow, CostBasis, Option } from "../types"
 import { Modal, Field, inputStyle } from "./modal"
 
 function ErrorBanner({ message }: { message?: string }) {
@@ -33,10 +34,20 @@ function ErrorBanner({ message }: { message?: string }) {
 
 type FormValues = {
   name: string
-  defaultRate: number | string
-  canOverridden: boolean
-  isDeduction: boolean
-  isAddition: boolean
+  costCategoryId: string
+  basis: CostBasis
+  defaultValue: number | string
+  canBeOverridden: boolean
+  isActive: "active" | "inactive"
+}
+
+const EMPTY: FormValues = {
+  name: "",
+  costCategoryId: "",
+  basis: "flat",
+  defaultValue: "",
+  canBeOverridden: true,
+  isActive: "active",
 }
 
 function CheckRow({
@@ -64,140 +75,213 @@ function CheckRow({
   )
 }
 
+function CostTypeForm({
+  mode,
+  initialValues,
+  costCategoryOptions,
+  submitLabel,
+  onSubmit,
+  onCancel,
+}: {
+  mode: "create" | "edit"
+  initialValues: FormValues
+  costCategoryOptions: Option[]
+  submitLabel: string
+  onSubmit: (values: FormValues) => Promise<{
+    ok: boolean
+    fieldErrors?: Record<string, string[] | undefined>
+    rootError?: string
+  }>
+  onCancel: () => void
+}) {
+  const schema =
+    mode === "create" ? createCostTypeSchema : updateCostTypeSchema
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setError,
+    control,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema) as never,
+    defaultValues: initialValues,
+  })
+
+  useEffect(() => {
+    reset(initialValues)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialValues])
+
+  const watchedBasis = useWatch({ control, name: "basis" })
+  const defaultValueLabel =
+    watchedBasis === "percentage" ? "Default value (%)" : "Default value (A$)"
+  const defaultValuePlaceholder =
+    watchedBasis === "percentage" ? "15" : "50.00"
+
+  const submit = handleSubmit(async (values) => {
+    const res = await onSubmit(values)
+    if (res.ok) return
+    const fields = res.fieldErrors ?? {}
+    const first = Object.keys(fields).find((k) => fields[k]?.[0]) as
+      | keyof FormValues
+      | undefined
+    if (first) setError(first as never, { message: fields[first]![0] })
+    else setError("root", { message: res.rootError ?? "Could not save." })
+  })
+
+  return (
+    <form onSubmit={submit}>
+      <div style={{ padding: "22px 24px 6px" }}>
+        <h2
+          style={{
+            fontFamily: "var(--font-display), serif",
+            fontWeight: 300,
+            fontSize: 24,
+            letterSpacing: "var(--tight)",
+            margin: 0,
+          }}
+        >
+          {mode === "create" ? "New cost type" : "Edit cost type"}
+        </h2>
+      </div>
+
+      <div
+        style={{
+          padding: "16px 24px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 14,
+        }}
+      >
+        <ErrorBanner message={errors.root?.message} />
+
+        <Field label="Name" error={errors.name?.message}>
+          <input
+            style={inputStyle}
+            autoFocus
+            placeholder="e.g. Standard linen change"
+            {...register("name")}
+          />
+        </Field>
+
+        <Field label="Cost category" error={errors.costCategoryId?.message}>
+          <select style={inputStyle} {...register("costCategoryId")}>
+            <option value="">Select…</option>
+            {costCategoryOptions.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <Field label="Basis" error={errors.basis?.message}>
+            <select style={inputStyle} {...register("basis")}>
+              {(
+                [
+                  "flat",
+                  "per_night",
+                  "per_person",
+                  "per_room",
+                  "percentage",
+                ] as CostBasis[]
+              ).map((b) => (
+                <option key={b} value={b}>
+                  {BASIS_LABEL[b]}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field
+            label={defaultValueLabel}
+            hint="Pre-fills when this cost is applied. Rooms may override if allowed."
+            error={errors.defaultValue?.message as string | undefined}
+          >
+            <input
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={watchedBasis === "percentage" ? 100 : undefined}
+              step="0.01"
+              style={inputStyle}
+              placeholder={defaultValuePlaceholder}
+              {...register("defaultValue")}
+            />
+          </Field>
+        </div>
+
+        <Field label="Status" error={errors.isActive?.message as string | undefined}>
+          <select style={inputStyle} {...register("isActive")}>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </Field>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <CheckRow
+            label="Can be overridden"
+            hint="Rooms may set their own value instead of using the default."
+            {...register("canBeOverridden")}
+          />
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 10,
+          padding: "16px 24px 22px",
+          borderTop: "1px solid var(--line-soft)",
+        }}
+      >
+        <Button variant="ghost" onClick={onCancel} disabled={isSubmitting}>
+          Cancel
+        </Button>
+        <Button type="submit" variant="primary" disabled={isSubmitting}>
+          {isSubmitting ? "Saving..." : submitLabel}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
 export function NewCostTypeModal({
   isOpen,
   onClose,
   onSave,
+  costCategoryOptions,
 }: {
   isOpen: boolean
   onClose: () => void
   onSave: (
     values: CreateCostTypeInput,
   ) => Promise<ActionResult<CostTypeRow>>
+  costCategoryOptions: Option[]
 }) {
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setError,
-    formState: { errors, isSubmitting },
-  } = useForm<FormValues>({
-    resolver: zodResolver(createCostTypeSchema) as never,
-    defaultValues: {
-      name: "",
-      defaultRate: "",
-      canOverridden: true,
-      isDeduction: false,
-      isAddition: true,
-    },
-  })
-
-  const close = () => {
-    if (isSubmitting) return
-    reset()
-    onClose()
-  }
-
-  const submit = handleSubmit(async (values) => {
-    const res = await onSave(values as never)
-    if (res.ok) {
-      reset()
-      onClose()
-      return
-    }
-    const fields = res.error.fields
-    const first = Object.keys(fields ?? {}).find((k) => fields![k]?.[0]) as
-      | keyof FormValues
-      | undefined
-    if (first) setError(first as never, { message: fields![first]![0] })
-    else setError("root", { message: res.error.message })
-  })
-
   return (
-    <Modal isOpen={isOpen} onClose={close}>
-      <form onSubmit={submit}>
-        <div style={{ padding: "22px 24px 6px" }}>
-          <h2
-            style={{
-              fontFamily: "var(--font-display), serif",
-              fontWeight: 300,
-              fontSize: 24,
-              letterSpacing: "var(--tight)",
-              margin: 0,
-            }}
-          >
-            New cost type
-          </h2>
-        </div>
-
-        <div
-          style={{
-            padding: "16px 24px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 14,
-          }}
-        >
-          <ErrorBanner message={errors.root?.message} />
-          <Field label="Name" error={errors.name?.message}>
-            <input
-              style={inputStyle}
-              autoFocus
-              placeholder="e.g. OTA Commission"
-              {...register("name")}
-            />
-          </Field>
-          <Field
-            label="Default rate (A$)"
-            hint="The amount that pre-fills when this cost is added. 0 means no default."
-            error={errors.defaultRate?.message as string | undefined}
-          >
-            <input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              step="0.01"
-              style={inputStyle}
-              placeholder="0.00"
-              {...register("defaultRate")}
-            />
-          </Field>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <CheckRow
-              label="Can be overridden"
-              hint="Staff can change the rate when applying this cost to a booking."
-              {...register("canOverridden")}
-            />
-            <CheckRow
-              label="Addition"
-              hint="Adds to the booking total."
-              {...register("isAddition")}
-            />
-            <CheckRow
-              label="Deduction"
-              hint="Reduces the booking total or payout."
-              {...register("isDeduction")}
-            />
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: 10,
-            padding: "16px 24px 22px",
-            borderTop: "1px solid var(--line-soft)",
-          }}
-        >
-          <Button variant="ghost" onClick={close} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="primary" disabled={isSubmitting}>
-            {isSubmitting ? "Saving..." : "Add cost type"}
-          </Button>
-        </div>
-      </form>
+    <Modal isOpen={isOpen} onClose={onClose}>
+      <CostTypeForm
+        mode="create"
+        initialValues={EMPTY}
+        costCategoryOptions={costCategoryOptions}
+        submitLabel="Add cost type"
+        onCancel={onClose}
+        onSubmit={async (values) => {
+          const res = await onSave(values as never)
+          if (res.ok) {
+            onClose()
+            return { ok: true }
+          }
+          return {
+            ok: false,
+            fieldErrors: res.error.fields,
+            rootError: res.error.message,
+          }
+        }}
+      />
     </Modal>
   )
 }
@@ -207,6 +291,7 @@ export function EditCostTypeModal({
   onClose,
   costType,
   onSave,
+  costCategoryOptions,
 }: {
   isOpen: boolean
   onClose: () => void
@@ -215,129 +300,38 @@ export function EditCostTypeModal({
     id: string,
     values: UpdateCostTypeInput,
   ) => Promise<ActionResult<CostTypeRow>>
+  costCategoryOptions: Option[]
 }) {
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setError,
-    formState: { errors, isSubmitting },
-  } = useForm<FormValues>({
-    resolver: zodResolver(updateCostTypeSchema) as never,
-  })
-
-  useEffect(() => {
-    if (costType) {
-      reset({
-        name: costType.name,
-        defaultRate: costType.defaultRateCents / 100,
-        canOverridden: costType.canOverridden,
-        isDeduction: costType.isDeduction,
-        isAddition: costType.isAddition,
-      })
-    }
-  }, [costType, reset])
-
   if (!costType) return null
-
-  const close = () => {
-    if (isSubmitting) return
-    onClose()
+  const initial: FormValues = {
+    name: costType.name,
+    costCategoryId: costType.costCategoryId,
+    basis: costType.basis,
+    defaultValue: costType.defaultValueInt / 100,
+    canBeOverridden: costType.canBeOverridden,
+    isActive: costType.isActive ? "active" : "inactive",
   }
-
-  const submit = handleSubmit(async (values) => {
-    const res = await onSave(costType.id, values as never)
-    if (res.ok) {
-      onClose()
-      return
-    }
-    const fields = res.error.fields
-    const first = Object.keys(fields ?? {}).find((k) => fields![k]?.[0]) as
-      | keyof FormValues
-      | undefined
-    if (first) setError(first as never, { message: fields![first]![0] })
-    else setError("root", { message: res.error.message })
-  })
-
   return (
-    <Modal isOpen={isOpen} onClose={close}>
-      <form onSubmit={submit}>
-        <div style={{ padding: "22px 24px 6px" }}>
-          <h2
-            style={{
-              fontFamily: "var(--font-display), serif",
-              fontWeight: 300,
-              fontSize: 24,
-              letterSpacing: "var(--tight)",
-              margin: 0,
-            }}
-          >
-            Edit cost type
-          </h2>
-        </div>
-
-        <div
-          style={{
-            padding: "16px 24px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 14,
-          }}
-        >
-          <ErrorBanner message={errors.root?.message} />
-          <Field label="Name" error={errors.name?.message}>
-            <input style={inputStyle} autoFocus {...register("name")} />
-          </Field>
-          <Field
-            label="Default rate (A$)"
-            hint="0 means no default."
-            error={errors.defaultRate?.message as string | undefined}
-          >
-            <input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              step="0.01"
-              style={inputStyle}
-              {...register("defaultRate")}
-            />
-          </Field>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <CheckRow
-              label="Can be overridden"
-              hint="Staff can change the rate when applying this cost to a booking."
-              {...register("canOverridden")}
-            />
-            <CheckRow
-              label="Addition"
-              hint="Adds to the booking total."
-              {...register("isAddition")}
-            />
-            <CheckRow
-              label="Deduction"
-              hint="Reduces the booking total or payout."
-              {...register("isDeduction")}
-            />
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: 10,
-            padding: "16px 24px 22px",
-            borderTop: "1px solid var(--line-soft)",
-          }}
-        >
-          <Button variant="ghost" onClick={close} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="primary" disabled={isSubmitting}>
-            {isSubmitting ? "Saving..." : "Save changes"}
-          </Button>
-        </div>
-      </form>
+    <Modal isOpen={isOpen} onClose={onClose}>
+      <CostTypeForm
+        mode="edit"
+        initialValues={initial}
+        costCategoryOptions={costCategoryOptions}
+        submitLabel="Save changes"
+        onCancel={onClose}
+        onSubmit={async (values) => {
+          const res = await onSave(costType.id, values as never)
+          if (res.ok) {
+            onClose()
+            return { ok: true }
+          }
+          return {
+            ok: false,
+            fieldErrors: res.error.fields,
+            rootError: res.error.message,
+          }
+        }}
+      />
     </Modal>
   )
 }

@@ -1,6 +1,6 @@
 "use server"
 
-import { and, eq, ne, sql } from "drizzle-orm"
+import { and, count, eq, ne, sql } from "drizzle-orm"
 import { costCategories, costTypes } from "@/db/schema"
 import { withTenant, type TenantContext } from "@/lib/rls"
 import { writeAudit } from "@/lib/audit"
@@ -25,7 +25,6 @@ function adminOnly(ctx: TenantContext): ActionErr | null {
 async function nameTaken(
   tx: Tx,
   name: string,
-  costTypeId: string,
   exceptId?: string,
 ): Promise<boolean> {
   const dupes = await tx
@@ -34,7 +33,6 @@ async function nameTaken(
     .where(
       and(
         eq(costCategories.isDeleted, false),
-        eq(costCategories.costTypeId, costTypeId),
         sql`lower(${costCategories.name}) = lower(${name})`,
         exceptId ? ne(costCategories.id, exceptId) : undefined,
       ),
@@ -43,65 +41,27 @@ async function nameTaken(
   return dupes.length > 0
 }
 
-async function validateCostType(
-  tx: Tx,
-  costTypeId: string,
-): Promise<ActionErr | null> {
-  const [row] = await tx
-    .select({ id: costTypes.id })
-    .from(costTypes)
-    .where(and(eq(costTypes.id, costTypeId), eq(costTypes.isDeleted, false)))
-    .limit(1)
-  if (!row) {
-    return err("VALIDATION", "Check the highlighted fields.", {
-      costTypeId: ["That cost type no longer exists"],
-    })
-  }
-  return null
-}
-
-function toIntScaled(value: number): number {
-  return Math.round(value * 100)
-}
-
 async function fetchRow(tx: Tx, id: string): Promise<CostCategoryRow | null> {
   const rows = await tx
     .select({
       id: costCategories.id,
       name: costCategories.name,
-      costTypeId: costCategories.costTypeId,
-      costTypeName: costTypes.name,
-      costTypeDefaultRateCents: costTypes.defaultRateCents,
-      basis: costCategories.basis,
-      amountInt: costCategories.amountInt,
-      isOverridden: costCategories.isOverridden,
-      isActive: costCategories.isActive,
       createdAt: costCategories.createdAt,
       updatedAt: costCategories.updatedAt,
+      costTypeCount: count(costTypes.id),
     })
     .from(costCategories)
-    .innerJoin(costTypes, eq(costTypes.id, costCategories.costTypeId))
+    .leftJoin(
+      costTypes,
+      and(
+        eq(costTypes.costCategoryId, costCategories.id),
+        eq(costTypes.isDeleted, false),
+      ),
+    )
     .where(eq(costCategories.id, id))
+    .groupBy(costCategories.id)
     .limit(1)
   return rows[0] ?? null
-}
-
-function toStorage(
-  data:
-    | ReturnType<typeof createCostCategorySchema.parse>
-    | ReturnType<typeof updateCostCategorySchema.parse>,
-) {
-  // When the category does not override, the typed amount is ignored - we
-  // store 0 so the column stays clean and the apply-time formula
-  // (isOverridden ? amountInt : costType.default_rate_cents) is unambiguous.
-  return {
-    name: data.name,
-    costTypeId: data.costTypeId,
-    basis: data.basis,
-    amountInt: data.isOverridden ? toIntScaled(data.amount) : 0,
-    isOverridden: data.isOverridden,
-    isActive: data.isActive,
-  }
 }
 
 export async function createCostCategory(
@@ -119,22 +79,17 @@ export async function createCostCategory(
         parsed.error.flatten().fieldErrors,
       )
     }
+    const { name } = parsed.data
 
-    const refErr = await validateCostType(tx, parsed.data.costTypeId)
-    if (refErr) return refErr
-
-    if (await nameTaken(tx, parsed.data.name, parsed.data.costTypeId)) {
-      return err(
-        "CONFLICT",
-        "A category with that name already exists for this cost type.",
-        { name: ["That name is already in use for this cost type"] },
-      )
+    if (await nameTaken(tx, name)) {
+      return err("CONFLICT", "A cost category with that name already exists.", {
+        name: ["That name is already in use"],
+      })
     }
 
-    const values = toStorage(parsed.data)
     const inserted = await tx
       .insert(costCategories)
-      .values({ ...values, createdBy: ctx.userId })
+      .values({ name, createdBy: ctx.userId })
       .returning({ id: costCategories.id })
 
     const id = inserted[0]!.id
@@ -146,7 +101,7 @@ export async function createCostCategory(
       entityType: "cost_category",
       entityId: id,
       action: "create",
-      newValue: values,
+      newValue: { name },
     })
 
     return ok(row)
@@ -169,9 +124,10 @@ export async function updateCostCategory(
         parsed.error.flatten().fieldErrors,
       )
     }
+    const { name } = parsed.data
 
     const existing = await tx
-      .select()
+      .select({ id: costCategories.id, name: costCategories.name })
       .from(costCategories)
       .where(and(eq(costCategories.id, id), eq(costCategories.isDeleted, false)))
       .limit(1)
@@ -179,23 +135,15 @@ export async function updateCostCategory(
       return err("NOT_FOUND", "That cost category no longer exists.")
     }
 
-    const refErr = await validateCostType(tx, parsed.data.costTypeId)
-    if (refErr) return refErr
-
-    if (
-      await nameTaken(tx, parsed.data.name, parsed.data.costTypeId, id)
-    ) {
-      return err(
-        "CONFLICT",
-        "A category with that name already exists for this cost type.",
-        { name: ["That name is already in use for this cost type"] },
-      )
+    if (await nameTaken(tx, name, id)) {
+      return err("CONFLICT", "A cost category with that name already exists.", {
+        name: ["That name is already in use"],
+      })
     }
 
-    const values = toStorage(parsed.data)
     await tx
       .update(costCategories)
-      .set({ ...values, updatedAt: new Date() })
+      .set({ name, updatedAt: new Date() })
       .where(eq(costCategories.id, id))
 
     const row = await fetchRow(tx, id)
@@ -206,13 +154,8 @@ export async function updateCostCategory(
       entityType: "cost_category",
       entityId: id,
       action: "update",
-      oldValue: {
-        name: existing[0].name,
-        costTypeId: existing[0].costTypeId,
-        basis: existing[0].basis,
-        amountInt: existing[0].amountInt,
-      },
-      newValue: values,
+      oldValue: { name: existing[0].name },
+      newValue: { name },
     })
 
     return ok(row)
@@ -233,6 +176,24 @@ export async function deleteCostCategory(
       .limit(1)
     if (!existing[0]) {
       return err("NOT_FOUND", "That cost category no longer exists.")
+    }
+
+    // Block delete while active cost types still depend on this category;
+    // the DB FK is ON DELETE RESTRICT but soft-delete bypasses that.
+    const [dependants] = await tx
+      .select({ n: count(costTypes.id) })
+      .from(costTypes)
+      .where(
+        and(
+          eq(costTypes.costCategoryId, id),
+          eq(costTypes.isDeleted, false),
+        ),
+      )
+    if ((dependants?.n ?? 0) > 0) {
+      return err(
+        "CONFLICT",
+        "Remove or reassign the cost types in this category first.",
+      )
     }
 
     await tx

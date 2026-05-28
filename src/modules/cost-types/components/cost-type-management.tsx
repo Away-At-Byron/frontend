@@ -11,33 +11,35 @@ import {
   updateCostType,
   deleteCostType,
 } from "../actions"
-import type { CostTypeRow } from "../types"
+import type { CostTypeRow, Option } from "../types"
+import { BASIS_LABEL } from "../schemas"
 import { NewCostTypeModal, EditCostTypeModal } from "./cost-type-modal"
 
-const GRID = "minmax(200px, 2fr) 130px minmax(220px, 1.5fr) 130px 150px 200px"
+const GRID =
+  "minmax(200px, 2fr) minmax(160px, 1.5fr) 150px 130px 160px 200px"
 const AUD = new Intl.NumberFormat("en-AU", {
   style: "currency",
   currency: "AUD",
 })
 
-function formatDate(value: Date | string): string {
-  const date = typeof value === "string" ? new Date(value) : value
-  if (Number.isNaN(date.getTime())) return "-"
-  return date.toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
+function formatDefaultValue(r: CostTypeRow): string {
+  if (r.basis === "percentage") return `${r.defaultValueInt / 100}%`
+  return AUD.format(r.defaultValueInt / 100)
 }
 
-function sortByName(rows: CostTypeRow[]): CostTypeRow[] {
-  return [...rows].sort((a, b) => a.name.localeCompare(b.name))
+function sortRows(rows: CostTypeRow[]): CostTypeRow[] {
+  return [...rows].sort((a, b) => {
+    const c = a.costCategoryName.localeCompare(b.costCategoryName)
+    return c !== 0 ? c : a.name.localeCompare(b.name)
+  })
 }
 
 export function CostTypeManagement({
   initialCostTypes,
+  costCategoryOptions,
 }: {
   initialCostTypes: CostTypeRow[]
+  costCategoryOptions: Option[]
 }) {
   const router = useRouter()
   const confirm = useConfirm()
@@ -51,6 +53,7 @@ export function CostTypeManagement({
 
   const [searchTerm, setSearchTerm] = useState("")
   const [debounced, setDebounced] = useState("")
+  const [categoryFilter, setCategoryFilter] = useState<string>("")
   const [newOpen, setNewOpen] = useState(false)
   const [editRow, setEditRow] = useState<CostTypeRow | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -62,15 +65,21 @@ export function CostTypeManagement({
 
   const filtered = useMemo(() => {
     const s = debounced.trim().toLowerCase()
-    if (!s) return rows
-    return rows.filter((r) => r.name.toLowerCase().includes(s))
-  }, [rows, debounced])
+    return rows.filter((r) => {
+      if (categoryFilter && r.costCategoryId !== categoryFilter) return false
+      if (!s) return true
+      return (
+        r.name.toLowerCase().includes(s) ||
+        r.costCategoryName.toLowerCase().includes(s)
+      )
+    })
+  }, [rows, debounced, categoryFilter])
 
   const handleCreate = useCallback(
     async (values: Parameters<typeof createCostType>[0]) => {
       const res = await createCostType(values)
       if (res.ok) {
-        setRows((prev) => sortByName([...prev, res.data]))
+        setRows((prev) => sortRows([...prev, res.data]))
         router.refresh()
       }
       return res
@@ -83,7 +92,7 @@ export function CostTypeManagement({
       const res = await updateCostType(id, values)
       if (res.ok) {
         setRows((prev) =>
-          sortByName(prev.map((r) => (r.id === id ? res.data : r))),
+          sortRows(prev.map((r) => (r.id === id ? res.data : r))),
         )
         router.refresh()
       }
@@ -97,7 +106,7 @@ export function CostTypeManagement({
       const ok = await confirm({
         tone: "danger",
         title: `Delete ${r.name}?`,
-        message: `The cost type will be removed from the list. Bookings that already used it keep their record.`,
+        message: `The cost type will be removed from ${r.costCategoryName}. Bookings that already used it keep their record.`,
         confirmLabel: "Delete cost type",
         cancelLabel: "Cancel",
       })
@@ -109,7 +118,7 @@ export function CostTypeManagement({
         router.refresh()
         toast.success({
           title: "Cost type deleted",
-          message: `${r.name} has been removed.`,
+          message: `${r.name} has been removed from ${r.costCategoryName}.`,
         })
       } else {
         toast.error({
@@ -160,38 +169,61 @@ export function CostTypeManagement({
         </Button>
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          background: "var(--paper)",
-          border: "1px solid var(--line)",
-          borderRadius: "var(--r-pill)",
-          padding: "9px 14px",
-          width: 320,
-        }}
-      >
-        <Icon name="Search" size={15} />
-        <input
-          placeholder="Search cost types"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+        <div
           style={{
-            flex: 1,
-            border: "none",
-            outline: "none",
-            background: "transparent",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            background: "var(--paper)",
+            border: "1px solid var(--line)",
+            borderRadius: "var(--r-pill)",
+            padding: "9px 14px",
+            width: 320,
+          }}
+        >
+          <Icon name="Search" size={15} />
+          <input
+            placeholder="Search by name or category"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              flex: 1,
+              border: "none",
+              outline: "none",
+              background: "transparent",
+              font: "inherit",
+              fontSize: 13,
+              color: "var(--ink)",
+            }}
+          />
+        </div>
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          style={{
+            background: "var(--paper)",
+            border: "1px solid var(--line)",
+            borderRadius: "var(--r-pill)",
+            padding: "9px 14px",
             font: "inherit",
             fontSize: 13,
             color: "var(--ink)",
+            minWidth: 220,
           }}
-        />
+        >
+          <option value="">All categories</option>
+          {costCategoryOptions.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <Card pad={0}>
         <div style={{ overflowX: "auto" }}>
-          <div style={{ minWidth: 1040 }}>
+          <div style={{ minWidth: 1080 }}>
             <div
               style={{
                 display: "grid",
@@ -203,10 +235,10 @@ export function CostTypeManagement({
               className="caps"
             >
               <span style={{ color: "var(--ink-faint)" }}>Name</span>
-              <span style={{ color: "var(--ink-faint)" }}>Default rate</span>
-              <span style={{ color: "var(--ink-faint)" }}>Flags</span>
-              <span style={{ color: "var(--ink-faint)" }}>In Use</span>
-              <span style={{ color: "var(--ink-faint)" }}>Updated</span>
+              <span style={{ color: "var(--ink-faint)" }}>Category</span>
+              <span style={{ color: "var(--ink-faint)" }}>Basis</span>
+              <span style={{ color: "var(--ink-faint)" }}>Default</span>
+              <span style={{ color: "var(--ink-faint)" }}>Status</span>
               <span
                 style={{ color: "var(--ink-faint)", textAlign: "right" }}
               ></span>
@@ -246,21 +278,20 @@ export function CostTypeManagement({
                   >
                     {r.name}
                   </span>
+                  <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>
+                    {r.costCategoryName}
+                  </span>
+                  <span style={{ fontSize: 13 }}>{BASIS_LABEL[r.basis]}</span>
                   <span style={{ fontSize: 13.5 }}>
-                    {AUD.format(r.defaultRateCents / 100)}
+                    {formatDefaultValue(r)}
                   </span>
                   <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {r.isAddition && <Pill tone="ok">Addition</Pill>}
-                    {r.isDeduction && <Pill tone="warn">Deduction</Pill>}
-                    {r.canOverridden && <Pill tone="neutral">Override</Pill>}
-                  </span>
-                  <span>
-                    <Pill tone={r.usageCount > 0 ? "info" : "neutral"}>
-                      {r.usageCount}
+                    <Pill tone={r.isActive ? "ok" : "neutral"}>
+                      {r.isActive ? "Active" : "Inactive"}
                     </Pill>
-                  </span>
-                  <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>
-                    {formatDate(r.updatedAt)}
+                    {r.canBeOverridden && (
+                      <Pill tone="neutral">Overridable</Pill>
+                    )}
                   </span>
                   <div
                     style={{
@@ -296,12 +327,14 @@ export function CostTypeManagement({
         isOpen={newOpen}
         onClose={() => setNewOpen(false)}
         onSave={handleCreate}
+        costCategoryOptions={costCategoryOptions}
       />
       <EditCostTypeModal
         isOpen={editRow !== null}
         onClose={() => setEditRow(null)}
         costType={editRow}
         onSave={handleUpdate}
+        costCategoryOptions={costCategoryOptions}
       />
     </div>
   )
