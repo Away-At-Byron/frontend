@@ -1,7 +1,7 @@
 "use server"
 
 import { and, eq, ne, sql } from "drizzle-orm"
-import { costTypes } from "@/db/schema"
+import { costCategories, costTypes } from "@/db/schema"
 import { withTenant, type TenantContext } from "@/lib/rls"
 import { writeAudit } from "@/lib/audit"
 import { ok, err, type ActionResult, type ActionErr } from "@/lib/result"
@@ -25,6 +25,7 @@ function adminOnly(ctx: TenantContext): ActionErr | null {
 async function nameTaken(
   tx: Tx,
   name: string,
+  costCategoryId: string,
   exceptId?: string,
 ): Promise<boolean> {
   const dupes = await tx
@@ -33,6 +34,7 @@ async function nameTaken(
     .where(
       and(
         eq(costTypes.isDeleted, false),
+        eq(costTypes.costCategoryId, costCategoryId),
         sql`lower(${costTypes.name}) = lower(${name})`,
         exceptId ? ne(costTypes.id, exceptId) : undefined,
       ),
@@ -41,7 +43,33 @@ async function nameTaken(
   return dupes.length > 0
 }
 
-function dollarsToCents(value: number): number {
+async function validateCostCategory(
+  tx: Tx,
+  costCategoryId: string,
+): Promise<ActionErr | null> {
+  const [row] = await tx
+    .select({ id: costCategories.id })
+    .from(costCategories)
+    .where(
+      and(
+        eq(costCategories.id, costCategoryId),
+        eq(costCategories.isDeleted, false),
+      ),
+    )
+    .limit(1)
+  if (!row) {
+    return err("VALIDATION", "Check the highlighted fields.", {
+      costCategoryId: ["That cost category no longer exists"],
+    })
+  }
+  return null
+}
+
+/**
+ * Decimal user value -> storage int. Cents for non-percentage bases; basis
+ * points 0..10000 for percentage. Both happen to be `value * 100` rounded.
+ */
+function toStorageInt(value: number): number {
   return Math.round(value * 100)
 }
 
@@ -50,18 +78,38 @@ async function fetchRow(tx: Tx, id: string): Promise<CostTypeRow | null> {
     .select({
       id: costTypes.id,
       name: costTypes.name,
-      defaultRateCents: costTypes.defaultRateCents,
-      canOverridden: costTypes.canOverridden,
-      isDeduction: costTypes.isDeduction,
-      isAddition: costTypes.isAddition,
+      costCategoryId: costTypes.costCategoryId,
+      costCategoryName: costCategories.name,
+      basis: costTypes.basis,
+      defaultValueInt: costTypes.defaultValueInt,
+      canBeOverridden: costTypes.canBeOverridden,
+      isActive: costTypes.isActive,
       createdAt: costTypes.createdAt,
       updatedAt: costTypes.updatedAt,
     })
     .from(costTypes)
+    .innerJoin(
+      costCategories,
+      eq(costCategories.id, costTypes.costCategoryId),
+    )
     .where(eq(costTypes.id, id))
     .limit(1)
-  const r = rows[0]
-  return r ? { ...r, usageCount: 0 } : null
+  return rows[0] ?? null
+}
+
+function toStorage(
+  data:
+    | ReturnType<typeof createCostTypeSchema.parse>
+    | ReturnType<typeof updateCostTypeSchema.parse>,
+) {
+  return {
+    name: data.name,
+    costCategoryId: data.costCategoryId,
+    basis: data.basis,
+    defaultValueInt: toStorageInt(data.defaultValue),
+    canBeOverridden: data.canBeOverridden,
+    isActive: data.isActive,
+  }
 }
 
 export async function createCostType(
@@ -79,26 +127,22 @@ export async function createCostType(
         parsed.error.flatten().fieldErrors,
       )
     }
-    const { name, defaultRate, canOverridden, isDeduction, isAddition } =
-      parsed.data
-    const cents = dollarsToCents(defaultRate)
 
-    if (await nameTaken(tx, name)) {
-      return err("CONFLICT", "A cost type with that name already exists.", {
-        name: ["That name is already in use"],
-      })
+    const refErr = await validateCostCategory(tx, parsed.data.costCategoryId)
+    if (refErr) return refErr
+
+    if (await nameTaken(tx, parsed.data.name, parsed.data.costCategoryId)) {
+      return err(
+        "CONFLICT",
+        "A cost type with that name already exists in this category.",
+        { name: ["That name is already in use for this category"] },
+      )
     }
 
+    const values = toStorage(parsed.data)
     const inserted = await tx
       .insert(costTypes)
-      .values({
-        name,
-        defaultRateCents: cents,
-        canOverridden,
-        isDeduction,
-        isAddition,
-        createdBy: ctx.userId,
-      })
+      .values({ ...values, createdBy: ctx.userId })
       .returning({ id: costTypes.id })
 
     const id = inserted[0]!.id
@@ -110,13 +154,7 @@ export async function createCostType(
       entityType: "cost_type",
       entityId: id,
       action: "create",
-      newValue: {
-        name,
-        defaultRateCents: cents,
-        canOverridden,
-        isDeduction,
-        isAddition,
-      },
+      newValue: values,
     })
 
     return ok(row)
@@ -139,9 +177,6 @@ export async function updateCostType(
         parsed.error.flatten().fieldErrors,
       )
     }
-    const { name, defaultRate, canOverridden, isDeduction, isAddition } =
-      parsed.data
-    const cents = dollarsToCents(defaultRate)
 
     const existing = await tx
       .select()
@@ -152,22 +187,23 @@ export async function updateCostType(
       return err("NOT_FOUND", "That cost type no longer exists.")
     }
 
-    if (await nameTaken(tx, name, id)) {
-      return err("CONFLICT", "A cost type with that name already exists.", {
-        name: ["That name is already in use"],
-      })
+    const refErr = await validateCostCategory(tx, parsed.data.costCategoryId)
+    if (refErr) return refErr
+
+    if (
+      await nameTaken(tx, parsed.data.name, parsed.data.costCategoryId, id)
+    ) {
+      return err(
+        "CONFLICT",
+        "A cost type with that name already exists in this category.",
+        { name: ["That name is already in use for this category"] },
+      )
     }
 
+    const values = toStorage(parsed.data)
     await tx
       .update(costTypes)
-      .set({
-        name,
-        defaultRateCents: cents,
-        canOverridden,
-        isDeduction,
-        isAddition,
-        updatedAt: new Date(),
-      })
+      .set({ ...values, updatedAt: new Date() })
       .where(eq(costTypes.id, id))
 
     const row = await fetchRow(tx, id)
@@ -180,18 +216,13 @@ export async function updateCostType(
       action: "update",
       oldValue: {
         name: existing[0].name,
-        defaultRateCents: existing[0].defaultRateCents,
-        canOverridden: existing[0].canOverridden,
-        isDeduction: existing[0].isDeduction,
-        isAddition: existing[0].isAddition,
+        costCategoryId: existing[0].costCategoryId,
+        basis: existing[0].basis,
+        defaultValueInt: existing[0].defaultValueInt,
+        canBeOverridden: existing[0].canBeOverridden,
+        isActive: existing[0].isActive,
       },
-      newValue: {
-        name,
-        defaultRateCents: cents,
-        canOverridden,
-        isDeduction,
-        isAddition,
-      },
+      newValue: values,
     })
 
     return ok(row)

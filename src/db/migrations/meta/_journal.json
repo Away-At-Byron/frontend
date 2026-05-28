@@ -232,6 +232,13 @@
       "when": 1781700000000,
       "tag": "0032_tariffs_period",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1781800000000,
+      "tag": "0033_cost_category_type_swap",
+      "breakpoints": true
     }
   ]
 }

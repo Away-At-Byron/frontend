@@ -1,16 +1,16 @@
 import "server-only"
 
 import { asc, eq } from "drizzle-orm"
-import { costTypes } from "@/db/schema"
+import { costCategories, costTypes } from "@/db/schema"
 import { withTenant } from "@/lib/rls"
 import { ok, err, type ActionResult } from "@/lib/result"
-import type { CostTypeRow } from "./types"
+import type { CostTypeRow, Option } from "./types"
 
-export type { CostTypeRow } from "./types"
+export type { CostTypeRow, Option } from "./types"
 
 /**
- * Every active cost type, alphabetised. usageCount is always 0 until the
- * booking cost allocation table lands - swap in a leftJoin then.
+ * Every active cost type with its cost-category name resolved. Ordered by
+ * cost category then name. Admin-only.
  */
 export async function listCostTypes(): Promise<ActionResult<CostTypeRow[]>> {
   return withTenant(async (tx, ctx) => {
@@ -21,17 +21,40 @@ export async function listCostTypes(): Promise<ActionResult<CostTypeRow[]>> {
       .select({
         id: costTypes.id,
         name: costTypes.name,
-        defaultRateCents: costTypes.defaultRateCents,
-        canOverridden: costTypes.canOverridden,
-        isDeduction: costTypes.isDeduction,
-        isAddition: costTypes.isAddition,
+        costCategoryId: costTypes.costCategoryId,
+        costCategoryName: costCategories.name,
+        basis: costTypes.basis,
+        defaultValueInt: costTypes.defaultValueInt,
+        canBeOverridden: costTypes.canBeOverridden,
+        isActive: costTypes.isActive,
         createdAt: costTypes.createdAt,
         updatedAt: costTypes.updatedAt,
       })
       .from(costTypes)
+      .innerJoin(
+        costCategories,
+        eq(costCategories.id, costTypes.costCategoryId),
+      )
       .where(eq(costTypes.isDeleted, false))
-      .orderBy(asc(costTypes.name))
+      .orderBy(asc(costCategories.name), asc(costTypes.name))
 
-    return ok(rows.map((r) => ({ ...r, usageCount: 0 })))
+    return ok(rows)
+  })
+}
+
+/** Active cost categories for the cost-type modal dropdown. */
+export async function listCostCategoryOptions(): Promise<
+  ActionResult<Option[]>
+> {
+  return withTenant(async (tx, ctx) => {
+    if (ctx.role !== "admin") {
+      return err("FORBIDDEN", "Only an admin can manage cost types.")
+    }
+    const rows = await tx
+      .select({ id: costCategories.id, name: costCategories.name })
+      .from(costCategories)
+      .where(eq(costCategories.isDeleted, false))
+      .orderBy(asc(costCategories.name))
+    return ok(rows)
   })
 }
