@@ -17,7 +17,7 @@ import type { Option, TariffRow } from "../types"
 import { NewTariffModal, EditTariffModal } from "./tariff-modal"
 
 const GRID =
-  "minmax(180px, 1.6fr) auto 130px minmax(160px, 1.4fr) minmax(140px, 1.1fr) 130px auto 200px"
+  "minmax(180px, 1.8fr) auto 100px minmax(140px, 1.2fr) 110px 90px auto 170px"
 
 const STATUS_TONE: Record<TariffStatus, "ok" | "neutral"> = {
   active: "ok",
@@ -229,7 +229,7 @@ export function TariffManagement({
               display: "grid",
               gridTemplateColumns: GRID,
               columnGap: 16,
-              minWidth: 1280,
+              minWidth: 1040,
             }}
           >
             <div style={{ display: "contents" }} className="caps">
