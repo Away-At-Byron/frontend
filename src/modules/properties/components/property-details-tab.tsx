@@ -25,14 +25,6 @@ const STATUS_OPTIONS = [
   { value: "inactive", label: "Inactive" },
 ];
 
-/** Brand colour presets — Editorial Sunrise palette. */
-const BRAND_COLOURS = [
-  { value: "var(--p-away)", label: "Aqua" },
-  { value: "var(--p-sunrise)", label: "Sunrise" },
-  { value: "var(--p-bgh)", label: "Coral" },
-  { value: "var(--p-aireys)", label: "Sand" },
-];
-
 const COUNTRY_OPTIONS = COUNTRIES.map((c) => ({
   value: c.code,
   label: c.name,
