@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useEffect } from "react"
-import { useForm, useWatch } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Button } from "@/components/ui/primitives"
-import type { ActionResult } from "@/lib/result"
+import { useEffect } from "react";
+import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@/components/ui/primitives";
+import type { ActionResult } from "@/lib/result";
 import {
   TARIFF_BASIS_LABEL,
   TARIFF_TRAFFIC_LABEL,
@@ -15,12 +15,12 @@ import {
   updateTariffSchema,
   type CreateTariffInput,
   type UpdateTariffInput,
-} from "../schemas"
-import type { Option, TariffRow } from "../types"
-import { Modal, Field, inputStyle } from "./modal"
+} from "../schemas";
+import type { Option, TariffRow } from "../types";
+import { Modal, Field, inputStyle } from "./modal";
 
 function ErrorBanner({ message }: { message?: string }) {
-  if (!message) return null
+  if (!message) return null;
   return (
     <div
       style={{
@@ -33,21 +33,21 @@ function ErrorBanner({ message }: { message?: string }) {
     >
       {message}
     </div>
-  )
+  );
 }
 
 type FormValues = {
-  name: string
-  code: string
-  tariffBasis: (typeof tariffBasisValues)[number]
-  refundable: boolean
-  breakfastIncluded: boolean
-  traffic: (typeof tariffTrafficValues)[number]
-  status: "active" | "inactive"
-  propertyId: string | null
-  roomId: string | null
-  tariffPeriodId: string | null
-}
+  name: string;
+  code: string;
+  tariffBasis: (typeof tariffBasisValues)[number];
+  refundable: boolean;
+  breakfastIncluded: boolean;
+  traffic: (typeof tariffTrafficValues)[number];
+  status: "active" | "inactive";
+  propertyId: string | null;
+  roomId: string | null;
+  tariffPeriodId: string | null;
+};
 
 const EMPTY: FormValues = {
   name: "",
@@ -60,7 +60,7 @@ const EMPTY: FormValues = {
   propertyId: null,
   roomId: null,
   tariffPeriodId: null,
-}
+};
 
 function TariffForm({
   mode,
@@ -71,19 +71,19 @@ function TariffForm({
   onSubmit,
   onCancel,
 }: {
-  mode: "create" | "edit"
-  initialValues: FormValues
-  propertyOptions: Option[]
-  tariffPeriodOptions: Option[]
-  submitLabel: string
+  mode: "create" | "edit";
+  initialValues: FormValues;
+  propertyOptions: Option[];
+  tariffPeriodOptions: Option[];
+  submitLabel: string;
   onSubmit: (values: FormValues) => Promise<{
-    ok: boolean
-    fieldErrors?: Record<string, string[] | undefined>
-    rootError?: string
-  }>
-  onCancel: () => void
+    ok: boolean;
+    fieldErrors?: Record<string, string[] | undefined>;
+    rootError?: string;
+  }>;
+  onCancel: () => void;
 }) {
-  const schema = mode === "create" ? createTariffSchema : updateTariffSchema
+  const schema = mode === "create" ? createTariffSchema : updateTariffSchema;
   const {
     register,
     handleSubmit,
@@ -95,19 +95,19 @@ function TariffForm({
   } = useForm<FormValues>({
     resolver: zodResolver(schema) as never,
     defaultValues: initialValues,
-  })
+  });
 
   useEffect(() => {
-    reset(initialValues)
+    reset(initialValues);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialValues])
+  }, [initialValues]);
 
   // Auto-derive code from name until the user touches it.
-  const watchedName = useWatch({ control, name: "name" })
+  const watchedName = useWatch({ control, name: "name" });
   useEffect(() => {
-    if (dirtyFields.code) return
-    setValue("code", deriveCode(watchedName ?? ""), { shouldDirty: false })
-  }, [watchedName, dirtyFields.code, setValue])
+    if (dirtyFields.code) return;
+    setValue("code", deriveCode(watchedName ?? ""), { shouldDirty: false });
+  }, [watchedName, dirtyFields.code, setValue]);
 
   const submit = handleSubmit(async (values) => {
     const normalised: FormValues = {
@@ -115,19 +115,19 @@ function TariffForm({
       propertyId: values.propertyId ? values.propertyId : null,
       roomId: values.roomId ? values.roomId : null,
       tariffPeriodId: values.tariffPeriodId ? values.tariffPeriodId : null,
-    }
-    const res = await onSubmit(normalised)
-    if (res.ok) return
-    const fields = res.fieldErrors ?? {}
+    };
+    const res = await onSubmit(normalised);
+    if (res.ok) return;
+    const fields = res.fieldErrors ?? {};
     const firstField = Object.keys(fields).find((k) => fields[k]?.[0]) as
       | keyof FormValues
-      | undefined
+      | undefined;
     if (firstField) {
-      setError(firstField as never, { message: fields[firstField]![0] })
+      setError(firstField as never, { message: fields[firstField]![0] });
     } else {
-      setError("root", { message: res.rootError ?? "Could not save." })
+      setError("root", { message: res.rootError ?? "Could not save." });
     }
-  })
+  });
 
   return (
     <form onSubmit={submit}>
@@ -155,7 +155,9 @@ function TariffForm({
       >
         <ErrorBanner message={errors.root?.message} />
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div
+          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}
+        >
           <Field label="Name" error={errors.name?.message}>
             <input
               style={inputStyle}
@@ -178,16 +180,18 @@ function TariffForm({
               placeholder="e.g. WEEKENDESCAPE"
               {...register("code", {
                 onChange: (e) => {
-                  const v = e.target.value
-                  const clean = v.replace(/[^A-Za-z0-9]/g, "").toUpperCase()
-                  if (clean !== v) e.target.value = clean
+                  const v = e.target.value;
+                  const clean = v.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+                  if (clean !== v) e.target.value = clean;
                 },
               })}
             />
           </Field>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div
+          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}
+        >
           <Field label="Tariff Basis" error={errors.tariffBasis?.message}>
             <select style={inputStyle} {...register("tariffBasis")}>
               {tariffBasisValues.map((b) => (
@@ -208,7 +212,9 @@ function TariffForm({
           </Field>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div
+          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}
+        >
           <Field
             label="Property"
             hint="Leave as All properties for a catalogue-wide tariff."
@@ -248,7 +254,9 @@ function TariffForm({
           </Field>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div
+          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}
+        >
           <Field label="Refundable" error={errors.refundable?.message}>
             <select
               style={inputStyle}
@@ -276,12 +284,10 @@ function TariffForm({
           </Field>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-          <Field
-            label="Tariff Period"
-            hint="Optional. Pick a labelled date range from Tariff Periods."
-            error={errors.tariffPeriodId?.message}
-          >
+        <div
+          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}
+        >
+          <Field label="Tariff Period" error={errors.tariffPeriodId?.message}>
             <select
               style={inputStyle}
               {...register("tariffPeriodId", {
@@ -322,7 +328,7 @@ function TariffForm({
         </Button>
       </div>
     </form>
-  )
+  );
 }
 
 export function NewTariffModal({
@@ -332,11 +338,11 @@ export function NewTariffModal({
   propertyOptions,
   tariffPeriodOptions,
 }: {
-  isOpen: boolean
-  onClose: () => void
-  onSave: (values: CreateTariffInput) => Promise<ActionResult<TariffRow>>
-  propertyOptions: Option[]
-  tariffPeriodOptions: Option[]
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (values: CreateTariffInput) => Promise<ActionResult<TariffRow>>;
+  propertyOptions: Option[];
+  tariffPeriodOptions: Option[];
 }) {
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
@@ -348,20 +354,20 @@ export function NewTariffModal({
         submitLabel="Add tariff"
         onCancel={onClose}
         onSubmit={async (values) => {
-          const res = await onSave(values as never)
+          const res = await onSave(values as never);
           if (res.ok) {
-            onClose()
-            return { ok: true }
+            onClose();
+            return { ok: true };
           }
           return {
             ok: false,
             fieldErrors: res.error.fields,
             rootError: res.error.message,
-          }
+          };
         }}
       />
     </Modal>
-  )
+  );
 }
 
 export function EditTariffModal({
@@ -372,17 +378,17 @@ export function EditTariffModal({
   propertyOptions,
   tariffPeriodOptions,
 }: {
-  isOpen: boolean
-  onClose: () => void
-  tariff: TariffRow | null
+  isOpen: boolean;
+  onClose: () => void;
+  tariff: TariffRow | null;
   onSave: (
     id: string,
     values: UpdateTariffInput,
-  ) => Promise<ActionResult<TariffRow>>
-  propertyOptions: Option[]
-  tariffPeriodOptions: Option[]
+  ) => Promise<ActionResult<TariffRow>>;
+  propertyOptions: Option[];
+  tariffPeriodOptions: Option[];
 }) {
-  if (!tariff) return null
+  if (!tariff) return null;
   const initial: FormValues = {
     name: tariff.name,
     code: tariff.code,
@@ -394,7 +400,7 @@ export function EditTariffModal({
     propertyId: tariff.propertyId,
     roomId: tariff.roomId,
     tariffPeriodId: tariff.tariffPeriodId,
-  }
+  };
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <TariffForm
@@ -405,18 +411,18 @@ export function EditTariffModal({
         submitLabel="Save changes"
         onCancel={onClose}
         onSubmit={async (values) => {
-          const res = await onSave(tariff.id, values as never)
+          const res = await onSave(tariff.id, values as never);
           if (res.ok) {
-            onClose()
-            return { ok: true }
+            onClose();
+            return { ok: true };
           }
           return {
             ok: false,
             fieldErrors: res.error.fields,
             rootError: res.error.message,
-          }
+          };
         }}
       />
     </Modal>
-  )
+  );
 }

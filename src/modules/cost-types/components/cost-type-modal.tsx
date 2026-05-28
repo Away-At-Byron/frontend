@@ -1,22 +1,22 @@
-"use client"
+"use client";
 
-import { useEffect } from "react"
-import { useForm, useWatch } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Button } from "@/components/ui/primitives"
-import type { ActionResult } from "@/lib/result"
+import { useEffect } from "react";
+import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@/components/ui/primitives";
+import type { ActionResult } from "@/lib/result";
 import {
   createCostTypeSchema,
   updateCostTypeSchema,
   BASIS_LABEL,
   type CreateCostTypeInput,
   type UpdateCostTypeInput,
-} from "../schemas"
-import type { CostTypeRow, CostBasis, Option } from "../types"
-import { Modal, Field, inputStyle } from "./modal"
+} from "../schemas";
+import type { CostTypeRow, CostBasis, Option } from "../types";
+import { Modal, Field, inputStyle } from "./modal";
 
 function ErrorBanner({ message }: { message?: string }) {
-  if (!message) return null
+  if (!message) return null;
   return (
     <div
       style={{
@@ -29,17 +29,17 @@ function ErrorBanner({ message }: { message?: string }) {
     >
       {message}
     </div>
-  )
+  );
 }
 
 type FormValues = {
-  name: string
-  costCategoryId: string
-  basis: CostBasis
-  defaultValue: number | string
-  canBeOverridden: boolean
-  isActive: "active" | "inactive"
-}
+  name: string;
+  costCategoryId: string;
+  basis: CostBasis;
+  defaultValue: number | string;
+  canBeOverridden: boolean;
+  isActive: "active" | "inactive";
+};
 
 const EMPTY: FormValues = {
   name: "",
@@ -48,13 +48,16 @@ const EMPTY: FormValues = {
   defaultValue: "",
   canBeOverridden: true,
   isActive: "active",
-}
+};
 
 function CheckRow({
   label,
   hint,
   ...rest
-}: { label: string; hint?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+}: {
+  label: string;
+  hint?: string;
+} & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label
       style={{
@@ -72,7 +75,7 @@ function CheckRow({
         )}
       </span>
     </label>
-  )
+  );
 }
 
 function CostTypeForm({
@@ -83,19 +86,19 @@ function CostTypeForm({
   onSubmit,
   onCancel,
 }: {
-  mode: "create" | "edit"
-  initialValues: FormValues
-  costCategoryOptions: Option[]
-  submitLabel: string
+  mode: "create" | "edit";
+  initialValues: FormValues;
+  costCategoryOptions: Option[];
+  submitLabel: string;
   onSubmit: (values: FormValues) => Promise<{
-    ok: boolean
-    fieldErrors?: Record<string, string[] | undefined>
-    rootError?: string
-  }>
-  onCancel: () => void
+    ok: boolean;
+    fieldErrors?: Record<string, string[] | undefined>;
+    rootError?: string;
+  }>;
+  onCancel: () => void;
 }) {
   const schema =
-    mode === "create" ? createCostTypeSchema : updateCostTypeSchema
+    mode === "create" ? createCostTypeSchema : updateCostTypeSchema;
   const {
     register,
     handleSubmit,
@@ -106,29 +109,29 @@ function CostTypeForm({
   } = useForm<FormValues>({
     resolver: zodResolver(schema) as never,
     defaultValues: initialValues,
-  })
+  });
 
   useEffect(() => {
-    reset(initialValues)
+    reset(initialValues);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialValues])
+  }, [initialValues]);
 
-  const watchedBasis = useWatch({ control, name: "basis" })
+  const watchedBasis = useWatch({ control, name: "basis" });
   const defaultValueLabel =
-    watchedBasis === "percentage" ? "Default value (%)" : "Default value (A$)"
+    watchedBasis === "percentage" ? "Default value (%)" : "Default value (A$)";
   const defaultValuePlaceholder =
-    watchedBasis === "percentage" ? "15" : "50.00"
+    watchedBasis === "percentage" ? "15" : "50.00";
 
   const submit = handleSubmit(async (values) => {
-    const res = await onSubmit(values)
-    if (res.ok) return
-    const fields = res.fieldErrors ?? {}
+    const res = await onSubmit(values);
+    if (res.ok) return;
+    const fields = res.fieldErrors ?? {};
     const first = Object.keys(fields).find((k) => fields[k]?.[0]) as
       | keyof FormValues
-      | undefined
-    if (first) setError(first as never, { message: fields[first]![0] })
-    else setError("root", { message: res.rootError ?? "Could not save." })
-  })
+      | undefined;
+    if (first) setError(first as never, { message: fields[first]![0] });
+    else setError("root", { message: res.rootError ?? "Could not save." });
+  });
 
   return (
     <form onSubmit={submit}>
@@ -176,7 +179,9 @@ function CostTypeForm({
           </select>
         </Field>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div
+          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}
+        >
           <Field label="Basis" error={errors.basis?.message}>
             <select style={inputStyle} {...register("basis")}>
               {(
@@ -196,7 +201,6 @@ function CostTypeForm({
           </Field>
           <Field
             label={defaultValueLabel}
-            hint="Pre-fills when this cost is applied. Rooms may override if allowed."
             error={errors.defaultValue?.message as string | undefined}
           >
             <input
@@ -212,7 +216,10 @@ function CostTypeForm({
           </Field>
         </div>
 
-        <Field label="Status" error={errors.isActive?.message as string | undefined}>
+        <Field
+          label="Status"
+          error={errors.isActive?.message as string | undefined}
+        >
           <select style={inputStyle} {...register("isActive")}>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
@@ -245,7 +252,7 @@ function CostTypeForm({
         </Button>
       </div>
     </form>
-  )
+  );
 }
 
 export function NewCostTypeModal({
@@ -254,12 +261,10 @@ export function NewCostTypeModal({
   onSave,
   costCategoryOptions,
 }: {
-  isOpen: boolean
-  onClose: () => void
-  onSave: (
-    values: CreateCostTypeInput,
-  ) => Promise<ActionResult<CostTypeRow>>
-  costCategoryOptions: Option[]
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (values: CreateCostTypeInput) => Promise<ActionResult<CostTypeRow>>;
+  costCategoryOptions: Option[];
 }) {
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
@@ -270,20 +275,20 @@ export function NewCostTypeModal({
         submitLabel="Add cost type"
         onCancel={onClose}
         onSubmit={async (values) => {
-          const res = await onSave(values as never)
+          const res = await onSave(values as never);
           if (res.ok) {
-            onClose()
-            return { ok: true }
+            onClose();
+            return { ok: true };
           }
           return {
             ok: false,
             fieldErrors: res.error.fields,
             rootError: res.error.message,
-          }
+          };
         }}
       />
     </Modal>
-  )
+  );
 }
 
 export function EditCostTypeModal({
@@ -293,16 +298,16 @@ export function EditCostTypeModal({
   onSave,
   costCategoryOptions,
 }: {
-  isOpen: boolean
-  onClose: () => void
-  costType: CostTypeRow | null
+  isOpen: boolean;
+  onClose: () => void;
+  costType: CostTypeRow | null;
   onSave: (
     id: string,
     values: UpdateCostTypeInput,
-  ) => Promise<ActionResult<CostTypeRow>>
-  costCategoryOptions: Option[]
+  ) => Promise<ActionResult<CostTypeRow>>;
+  costCategoryOptions: Option[];
 }) {
-  if (!costType) return null
+  if (!costType) return null;
   const initial: FormValues = {
     name: costType.name,
     costCategoryId: costType.costCategoryId,
@@ -310,7 +315,7 @@ export function EditCostTypeModal({
     defaultValue: costType.defaultValueInt / 100,
     canBeOverridden: costType.canBeOverridden,
     isActive: costType.isActive ? "active" : "inactive",
-  }
+  };
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <CostTypeForm
@@ -320,18 +325,18 @@ export function EditCostTypeModal({
         submitLabel="Save changes"
         onCancel={onClose}
         onSubmit={async (values) => {
-          const res = await onSave(costType.id, values as never)
+          const res = await onSave(costType.id, values as never);
           if (res.ok) {
-            onClose()
-            return { ok: true }
+            onClose();
+            return { ok: true };
           }
           return {
             ok: false,
             fieldErrors: res.error.fields,
             rootError: res.error.message,
-          }
+          };
         }}
       />
     </Modal>
-  )
+  );
 }

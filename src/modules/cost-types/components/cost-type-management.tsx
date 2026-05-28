@@ -285,13 +285,10 @@ export function CostTypeManagement({
                   <span style={{ fontSize: 13.5 }}>
                     {formatDefaultValue(r)}
                   </span>
-                  <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <span>
                     <Pill tone={r.isActive ? "ok" : "neutral"}>
                       {r.isActive ? "Active" : "Inactive"}
                     </Pill>
-                    {r.canBeOverridden && (
-                      <Pill tone="neutral">Overridable</Pill>
-                    )}
                   </span>
                   <div
                     style={{
