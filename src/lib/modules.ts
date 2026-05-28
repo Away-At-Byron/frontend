@@ -171,8 +171,8 @@ export const NAV_ENTRIES: NavEntry[] = [
     adminOnly: true,
   },
   {
-    href: "/property",
-    label: "Property",
+    href: "/properties",
+    label: "Properties",
     icon: "Pin",
     group: "manage",
     module: "setup",

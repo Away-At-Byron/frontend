@@ -76,6 +76,28 @@ export function buildContactDocumentKey(
   return `contacts/${contactId}/${randomUUID()}/${safeFilename(filename)}`
 }
 
+/**
+ * Property image key: `properties/{propertyId}/images/{role}/{uuid}/{file}`.
+ * Role in the path (not just the row) so ops can ls one property's logos
+ * without scanning every image, and so a future lifecycle rule can target
+ * "all gallery photos older than X" cleanly.
+ */
+export function buildPropertyImageKey(
+  propertyId: string,
+  role: "logo" | "hero" | "gallery",
+  filename: string,
+): string {
+  return `properties/${propertyId}/images/${role}/${randomUUID()}/${safeFilename(filename)}`
+}
+
+/** Property document key: `properties/{propertyId}/documents/{uuid}/{file}`. */
+export function buildPropertyDocumentKey(
+  propertyId: string,
+  filename: string,
+): string {
+  return `properties/${propertyId}/documents/${randomUUID()}/${safeFilename(filename)}`
+}
+
 export type PresignedUpload = {
   key: string
   uploadUrl: string
