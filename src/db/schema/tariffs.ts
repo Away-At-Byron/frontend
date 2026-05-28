@@ -1,9 +1,15 @@
-import { pgTable, uuid, text, timestamp, boolean } from "drizzle-orm/pg-core"
+import { pgTable, uuid, text, timestamp, boolean, pgEnum } from "drizzle-orm/pg-core"
 import { users } from "./auth"
+
+export const tariffTrafficEnum = pgEnum("tariff_traffic", [
+  "ota",
+  "direct",
+  "other",
+])
 
 /**
  * Admin-managed tariff catalogue (Settings area). User-facing label is
- * "Tariff Beginning Price" - the starting-rate categories applied to
+ * "Tariff Type" - the starting-rate categories applied to
  * bookings (Standard Weekday Rate, Peak Season, Non-Refundable, …).
  * Global, follows ADR-007. Name-only.
  *
@@ -14,6 +20,7 @@ import { users } from "./auth"
 export const tariffs = pgTable("tariffs", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  traffic: tariffTrafficEnum("traffic").notNull().default("direct"),
   createdBy: uuid("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

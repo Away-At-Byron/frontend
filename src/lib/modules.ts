@@ -286,7 +286,7 @@ export const NAV_ENTRIES: NavEntry[] = [
       },
       {
         href: "/settings/tariffs",
-        label: "Tariff Beginning Price",
+        label: "Tariff Type",
         icon: "TrendUp",
         group: "manage",
         module: "settings",

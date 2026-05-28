@@ -6,7 +6,9 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@/components/ui/primitives"
 import type { ActionResult } from "@/lib/result"
 import {
+  TARIFF_TRAFFIC_LABEL,
   createTariffSchema,
+  tariffTrafficValues,
   updateTariffSchema,
   type CreateTariffInput,
   type UpdateTariffInput,
@@ -48,7 +50,7 @@ export function NewTariffModal({
     formState: { errors, isSubmitting },
   } = useForm<CreateTariffInput>({
     resolver: zodResolver(createTariffSchema),
-    defaultValues: { name: "" },
+    defaultValues: { name: "", traffic: "direct" },
   })
 
   const close = () => {
@@ -103,6 +105,15 @@ export function NewTariffModal({
               {...register("name")}
             />
           </Field>
+          <Field label="Traffic" error={errors.traffic?.message}>
+            <select style={inputStyle} {...register("traffic")}>
+              {tariffTrafficValues.map((t) => (
+                <option key={t} value={t}>
+                  {TARIFF_TRAFFIC_LABEL[t]}
+                </option>
+              ))}
+            </select>
+          </Field>
         </div>
 
         <div
@@ -151,7 +162,7 @@ export function EditTariffModal({
   })
 
   useEffect(() => {
-    if (tariff) reset({ name: tariff.name })
+    if (tariff) reset({ name: tariff.name, traffic: tariff.traffic })
   }, [tariff, reset])
 
   if (!tariff) return null
@@ -200,6 +211,15 @@ export function EditTariffModal({
           <ErrorBanner message={errors.root?.message} />
           <Field label="Name" error={errors.name?.message}>
             <input style={inputStyle} autoFocus {...register("name")} />
+          </Field>
+          <Field label="Traffic" error={errors.traffic?.message}>
+            <select style={inputStyle} {...register("traffic")}>
+              {tariffTrafficValues.map((t) => (
+                <option key={t} value={t}>
+                  {TARIFF_TRAFFIC_LABEL[t]}
+                </option>
+              ))}
+            </select>
           </Field>
         </div>
 

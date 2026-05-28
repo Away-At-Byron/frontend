@@ -1,5 +1,5 @@
 /**
- * Settings > Tariff Beginning Price - admin-managed tariff (rate label)
+ * Settings > Tariff Type - admin-managed tariff (rate label)
  * catalogue. Global, follows ADR-007. Distinct from the future rate_plans
  * table which will carry actual prices.
  */

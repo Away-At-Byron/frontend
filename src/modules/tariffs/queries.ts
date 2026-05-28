@@ -21,6 +21,7 @@ export async function listTariffs(): Promise<ActionResult<TariffRow[]>> {
       .select({
         id: tariffs.id,
         name: tariffs.name,
+        traffic: tariffs.traffic,
         createdAt: tariffs.createdAt,
         updatedAt: tariffs.updatedAt,
       })

@@ -1,4 +1,4 @@
-# Tariff Beginning Price (`tariffs`)
+# Tariff Type (`tariffs`)
 
 **FRS:** §3 dictionary (Settings / Direct tables per concept)
 **Stage:** 2 · Reference data (Layer 1)
@@ -6,7 +6,7 @@
 
 Admin-only CRUD for the tariff label catalogue - the starting-rate
 categories applied to bookings (Standard Weekday Rate, Peak Season,
-Non-Refundable, …). User-facing label is **"Tariff Beginning Price"**.
+Non-Refundable, …). User-facing label is **"Tariff Type"**.
 Name-only.
 
 ## Tables

@@ -51,7 +51,7 @@ export async function listTariffPlans(): Promise<
   })
 }
 
-/** Active tariffs (Tariff Beginning Price) for the modal dropdown. */
+/** Active tariffs (Tariff Type) for the modal dropdown. */
 export async function listTariffOptions(): Promise<ActionResult<Option[]>> {
   return withTenant(async (tx, ctx) => {
     if (ctx.role !== "admin") {

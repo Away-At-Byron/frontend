@@ -7,10 +7,11 @@ import { Icon } from "@/components/ui/icon"
 import { useConfirm } from "@/components/ui/dialog"
 import { useToast } from "@/components/ui/toast"
 import { createTariff, updateTariff, deleteTariff } from "../actions"
+import { TARIFF_TRAFFIC_LABEL } from "../schemas"
 import type { TariffRow } from "../types"
 import { NewTariffModal, EditTariffModal } from "./tariff-modal"
 
-const GRID = "minmax(260px, 2fr) 130px 150px 150px 150px"
+const GRID = "minmax(220px, 2fr) 130px 130px 150px 150px 150px"
 
 function formatDate(value: Date | string): string {
   const date = typeof value === "string" ? new Date(value) : value
@@ -141,7 +142,7 @@ export function TariffManagement({
             margin: 0,
           }}
         >
-          Tariff Beginning Price
+          Tariff Type
         </h1>
         <Button
           variant="primary"
@@ -183,7 +184,7 @@ export function TariffManagement({
 
       <Card pad={0}>
         <div style={{ overflowX: "auto" }}>
-          <div style={{ minWidth: 880 }}>
+          <div style={{ minWidth: 1000 }}>
             <div
               style={{
                 display: "grid",
@@ -195,6 +196,7 @@ export function TariffManagement({
               className="caps"
             >
               <span style={{ color: "var(--ink-faint)" }}>Name</span>
+              <span style={{ color: "var(--ink-faint)" }}>Traffic</span>
               <span style={{ color: "var(--ink-faint)" }}>In Use</span>
               <span style={{ color: "var(--ink-faint)" }}>Created</span>
               <span style={{ color: "var(--ink-faint)" }}>Updated</span>
@@ -236,6 +238,9 @@ export function TariffManagement({
                     }}
                   >
                     {r.name}
+                  </span>
+                  <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>
+                    {TARIFF_TRAFFIC_LABEL[r.traffic]}
                   </span>
                   <span>
                     <Pill tone={r.usageCount > 0 ? "info" : "neutral"}>

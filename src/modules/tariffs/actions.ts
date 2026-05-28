@@ -46,6 +46,7 @@ async function fetchRow(tx: Tx, id: string): Promise<TariffRow | null> {
     .select({
       id: tariffs.id,
       name: tariffs.name,
+      traffic: tariffs.traffic,
       createdAt: tariffs.createdAt,
       updatedAt: tariffs.updatedAt,
     })
@@ -71,7 +72,7 @@ export async function createTariff(
         parsed.error.flatten().fieldErrors,
       )
     }
-    const { name } = parsed.data
+    const { name, traffic } = parsed.data
 
     if (await nameTaken(tx, name)) {
       return err("CONFLICT", "A tariff with that name already exists.", {
@@ -81,7 +82,7 @@ export async function createTariff(
 
     const inserted = await tx
       .insert(tariffs)
-      .values({ name, createdBy: ctx.userId })
+      .values({ name, traffic, createdBy: ctx.userId })
       .returning({ id: tariffs.id })
 
     const id = inserted[0]!.id
@@ -93,7 +94,7 @@ export async function createTariff(
       entityType: "tariff",
       entityId: id,
       action: "create",
-      newValue: { name },
+      newValue: { name, traffic },
     })
 
     return ok(row)
@@ -116,10 +117,14 @@ export async function updateTariff(
         parsed.error.flatten().fieldErrors,
       )
     }
-    const { name } = parsed.data
+    const { name, traffic } = parsed.data
 
     const existing = await tx
-      .select({ id: tariffs.id, name: tariffs.name })
+      .select({
+        id: tariffs.id,
+        name: tariffs.name,
+        traffic: tariffs.traffic,
+      })
       .from(tariffs)
       .where(and(eq(tariffs.id, id), eq(tariffs.isDeleted, false)))
       .limit(1)
@@ -135,7 +140,7 @@ export async function updateTariff(
 
     await tx
       .update(tariffs)
-      .set({ name, updatedAt: new Date() })
+      .set({ name, traffic, updatedAt: new Date() })
       .where(eq(tariffs.id, id))
 
     const row = await fetchRow(tx, id)
@@ -146,8 +151,8 @@ export async function updateTariff(
       entityType: "tariff",
       entityId: id,
       action: "update",
-      oldValue: { name: existing[0].name },
-      newValue: { name },
+      oldValue: { name: existing[0].name, traffic: existing[0].traffic },
+      newValue: { name, traffic },
     })
 
     return ok(row)

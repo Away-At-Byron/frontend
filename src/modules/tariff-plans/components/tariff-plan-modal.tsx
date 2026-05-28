@@ -170,7 +170,7 @@ function TariffPlanForm({
         </div>
 
         <Field
-          label="Tariff Beginning Price"
+          label="Tariff Type"
           error={errors.tariffBeginningPriceId?.message}
         >
           <select style={inputStyle} {...register("tariffBeginningPriceId")}>
