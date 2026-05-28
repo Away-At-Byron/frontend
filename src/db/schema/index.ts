@@ -29,6 +29,8 @@ export * from "./tariff-periods" // module 5 — admin-managed tariff period cat
 export * from "./tariffs" // module 5 — admin-managed tariff catalogue (global, follows ADR-007) — FKs tariff_periods
 export * from "./cost-categories" // module 5 — admin-managed cost category buckets (global, follows ADR-007)
 export * from "./cost-types" // module 5 — admin-managed cost types with basis + default value (global, follows ADR-007) — FKs cost_categories
+export * from "./property-images" // module 2 — logo/hero/gallery images per property
+export * from "./property-documents" // module 2 — PDFs, brochures, owner contracts per property
 // export * from "./rooms"           // module 6
 // export * from "./common-areas"    // module 7
 // export * from "./booking-sources" // module 8

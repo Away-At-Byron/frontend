@@ -239,6 +239,20 @@
       "when": 1781800000000,
       "tag": "0033_cost_category_type_swap",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1781900000000,
+      "tag": "0034_property_details_and_amenities",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1782000000000,
+      "tag": "0035_property_images_and_documents",
+      "breakpoints": true
     }
   ]
 }

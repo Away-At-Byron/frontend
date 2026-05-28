@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import Link from "next/link"
 import { Button, FilterPill, Pill } from "@/components/ui/primitives"
 import { Icon } from "@/components/ui/icon"
 import type { PropertyRow, PropertyStatus } from "../types"
@@ -176,7 +177,8 @@ export function PropertyManagement({
 function PropertyCard({ property: p }: { property: PropertyRow }) {
   const accent = p.propertyColour ?? "var(--teal)"
   return (
-    <div
+    <Link
+      href={`/properties/${p.id}`}
       style={{
         background: "var(--paper)",
         border: "1px solid var(--line)",
@@ -185,6 +187,8 @@ function PropertyCard({ property: p }: { property: PropertyRow }) {
         display: "flex",
         flexDirection: "column",
         boxShadow: "var(--shadow-1)",
+        textDecoration: "none",
+        color: "inherit",
       }}
     >
       <div style={{ height: 6, background: accent }} />
@@ -288,6 +292,6 @@ function PropertyCard({ property: p }: { property: PropertyRow }) {
           </div>
         </div>
       </div>
-    </div>
+    </Link>
   )
 }
