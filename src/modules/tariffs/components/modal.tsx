@@ -49,7 +49,7 @@ export function Modal({
         onClick={(e) => e.stopPropagation()}
         style={{
           width: "100%",
-          maxWidth: 460,
+          maxWidth: 620,
           background: "var(--paper)",
           border: "1px solid var(--line)",
           borderRadius: "var(--r-4)",
@@ -66,10 +66,12 @@ export function Modal({
 export function Field({
   label,
   error,
+  hint,
   children,
 }: {
   label: string
   error?: string
+  hint?: string
   children: ReactNode
 }) {
   return (
@@ -78,6 +80,9 @@ export function Field({
         {label}
       </span>
       {children}
+      {hint && !error && (
+        <span style={{ fontSize: 12, color: "var(--ink-soft)" }}>{hint}</span>
+      )}
       {error && (
         <span style={{ fontSize: 12, color: "var(--terra-deep)" }}>{error}</span>
       )}
