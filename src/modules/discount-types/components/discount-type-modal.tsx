@@ -93,12 +93,15 @@ function DiscountForm({
     reset(initialValues)
   }
 
-  // Auto-derive code from name unless the user has touched the code field.
+  // Auto-derive code from name in create mode only, unless the user has
+  // touched the code field. Skip entirely on edit so we don't overwrite
+  // the existing code.
   const watchedName = useWatch({ control, name: "name" })
   useEffect(() => {
+    if (mode === "edit") return
     if (dirtyFields.code) return
     setValue("code", deriveCode(watchedName ?? ""), { shouldDirty: false })
-  }, [watchedName, dirtyFields.code, setValue])
+  }, [mode, watchedName, dirtyFields.code, setValue])
 
   const watchedType = useWatch({ control, name: "type" })
   const watchedMode = useWatch({ control, name: "activationMode" })

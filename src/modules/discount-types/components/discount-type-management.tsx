@@ -22,7 +22,7 @@ import {
 } from "./discount-type-modal"
 
 const GRID =
-  "minmax(180px, 2fr) 120px 130px 130px 200px 130px 200px"
+  "auto minmax(160px, 1fr) 130px 130px 200px auto 200px"
 
 function formatDate(value: Date | string | null): string {
   if (!value) return "-"
@@ -266,29 +266,31 @@ export function DiscountTypeManagement({
 
       <Card pad={0}>
         <div style={{ overflowX: "auto" }}>
-          <div style={{ minWidth: 1100 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: GRID,
+              columnGap: 16,
+              minWidth: 1100,
+            }}
+          >
             <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: GRID,
-                gap: 16,
-                padding: "14px 22px",
-                borderBottom: "1px solid var(--line-soft)",
-              }}
+              style={{ display: "contents" }}
               className="caps"
             >
-              <span style={{ color: "var(--ink-faint)" }}>Name</span>
-              <span style={{ color: "var(--ink-faint)" }}>Code</span>
-              <span style={{ color: "var(--ink-faint)" }}>Type</span>
-              <span style={{ color: "var(--ink-faint)" }}>Value</span>
-              <span style={{ color: "var(--ink-faint)" }}>Duration</span>
-              <span style={{ color: "var(--ink-faint)" }}>Status</span>
-              <span style={{ color: "var(--ink-faint)", textAlign: "right" }}></span>
+              <span style={{ color: "var(--ink-faint)", padding: "14px 0 14px 22px", borderBottom: "1px solid var(--line-soft)" }}>Code</span>
+              <span style={{ color: "var(--ink-faint)", padding: "14px 0", borderBottom: "1px solid var(--line-soft)" }}>Name</span>
+              <span style={{ color: "var(--ink-faint)", padding: "14px 0", borderBottom: "1px solid var(--line-soft)" }}>Type</span>
+              <span style={{ color: "var(--ink-faint)", padding: "14px 0", borderBottom: "1px solid var(--line-soft)" }}>Value</span>
+              <span style={{ color: "var(--ink-faint)", padding: "14px 0", borderBottom: "1px solid var(--line-soft)" }}>Duration</span>
+              <span style={{ color: "var(--ink-faint)", padding: "14px 0", borderBottom: "1px solid var(--line-soft)" }}>Status</span>
+              <span style={{ color: "var(--ink-faint)", textAlign: "right", padding: "14px 22px 14px 0", borderBottom: "1px solid var(--line-soft)" }}></span>
             </div>
 
             {filtered.length === 0 ? (
               <div
                 style={{
+                  gridColumn: "1 / -1",
                   padding: "40px 22px",
                   textAlign: "center",
                   color: "var(--ink-soft)",
@@ -300,69 +302,74 @@ export function DiscountTypeManagement({
                   : "No discounts match this search."}
               </div>
             ) : (
-              filtered.map((r, i) => (
-                <div
-                  key={r.id}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: GRID,
-                    gap: 16,
-                    alignItems: "center",
-                    padding: "14px 22px",
-                    borderTop: i > 0 ? "1px solid var(--line-soft)" : "none",
-                  }}
-                >
-                  <span
-                    style={{
-                      fontFamily: "var(--font-display), serif",
-                      fontSize: 15.5,
-                    }}
-                  >
-                    {r.name}
-                  </span>
-                  <span
-                    className="mono"
-                    style={{ fontSize: 12.5, color: "var(--ink-soft)" }}
-                  >
-                    {r.code}
-                  </span>
-                  <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>
-                    {KIND_LABEL[r.type]}
-                  </span>
-                  <span style={{ fontSize: 13.5 }}>{formatValue(r)}</span>
-                  <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>
-                    {formatDuration(r)}
-                  </span>
-                  <span>
-                    <Pill tone={STATUS_TONE[r.status]}>
-                      {STATUS_LABEL[r.status]}
-                    </Pill>
-                  </span>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 8,
-                      justifyContent: "flex-end",
-                    }}
-                  >
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setEditRow(r)}
+              filtered.map((r, i) => {
+                const cellStyle = {
+                  padding: "14px 0",
+                  borderTop: i > 0 ? "1px solid var(--line-soft)" : "none",
+                  alignSelf: "center" as const,
+                }
+                return (
+                  <div key={r.id} style={{ display: "contents" }}>
+                    <span
+                      className="mono"
+                      style={{
+                        ...cellStyle,
+                        padding: "14px 0 14px 22px",
+                        fontSize: 12.5,
+                        color: "var(--ink-soft)",
+                      }}
                     >
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      disabled={deletingId === r.id}
-                      onClick={() => handleDelete(r)}
+                      {r.code}
+                    </span>
+                    <span
+                      style={{
+                        ...cellStyle,
+                        fontFamily: "var(--font-display), serif",
+                        fontSize: 15.5,
+                      }}
                     >
-                      {deletingId === r.id ? "..." : "Delete"}
-                    </Button>
+                      {r.name}
+                    </span>
+                    <span style={{ ...cellStyle, fontSize: 13, color: "var(--ink-soft)" }}>
+                      {KIND_LABEL[r.type]}
+                    </span>
+                    <span style={{ ...cellStyle, fontSize: 13.5 }}>{formatValue(r)}</span>
+                    <span style={{ ...cellStyle, fontSize: 13, color: "var(--ink-soft)" }}>
+                      {formatDuration(r)}
+                    </span>
+                    <span style={cellStyle}>
+                      <Pill tone={STATUS_TONE[r.status]}>
+                        {STATUS_LABEL[r.status]}
+                      </Pill>
+                    </span>
+                    <div
+                      style={{
+                        ...cellStyle,
+                        padding: "14px 22px 14px 0",
+                        display: "flex",
+                        gap: 8,
+                        justifyContent: "flex-end",
+                      }}
+                    >
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setEditRow(r)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        disabled={deletingId === r.id}
+                        onClick={() => handleDelete(r)}
+                      >
+                        {deletingId === r.id ? "..." : "Delete"}
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
         </div>
