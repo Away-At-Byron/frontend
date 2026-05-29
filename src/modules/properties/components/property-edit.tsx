@@ -12,8 +12,15 @@ import type {
   PropertyDetail,
 } from "../types"
 import type { AmenityCatalogueRow } from "./property-amenities-panel"
+import type { PropertyImageRow } from "@/modules/property-images/types"
+import type { PropertyDocumentRow } from "@/modules/property-documents/types"
+import {
+  setPropertyAmenities,
+  updateProperty,
+} from "../actions"
 import {
   initialForm,
+  toPayload,
   type FormState,
 } from "./property-edit-form"
 import { PropertyDetailsTab } from "./property-details-tab"
@@ -32,12 +39,16 @@ export function PropertyEdit({
   ownerOptions,
   amenityCatalogue,
   initialAmenityIds,
+  images,
+  documents,
 }: {
   property: PropertyDetail
   managerOptions: ManagerOption[]
   ownerOptions: OwnerOption[]
   amenityCatalogue: AmenityCatalogueRow[]
   initialAmenityIds: string[]
+  images: PropertyImageRow[]
+  documents: PropertyDocumentRow[]
 }) {
   const router = useRouter()
   const toast = useToast()
@@ -65,12 +76,40 @@ export function PropertyEdit({
 
   const handleSave = async () => {
     setSaving(true)
-    // Save wiring lands in the final step.
-    toast.info({
-      title: "Not wired yet",
-      message: "Save will be hooked up after the form fields land.",
-    })
+    // Details and amenities are independent rows - run both in parallel so a
+    // slow amenity diff doesn't hold up the property field save. The catch is
+    // we can't roll back one if the other fails, but the user can re-save.
+    const [detailsRes, amenitiesRes] = await Promise.all([
+      updateProperty(property.id, toPayload(form)),
+      setPropertyAmenities(property.id, {
+        amenityIds: Array.from(selectedAmenityIds),
+      }),
+    ])
     setSaving(false)
+
+    if (!detailsRes.ok) {
+      toast.error({
+        title: "Couldn't save property",
+        message: detailsRes.error.message,
+      })
+      return
+    }
+    if (!amenitiesRes.ok) {
+      // Details landed but amenities didn't - surface the partial state so
+      // the user knows what's still pending.
+      toast.error({
+        title: "Amenities didn't save",
+        message: amenitiesRes.error.message,
+      })
+      router.refresh()
+      return
+    }
+
+    toast.success({
+      title: "Property saved",
+      message: `${detailsRes.data.name} updated.`,
+    })
+    router.refresh()
   }
 
   const addressLine = [
@@ -293,7 +332,13 @@ export function PropertyEdit({
           onAmenityClearAll={clearAmenities}
         />
       )}
-      {tab === "images" && <PropertyImagesTab propertyId={property.id} />}
+      {tab === "images" && (
+        <PropertyImagesTab
+          propertyId={property.id}
+          images={images}
+          documents={documents}
+        />
+      )}
     </div>
   )
 }

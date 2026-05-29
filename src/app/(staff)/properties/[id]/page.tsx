@@ -8,6 +8,8 @@ import {
   listOwnerOptions,
   listPropertyAmenityIds,
 } from "@/modules/properties/queries"
+import { listPropertyImages } from "@/modules/property-images/queries"
+import { listPropertyDocuments } from "@/modules/property-documents/queries"
 import { PropertyEdit } from "@/modules/properties/components/property-edit"
 
 export default async function PropertyEditPage({
@@ -20,14 +22,23 @@ export default async function PropertyEditPage({
   if (!session?.user) redirect("/signin")
 
   const { id } = await params
-  const [propertyRes, managersRes, ownersRes, catalogueRes, currentRes] =
-    await Promise.all([
-      getProperty(id),
-      listManagerOptions(),
-      listOwnerOptions(),
-      listAmenityCatalogue(),
-      listPropertyAmenityIds(id),
-    ])
+  const [
+    propertyRes,
+    managersRes,
+    ownersRes,
+    catalogueRes,
+    currentRes,
+    imagesRes,
+    documentsRes,
+  ] = await Promise.all([
+    getProperty(id),
+    listManagerOptions(),
+    listOwnerOptions(),
+    listAmenityCatalogue(),
+    listPropertyAmenityIds(id),
+    listPropertyImages(id),
+    listPropertyDocuments(id),
+  ])
 
   if (!propertyRes.ok) {
     if (propertyRes.error.code === "NOT_FOUND") notFound()
@@ -45,6 +56,8 @@ export default async function PropertyEditPage({
       ownerOptions={ownersRes.ok ? ownersRes.data : []}
       amenityCatalogue={catalogueRes.ok ? catalogueRes.data : []}
       initialAmenityIds={currentRes.ok ? currentRes.data : []}
+      images={imagesRes.ok ? imagesRes.data : []}
+      documents={documentsRes.ok ? documentsRes.data : []}
     />
   )
 }
