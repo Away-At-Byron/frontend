@@ -497,7 +497,7 @@ function GalleryCard({
               borderRadius: "var(--r-2)",
             }}
           >
-            No gallery photos yet. Click "Add image" above.
+            No gallery photos yet. Click &ldquo;Add image&rdquo; above.
           </div>
         ) : (
           <div
