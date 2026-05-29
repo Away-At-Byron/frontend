@@ -1,9 +1,10 @@
 import "server-only"
 
 import { alias } from "drizzle-orm/pg-core"
-import { asc, eq } from "drizzle-orm"
+import { and, asc, eq } from "drizzle-orm"
 import {
   contacts,
+  contactTypes,
   properties,
   propertyAmenities,
   propertyAmenityAssignments,
@@ -207,7 +208,14 @@ export async function listOwnerOptions(): Promise<ActionResult<OwnerOption[]>> {
         phone: contacts.phone,
       })
       .from(contacts)
-      .where(eq(contacts.isDeleted, false))
+      .innerJoin(contactTypes, eq(contacts.contactTypeId, contactTypes.id))
+      .where(
+        and(
+          eq(contacts.isDeleted, false),
+          eq(contactTypes.name, "Owner"),
+          eq(contactTypes.isDeleted, false),
+        ),
+      )
       .orderBy(asc(contacts.firstName), asc(contacts.lastName))
 
     return ok(

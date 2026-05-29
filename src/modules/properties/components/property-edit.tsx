@@ -141,7 +141,7 @@ export function PropertyEdit({
           margin: 0,
         }}
       >
-        Add / Edit <em style={{ fontStyle: "italic" }}>Property</em>
+        Edit <em style={{ fontStyle: "italic" }}>Property</em>
       </h1>
 
       <div
