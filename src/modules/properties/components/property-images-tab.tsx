@@ -1,60 +1,57 @@
-"use client"
+"use client";
 
-import { useCallback, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button, Pill } from "@/components/ui/primitives"
-import { Icon } from "@/components/ui/icon"
-import { useConfirm } from "@/components/ui/dialog"
-import { useToast } from "@/components/ui/toast"
-import { MAX_FILE_BYTES } from "@/lib/upload-limits"
+import { useCallback, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button, Pill } from "@/components/ui/primitives";
+import { Icon } from "@/components/ui/icon";
+import { useConfirm } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/toast";
+import { MAX_FILE_BYTES } from "@/lib/upload-limits";
 import {
   commitPropertyImage,
   deletePropertyImage,
   presignPropertyImageUpload,
   reorderPropertyImage,
-} from "@/modules/property-images/actions"
+} from "@/modules/property-images/actions";
 import {
   confirmPropertyDocumentUploads,
   deletePropertyDocument,
   presignPropertyDocumentUploads,
-} from "@/modules/property-documents/actions"
+} from "@/modules/property-documents/actions";
 import type {
   PropertyImageRole,
   PropertyImageRow,
-} from "@/modules/property-images/types"
-import type { PropertyDocumentRow } from "@/modules/property-documents/types"
-import { SectionCard } from "./property-edit-fields"
+} from "@/modules/property-images/types";
+import type { PropertyDocumentRow } from "@/modules/property-documents/types";
+import { SectionCard } from "./property-edit-fields";
 
-const IMAGE_MIME_ACCEPT = "image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif"
+const IMAGE_MIME_ACCEPT =
+  "image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif";
 const DOC_MIME_ACCEPT =
-  "application/pdf,image/png,image/jpeg,image/webp,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv"
+  "application/pdf,image/png,image/jpeg,image/webp,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv";
 
 export function PropertyImagesTab({
   propertyId,
   images,
   documents,
 }: {
-  propertyId: string
-  images: PropertyImageRow[]
-  documents: PropertyDocumentRow[]
+  propertyId: string;
+  images: PropertyImageRow[];
+  documents: PropertyDocumentRow[];
 }) {
-  const logo = images.find((i) => i.role === "logo") ?? null
-  const hero = images.find((i) => i.role === "hero") ?? null
+  const logo = images.find((i) => i.role === "logo") ?? null;
+  const hero = images.find((i) => i.role === "hero") ?? null;
   const gallery = images
     .filter((i) => i.role === "gallery")
-    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <BrandLogoCard propertyId={propertyId} image={logo} />
-      <GalleryCard
-        propertyId={propertyId}
-        hero={hero}
-        gallery={gallery}
-      />
+      <GalleryCard propertyId={propertyId} hero={hero} gallery={gallery} />
       <DocumentsCard propertyId={propertyId} rows={documents} />
     </div>
-  )
+  );
 }
 
 // ─── upload helper ─────────────────────────────────────────────
@@ -70,7 +67,7 @@ async function uploadOneImage(
       message: `${file.name} is over ${Math.floor(
         MAX_FILE_BYTES / 1024 / 1024,
       )} MB. Shrink it and try again.`,
-    }
+    };
   }
   const presign = await presignPropertyImageUpload({
     propertyId,
@@ -78,19 +75,19 @@ async function uploadOneImage(
     fileName: file.name,
     mimeType: file.type,
     sizeBytes: file.size,
-  })
-  if (!presign.ok) return { ok: false, message: presign.error.message }
+  });
+  if (!presign.ok) return { ok: false, message: presign.error.message };
 
   const put = await fetch(presign.data.uploadUrl, {
     method: "PUT",
     headers: presign.data.headers,
     body: file,
-  })
+  });
   if (!put.ok) {
     return {
       ok: false,
       message: `Upload failed (HTTP ${put.status}). Try again.`,
-    }
+    };
   }
 
   const commit = await commitPropertyImage({
@@ -100,9 +97,9 @@ async function uploadOneImage(
     fileName: file.name,
     mimeType: file.type,
     sizeBytes: file.size,
-  })
-  if (!commit.ok) return { ok: false, message: commit.error.message }
-  return { ok: true }
+  });
+  if (!commit.ok) return { ok: false, message: commit.error.message };
+  return { ok: true };
 }
 
 // ─── Brand logo ─────────────────────────────────────────────────
@@ -111,53 +108,56 @@ function BrandLogoCard({
   propertyId,
   image,
 }: {
-  propertyId: string
-  image: PropertyImageRow | null
+  propertyId: string;
+  image: PropertyImageRow | null;
 }) {
-  const router = useRouter()
-  const toast = useToast()
-  const confirm = useConfirm()
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [busy, setBusy] = useState(false)
+  const router = useRouter();
+  const toast = useToast();
+  const confirm = useConfirm();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
 
   const uploadLogo = async (file: File) => {
-    setBusy(true)
-    const res = await uploadOneImage(propertyId, "logo", file)
-    setBusy(false)
+    setBusy(true);
+    const res = await uploadOneImage(propertyId, "logo", file);
+    setBusy(false);
     if (!res.ok) {
-      toast.error({ title: "Couldn't upload logo", message: res.message })
-      return
+      toast.error({ title: "Couldn't upload logo", message: res.message });
+      return;
     }
-    toast.success({ title: "Logo updated", message: file.name })
-    router.refresh()
-  }
+    toast.success({ title: "Logo updated", message: file.name });
+    router.refresh();
+  };
 
   const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = ""
-    if (file) await uploadLogo(file)
-  }
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file) await uploadLogo(file);
+  };
 
   const onDelete = async () => {
-    if (!image) return
+    if (!image) return;
     const okConfirm = await confirm({
       tone: "danger",
       title: "Remove brand logo?",
       message: "The current logo will be removed from this property.",
       confirmLabel: "Remove logo",
       cancelLabel: "Cancel",
-    })
-    if (!okConfirm) return
-    setBusy(true)
-    const res = await deletePropertyImage(image.id)
-    setBusy(false)
+    });
+    if (!okConfirm) return;
+    setBusy(true);
+    const res = await deletePropertyImage(image.id);
+    setBusy(false);
     if (!res.ok) {
-      toast.error({ title: "Couldn't remove logo", message: res.error.message })
-      return
+      toast.error({
+        title: "Couldn't remove logo",
+        message: res.error.message,
+      });
+      return;
     }
-    toast.success({ title: "Logo removed" })
-    router.refresh()
-  }
+    toast.success({ title: "Logo removed" });
+    router.refresh();
+  };
 
   return (
     <SectionCard
@@ -232,14 +232,12 @@ function BrandLogoCard({
               maxWidth: 480,
             }}
           >
-            The brand logo appears in topbar overlays, invoices, guest emails,
-            and external channel listings. PNG or SVG with transparent
-            background, minimum 512×512.
+            Upload Property Logo Here
           </div>
         </div>
       </div>
     </SectionCard>
-  )
+  );
 }
 
 // ─── Gallery (hero + grid) ─────────────────────────────────────
@@ -249,84 +247,87 @@ function GalleryCard({
   hero,
   gallery,
 }: {
-  propertyId: string
-  hero: PropertyImageRow | null
-  gallery: PropertyImageRow[]
+  propertyId: string;
+  hero: PropertyImageRow | null;
+  gallery: PropertyImageRow[];
 }) {
-  const router = useRouter()
-  const toast = useToast()
-  const confirm = useConfirm()
-  const heroInputRef = useRef<HTMLInputElement>(null)
-  const galleryInputRef = useRef<HTMLInputElement>(null)
-  const [heroBusy, setHeroBusy] = useState(false)
-  const [galleryBusy, setGalleryBusy] = useState(false)
-  const [movingId, setMovingId] = useState<string | null>(null)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const router = useRouter();
+  const toast = useToast();
+  const confirm = useConfirm();
+  const heroInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const [heroBusy, setHeroBusy] = useState(false);
+  const [galleryBusy, setGalleryBusy] = useState(false);
+  const [movingId, setMovingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const uploadHero = async (file: File) => {
-    setHeroBusy(true)
-    const res = await uploadOneImage(propertyId, "hero", file)
-    setHeroBusy(false)
+    setHeroBusy(true);
+    const res = await uploadOneImage(propertyId, "hero", file);
+    setHeroBusy(false);
     if (!res.ok) {
-      toast.error({ title: "Couldn't upload hero", message: res.message })
-      return
+      toast.error({ title: "Couldn't upload hero", message: res.message });
+      return;
     }
-    toast.success({ title: "Hero image updated", message: file.name })
-    router.refresh()
-  }
+    toast.success({ title: "Hero image updated", message: file.name });
+    router.refresh();
+  };
 
   const onHeroPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = ""
-    if (file) await uploadHero(file)
-  }
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file) await uploadHero(file);
+  };
 
   const onGalleryPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? [])
-    e.target.value = ""
-    if (files.length === 0) return
-    setGalleryBusy(true)
-    let successCount = 0
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length === 0) return;
+    setGalleryBusy(true);
+    let successCount = 0;
     for (const file of files) {
-      const res = await uploadOneImage(propertyId, "gallery", file)
-      if (res.ok) successCount++
+      const res = await uploadOneImage(propertyId, "gallery", file);
+      if (res.ok) successCount++;
       else
         toast.error({
           title: `Couldn't upload ${file.name}`,
           message: res.message,
-        })
+        });
     }
-    setGalleryBusy(false)
+    setGalleryBusy(false);
     if (successCount > 0) {
       toast.success({
         title:
           successCount === 1 ? "Photo added" : `${successCount} photos added`,
         message: "Gallery updated.",
-      })
-      router.refresh()
+      });
+      router.refresh();
     }
-  }
+  };
 
   const onHeroDelete = async () => {
-    if (!hero) return
+    if (!hero) return;
     const ok = await confirm({
       tone: "danger",
       title: "Remove hero image?",
       message: "The current hero image will be removed from this property.",
       confirmLabel: "Remove hero",
       cancelLabel: "Cancel",
-    })
-    if (!ok) return
-    setHeroBusy(true)
-    const res = await deletePropertyImage(hero.id)
-    setHeroBusy(false)
+    });
+    if (!ok) return;
+    setHeroBusy(true);
+    const res = await deletePropertyImage(hero.id);
+    setHeroBusy(false);
     if (!res.ok) {
-      toast.error({ title: "Couldn't remove hero", message: res.error.message })
-      return
+      toast.error({
+        title: "Couldn't remove hero",
+        message: res.error.message,
+      });
+      return;
     }
-    toast.success({ title: "Hero image removed" })
-    router.refresh()
-  }
+    toast.success({ title: "Hero image removed" });
+    router.refresh();
+  };
 
   const onGalleryDelete = async (img: PropertyImageRow) => {
     const ok = await confirm({
@@ -335,29 +336,32 @@ function GalleryCard({
       message: "It will be removed from the gallery.",
       confirmLabel: "Remove photo",
       cancelLabel: "Cancel",
-    })
-    if (!ok) return
-    setDeletingId(img.id)
-    const res = await deletePropertyImage(img.id)
-    setDeletingId(null)
+    });
+    if (!ok) return;
+    setDeletingId(img.id);
+    const res = await deletePropertyImage(img.id);
+    setDeletingId(null);
     if (!res.ok) {
-      toast.error({ title: "Couldn't remove photo", message: res.error.message })
-      return
+      toast.error({
+        title: "Couldn't remove photo",
+        message: res.error.message,
+      });
+      return;
     }
-    toast.success({ title: "Photo removed" })
-    router.refresh()
-  }
+    toast.success({ title: "Photo removed" });
+    router.refresh();
+  };
 
   const onMove = async (img: PropertyImageRow, direction: "up" | "down") => {
-    setMovingId(img.id)
-    const res = await reorderPropertyImage(img.id, direction)
-    setMovingId(null)
+    setMovingId(img.id);
+    const res = await reorderPropertyImage(img.id, direction);
+    setMovingId(null);
     if (!res.ok) {
-      toast.error({ title: "Couldn't reorder", message: res.error.message })
-      return
+      toast.error({ title: "Couldn't reorder", message: res.error.message });
+      return;
     }
-    router.refresh()
-  }
+    router.refresh();
+  };
 
   return (
     <SectionCard
@@ -460,9 +464,7 @@ function GalleryCard({
               onPickFile={(f) => void uploadHero(f)}
             />
             {hero && (
-              <span
-                style={{ position: "absolute", top: 10, left: 10 }}
-              >
+              <span style={{ position: "absolute", top: 10, left: 10 }}>
                 <Pill tone="ink" size="sm">
                   Hero
                 </Pill>
@@ -506,10 +508,10 @@ function GalleryCard({
             }}
           >
             {gallery.map((img, i) => {
-              const isFirst = i === 0
-              const isLast = i === gallery.length - 1
-              const isMoving = movingId === img.id
-              const isDeleting = deletingId === img.id
+              const isFirst = i === 0;
+              const isLast = i === gallery.length - 1;
+              const isMoving = movingId === img.id;
+              const isDeleting = deletingId === img.id;
               return (
                 <div
                   key={img.id}
@@ -574,13 +576,13 @@ function GalleryCard({
                     </IconBtn>
                   </div>
                 </div>
-              )
+              );
             })}
           </div>
         )}
       </div>
     </SectionCard>
-  )
+  );
 }
 
 function IconBtn({
@@ -589,10 +591,10 @@ function IconBtn({
   title,
   disabled,
 }: {
-  children: React.ReactNode
-  onClick: () => void
-  title: string
-  disabled?: boolean
+  children: React.ReactNode;
+  onClick: () => void;
+  title: string;
+  disabled?: boolean;
 }) {
   return (
     <button
@@ -616,7 +618,7 @@ function IconBtn({
     >
       {children}
     </button>
-  )
+  );
 }
 
 // ─── Documents table ───────────────────────────────────────────
@@ -625,21 +627,21 @@ function DocumentsCard({
   propertyId,
   rows,
 }: {
-  propertyId: string
-  rows: PropertyDocumentRow[]
+  propertyId: string;
+  rows: PropertyDocumentRow[];
 }) {
-  const router = useRouter()
-  const toast = useToast()
-  const confirm = useConfirm()
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [busy, setBusy] = useState(false)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const router = useRouter();
+  const toast = useToast();
+  const confirm = useConfirm();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const onPick = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(e.target.files ?? [])
-      e.target.value = ""
-      if (files.length === 0) return
+      const files = Array.from(e.target.files ?? []);
+      e.target.value = "";
+      if (files.length === 0) return;
 
       for (const f of files) {
         if (f.size > MAX_FILE_BYTES) {
@@ -648,12 +650,12 @@ function DocumentsCard({
             message: `${f.name} is over ${Math.floor(
               MAX_FILE_BYTES / 1024 / 1024,
             )} MB.`,
-          })
-          return
+          });
+          return;
         }
       }
 
-      setBusy(true)
+      setBusy(true);
       try {
         const presign = await presignPropertyDocumentUploads({
           propertyId,
@@ -662,31 +664,31 @@ function DocumentsCard({
             mimeType: f.type,
             sizeBytes: f.size,
           })),
-        })
+        });
         if (!presign.ok) {
           toast.error({
             title: "Couldn't start upload",
             message: presign.error.message,
-          })
-          return
+          });
+          return;
         }
 
         const uploads = await Promise.all(
           presign.data.map(async (slot, i) => {
-            const file = files[i]!
+            const file = files[i]!;
             const res = await fetch(slot.uploadUrl, {
               method: "PUT",
               headers: slot.headers,
               body: file,
-            })
+            });
             if (!res.ok) {
               throw new Error(
                 `Upload failed for ${file.name} (HTTP ${res.status})`,
-              )
+              );
             }
-            return slot
+            return slot;
           }),
-        )
+        );
 
         const confirmRes = await confirmPropertyDocumentUploads({
           propertyId,
@@ -697,13 +699,13 @@ function DocumentsCard({
             mimeType: slot.mimeType,
             sizeBytes: slot.sizeBytes,
           })),
-        })
+        });
         if (!confirmRes.ok) {
           toast.error({
             title: "Couldn't save document",
             message: confirmRes.error.message,
-          })
-          return
+          });
+          return;
         }
 
         toast.success({
@@ -713,19 +715,19 @@ function DocumentsCard({
             files.length === 1
               ? files[0]!.name
               : `${files.length} files attached.`,
-        })
-        router.refresh()
+        });
+        router.refresh();
       } catch (err) {
         toast.error({
           title: "Upload failed",
           message: err instanceof Error ? err.message : "Try again.",
-        })
+        });
       } finally {
-        setBusy(false)
+        setBusy(false);
       }
     },
     [propertyId, router, toast],
-  )
+  );
 
   const onDelete = async (doc: PropertyDocumentRow) => {
     const ok = await confirm({
@@ -734,20 +736,20 @@ function DocumentsCard({
       message: "The file will be removed from this property.",
       confirmLabel: "Delete document",
       cancelLabel: "Cancel",
-    })
-    if (!ok) return
-    setDeletingId(doc.id)
-    const res = await deletePropertyDocument(doc.id)
-    setDeletingId(null)
+    });
+    if (!ok) return;
+    setDeletingId(doc.id);
+    const res = await deletePropertyDocument(doc.id);
+    setDeletingId(null);
     if (!res.ok) {
-      toast.error({ title: "Couldn't delete", message: res.error.message })
-      return
+      toast.error({ title: "Couldn't delete", message: res.error.message });
+      return;
     }
-    toast.success({ title: "Document deleted" })
-    router.refresh()
-  }
+    toast.success({ title: "Document deleted" });
+    router.refresh();
+  };
 
-  const GRID = "48px 1.6fr 90px 90px 130px 80px"
+  const GRID = "48px 1.6fr 90px 90px 130px 80px";
 
   return (
     <SectionCard
@@ -859,7 +861,9 @@ function DocumentsCard({
               <span style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>
                 {formatDate(d.uploadedAt)}
               </span>
-              <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
+              <div
+                style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}
+              >
                 <a
                   href={d.downloadUrl}
                   target="_blank"
@@ -902,7 +906,7 @@ function DocumentsCard({
         )}
       </div>
     </SectionCard>
-  )
+  );
 }
 
 // ─── shared primitives ─────────────────────────────────────────
@@ -917,25 +921,25 @@ function ImageSlot({
   onPickFile,
   accept = IMAGE_MIME_ACCEPT,
 }: {
-  src: string | null
-  alt: string
-  aspect?: string
-  radius?: string
-  placeholder: string
-  busy?: boolean
+  src: string | null;
+  alt: string;
+  aspect?: string;
+  radius?: string;
+  placeholder: string;
+  busy?: boolean;
   /** When provided, the slot becomes a click + drop zone for a single file. */
-  onPickFile?: (file: File) => void
-  accept?: string
+  onPickFile?: (file: File) => void;
+  accept?: string;
 }) {
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [dragOver, setDragOver] = useState(false)
-  const interactive = Boolean(onPickFile) && !busy
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const interactive = Boolean(onPickFile) && !busy;
 
   const handleFile = (file: File | null | undefined) => {
-    if (!file || !onPickFile) return
-    if (!file.type.startsWith("image/")) return
-    onPickFile(file)
-  }
+    if (!file || !onPickFile) return;
+    if (!file.type.startsWith("image/")) return;
+    onPickFile(file);
+  };
 
   return (
     <div
@@ -946,8 +950,8 @@ function ImageSlot({
         interactive
           ? (e) => {
               if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault()
-                fileInputRef.current?.click()
+                e.preventDefault();
+                fileInputRef.current?.click();
               }
             }
           : undefined
@@ -955,8 +959,8 @@ function ImageSlot({
       onDragOver={
         interactive
           ? (e) => {
-              e.preventDefault()
-              setDragOver(true)
+              e.preventDefault();
+              setDragOver(true);
             }
           : undefined
       }
@@ -964,9 +968,9 @@ function ImageSlot({
       onDrop={
         interactive
           ? (e) => {
-              e.preventDefault()
-              setDragOver(false)
-              handleFile(e.dataTransfer.files?.[0])
+              e.preventDefault();
+              setDragOver(false);
+              handleFile(e.dataTransfer.files?.[0]);
             }
           : undefined
       }
@@ -1049,38 +1053,39 @@ function ImageSlot({
           accept={accept}
           style={{ display: "none" }}
           onChange={(e) => {
-            const file = e.target.files?.[0]
-            e.target.value = ""
-            handleFile(file)
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            handleFile(file);
           }}
         />
       )}
     </div>
-  )
+  );
 }
 
 function prettySize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function prettyMimeLabel(mime: string): string {
-  if (mime === "application/pdf") return "PDF"
-  if (mime.startsWith("image/")) return mime.replace("image/", "").toUpperCase()
-  if (mime.includes("word")) return "DOC"
-  if (mime.includes("excel") || mime.includes("spreadsheet")) return "XLS"
-  if (mime === "text/csv") return "CSV"
-  if (mime === "text/plain") return "TXT"
-  return mime.split("/").pop()?.toUpperCase() ?? "FILE"
+  if (mime === "application/pdf") return "PDF";
+  if (mime.startsWith("image/"))
+    return mime.replace("image/", "").toUpperCase();
+  if (mime.includes("word")) return "DOC";
+  if (mime.includes("excel") || mime.includes("spreadsheet")) return "XLS";
+  if (mime === "text/csv") return "CSV";
+  if (mime === "text/plain") return "TXT";
+  return mime.split("/").pop()?.toUpperCase() ?? "FILE";
 }
 
 function formatDate(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return "—"
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("en-AU", {
     day: "numeric",
     month: "short",
     year: "numeric",
-  })
+  });
 }

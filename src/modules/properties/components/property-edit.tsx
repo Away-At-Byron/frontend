@@ -122,7 +122,6 @@ export function PropertyEdit({
     .join(", ")
 
   const shortId = property.id.slice(0, 8).toUpperCase()
-  const colorSwatch = form.propertyColour || "var(--teal)"
 
   return (
     <div
@@ -258,19 +257,6 @@ export function PropertyEdit({
             <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
               <Pill tone={form.status === "active" ? "ok" : "warn"} size="sm">
                 {form.status}
-              </Pill>
-              <Pill tone="paper" size="sm">
-                <span
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    background: colorSwatch,
-                    display: "inline-block",
-                    marginRight: 4,
-                  }}
-                />
-                {form.propertyColour || "No colour set"}
               </Pill>
               <Pill tone="paper" size="sm">
                 <Icon name="Bed" size={11} /> {property.numberOfRooms} rooms

@@ -106,12 +106,6 @@ export function PropertyAmenitiesPanel({
           }}
         >
           Amenities
-          <span
-            className="mono"
-            style={{ fontSize: 10, color: "var(--ink-faint)" }}
-          >
-            · {selCount} of {total} selected
-          </span>
         </div>
 
         <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>

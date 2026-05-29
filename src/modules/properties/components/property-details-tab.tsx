@@ -64,7 +64,7 @@ export function PropertyDetailsTab({
     () =>
       managerOptions.map((m) => ({
         value: m.id,
-        label: m.email ? `${m.name} — ${m.email}` : m.name,
+        label: m.name,
       })),
     [managerOptions],
   );

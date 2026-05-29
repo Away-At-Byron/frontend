@@ -134,9 +134,6 @@ export function PropertyManagement({
           />
         </div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
-          <Button variant="paper" icon={<Icon name="File" size={15} />}>
-            Export
-          </Button>
           <Link
             href="/properties/new"
             style={{ textDecoration: "none", display: "inline-flex" }}
