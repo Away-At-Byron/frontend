@@ -137,9 +137,14 @@ export function PropertyManagement({
           <Button variant="paper" icon={<Icon name="File" size={15} />}>
             Export
           </Button>
-          <Button variant="primary" icon={<Icon name="Plus" size={15} />}>
-            Add property
-          </Button>
+          <Link
+            href="/properties/new"
+            style={{ textDecoration: "none", display: "inline-flex" }}
+          >
+            <Button variant="primary" icon={<Icon name="Plus" size={15} />}>
+              Add property
+            </Button>
+          </Link>
         </div>
       </div>
 
