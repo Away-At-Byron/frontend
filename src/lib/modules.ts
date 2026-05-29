@@ -171,11 +171,26 @@ export const NAV_ENTRIES: NavEntry[] = [
     adminOnly: true,
   },
   {
-    href: "/properties",
-    label: "Properties",
+    label: "Property",
     icon: "Pin",
     group: "manage",
     module: "setup",
+    children: [
+      {
+        href: "/properties",
+        label: "Property register",
+        icon: "Pin",
+        group: "manage",
+        module: "setup",
+      },
+      {
+        href: "/inventory",
+        label: "Inventory",
+        icon: "Sparkles",
+        group: "manage",
+        module: "setup",
+      },
+    ],
   },
   {
     href: "/housekeeping",
@@ -312,6 +327,14 @@ export const NAV_ENTRIES: NavEntry[] = [
         href: "/settings/cost-categories",
         label: "Cost Categories",
         icon: "Dollar",
+        group: "manage",
+        module: "settings",
+        adminOnly: true,
+      },
+      {
+        href: "/settings/storage-locations",
+        label: "Storage Locations",
+        icon: "Pin",
         group: "manage",
         module: "settings",
         adminOnly: true,

@@ -31,6 +31,7 @@ export * from "./cost-categories" // module 5 — admin-managed cost category bu
 export * from "./cost-types" // module 5 — admin-managed cost types with basis + default value (global, follows ADR-007) — FKs cost_categories
 export * from "./property-images" // module 2 — logo/hero/gallery images per property
 export * from "./property-documents" // module 2 — PDFs, brochures, owner contracts per property
+export * from "./inventory-items" // module 13 — global inventory catalogue (asset / inventory / consumable) + storage_locations + storage assignments
 // export * from "./rooms"           // module 6
 // export * from "./common-areas"    // module 7
 // export * from "./booking-sources" // module 8

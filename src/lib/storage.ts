@@ -98,6 +98,15 @@ export function buildPropertyDocumentKey(
   return `properties/${propertyId}/documents/${randomUUID()}/${safeFilename(filename)}`
 }
 
+/**
+ * Inventory item photo key: `inventory/{uuid}/{file}`. The UUID isolates each
+ * upload so replacing a photo doesn't collide; the prior key is deleted by
+ * the commit action.
+ */
+export function buildInventoryItemPhotoKey(filename: string): string {
+  return `inventory/${randomUUID()}/${safeFilename(filename)}`
+}
+
 export type PresignedUpload = {
   key: string
   uploadUrl: string
