@@ -66,7 +66,6 @@ function TariffForm({
   mode,
   initialValues,
   propertyOptions,
-  tariffPeriodOptions,
   submitLabel,
   onSubmit,
   onCancel,
@@ -74,7 +73,6 @@ function TariffForm({
   mode: "create" | "edit";
   initialValues: FormValues;
   propertyOptions: Option[];
-  tariffPeriodOptions: Option[];
   submitLabel: string;
   onSubmit: (values: FormValues) => Promise<{
     ok: boolean;
@@ -287,27 +285,13 @@ function TariffForm({
         <div
           style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}
         >
-          <Field label="Tariff Period" error={errors.tariffPeriodId?.message}>
-            <select
-              style={inputStyle}
-              {...register("tariffPeriodId", {
-                setValueAs: (v) => (v === "" ? null : v),
-              })}
-            >
-              <option value="">None</option>
-              {tariffPeriodOptions.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-          </Field>
           <Field label="Status" error={errors.status?.message}>
             <select style={inputStyle} {...register("status")}>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
           </Field>
+          <div />
         </div>
       </div>
 
@@ -336,13 +320,11 @@ export function NewTariffModal({
   onClose,
   onSave,
   propertyOptions,
-  tariffPeriodOptions,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onSave: (values: CreateTariffInput) => Promise<ActionResult<TariffRow>>;
   propertyOptions: Option[];
-  tariffPeriodOptions: Option[];
 }) {
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
@@ -350,7 +332,6 @@ export function NewTariffModal({
         mode="create"
         initialValues={EMPTY}
         propertyOptions={propertyOptions}
-        tariffPeriodOptions={tariffPeriodOptions}
         submitLabel="Add tariff"
         onCancel={onClose}
         onSubmit={async (values) => {
@@ -376,7 +357,6 @@ export function EditTariffModal({
   tariff,
   onSave,
   propertyOptions,
-  tariffPeriodOptions,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -386,7 +366,6 @@ export function EditTariffModal({
     values: UpdateTariffInput,
   ) => Promise<ActionResult<TariffRow>>;
   propertyOptions: Option[];
-  tariffPeriodOptions: Option[];
 }) {
   if (!tariff) return null;
   const initial: FormValues = {
@@ -407,7 +386,6 @@ export function EditTariffModal({
         mode="edit"
         initialValues={initial}
         propertyOptions={propertyOptions}
-        tariffPeriodOptions={tariffPeriodOptions}
         submitLabel="Save changes"
         onCancel={onClose}
         onSubmit={async (values) => {

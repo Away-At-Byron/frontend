@@ -17,7 +17,7 @@ import type { Option, TariffRow } from "../types"
 import { NewTariffModal, EditTariffModal } from "./tariff-modal"
 
 const GRID =
-  "minmax(180px, 1.8fr) auto 100px minmax(140px, 1.2fr) 110px 90px auto 170px"
+  "minmax(180px, 1.6fr) auto 130px minmax(160px, 1.4fr) 130px auto 200px"
 
 const STATUS_TONE: Record<TariffStatus, "ok" | "neutral"> = {
   active: "ok",
@@ -36,11 +36,9 @@ function propertyLabel(r: TariffRow): string {
 export function TariffManagement({
   initialTariffs,
   propertyOptions,
-  tariffPeriodOptions,
 }: {
   initialTariffs: TariffRow[]
   propertyOptions: Option[]
-  tariffPeriodOptions: Option[]
 }) {
   const router = useRouter()
   const confirm = useConfirm()
@@ -276,15 +274,6 @@ export function TariffManagement({
                   borderBottom: "1px solid var(--line-soft)",
                 }}
               >
-                Period
-              </span>
-              <span
-                style={{
-                  color: "var(--ink-faint)",
-                  padding: "14px 0",
-                  borderBottom: "1px solid var(--line-soft)",
-                }}
-              >
                 Traffic
               </span>
               <span
@@ -365,18 +354,6 @@ export function TariffManagement({
                       )}
                     </span>
                     <span
-                      className={r.tariffPeriodCode ? "mono" : undefined}
-                      style={{
-                        ...cellStyle,
-                        fontSize: r.tariffPeriodCode ? 12.5 : 13,
-                        color: "var(--ink-soft)",
-                      }}
-                    >
-                      {r.tariffPeriodCode ?? (
-                        <span style={{ fontStyle: "italic" }}>None</span>
-                      )}
-                    </span>
-                    <span
                       style={{ ...cellStyle, fontSize: 13, color: "var(--ink-soft)" }}
                     >
                       {TARIFF_TRAFFIC_LABEL[r.traffic]}
@@ -424,7 +401,6 @@ export function TariffManagement({
         onClose={() => setNewOpen(false)}
         onSave={handleCreate}
         propertyOptions={propertyOptions}
-        tariffPeriodOptions={tariffPeriodOptions}
       />
       <EditTariffModal
         isOpen={editRow !== null}
@@ -432,7 +408,6 @@ export function TariffManagement({
         tariff={editRow}
         onSave={handleUpdate}
         propertyOptions={propertyOptions}
-        tariffPeriodOptions={tariffPeriodOptions}
       />
     </div>
   )
