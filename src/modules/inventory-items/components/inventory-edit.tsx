@@ -20,6 +20,25 @@ import type {
 import { TYPE_LABEL, STATUS_LABEL } from "../types"
 import type { StorageLocationOption } from "@/modules/storage-locations/types"
 import { PhotoUploader } from "./photo-uploader"
+import {
+  FieldRow,
+  FormCard,
+  ReadOnlyBox,
+  Select,
+  TextInput,
+} from "./inventory-edit-fields"
+import { InventoryPurchaseTab } from "./inventory-purchase-tab"
+import { InventoryLossTab } from "./inventory-loss-tab"
+import { InventoryHistoryTab } from "./inventory-history-tab"
+
+type TabId = "details" | "purchase" | "loss" | "history"
+
+const TABS: { id: TabId; label: string }[] = [
+  { id: "details", label: "Item details" },
+  { id: "purchase", label: "Purchase & bill" },
+  { id: "loss", label: "Lost / damaged" },
+  { id: "history", label: "Movement history" },
+]
 
 type FormState = {
   name: string
@@ -159,6 +178,7 @@ export function InventoryEdit({
 }) {
   const router = useRouter()
   const toast = useToast()
+  const [tab, setTab] = useState<TabId>("details")
   const [form, setForm] = useState<FormState>(() =>
     initialForm(item, storageAllocations, defaultType),
   )
@@ -356,6 +376,46 @@ export function InventoryEdit({
         </div>
       </Card>
 
+      {/* Tab nav */}
+      <div
+        style={{
+          display: "flex",
+          gap: 28,
+          borderBottom: "1px solid var(--line-soft)",
+        }}
+        role="tablist"
+      >
+        {TABS.map((t) => {
+          const on = tab === t.id
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              onClick={() => setTab(t.id)}
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                padding: "12px 2px",
+                font: "inherit",
+                fontSize: 14,
+                fontWeight: on ? 600 : 500,
+                color: on ? "var(--ink)" : "var(--ink-soft)",
+                borderBottom: on
+                  ? "2px solid var(--ink)"
+                  : "2px solid transparent",
+                marginBottom: -1,
+              }}
+            >
+              {t.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {tab === "details" && (
       <div
         style={{
           display: "grid",
@@ -625,6 +685,11 @@ export function InventoryEdit({
           </div>
         </FormCard>
       </div>
+      )}
+
+      {tab === "purchase" && <InventoryPurchaseTab />}
+      {tab === "loss" && <InventoryLossTab />}
+      {tab === "history" && <InventoryHistoryTab />}
     </div>
   )
 }
@@ -793,214 +858,3 @@ function StorageAllocationEditor({
   )
 }
 
-function FormCard({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
-  return (
-    <Card pad={0}>
-      <div
-        style={{
-          padding: "14px 18px",
-          fontFamily: "var(--font-display), serif",
-          fontSize: 17,
-          fontWeight: 400,
-        }}
-      >
-        {title}
-      </div>
-      {children}
-    </Card>
-  )
-}
-
-function FieldRow({
-  label,
-  children,
-  error,
-  hint,
-}: {
-  label: string
-  children: React.ReactNode
-  error?: string[]
-  hint?: string
-}) {
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "160px 1fr",
-        gap: 16,
-        alignItems: "center",
-        padding: "10px 18px",
-        borderTop: "1px solid var(--line-soft)",
-      }}
-    >
-      <label
-        style={{
-          fontSize: 12.5,
-          color: "var(--ink-soft)",
-        }}
-      >
-        {label}
-      </label>
-      <div>
-        {children}
-        {error && error.length > 0 && (
-          <div
-            style={{
-              marginTop: 6,
-              fontSize: 11.5,
-              color: "var(--bad-fg)",
-            }}
-          >
-            {error[0]}
-          </div>
-        )}
-        {!error && hint && (
-          <div
-            style={{
-              marginTop: 6,
-              fontSize: 11.5,
-              color: "var(--ink-faint)",
-            }}
-          >
-            {hint}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function TextInput({
-  value,
-  onChange,
-  placeholder,
-  type,
-  step,
-  min,
-  prefix,
-  suffix,
-  mono,
-  disabled,
-}: {
-  value: string
-  onChange: (v: string) => void
-  placeholder?: string
-  type?: "text" | "number" | "date"
-  step?: number
-  min?: number
-  prefix?: string
-  suffix?: string
-  mono?: boolean
-  disabled?: boolean
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        background: disabled ? "var(--linen-soft)" : "var(--paper)",
-        border: "1px solid var(--line)",
-        borderRadius: "var(--r-2)",
-        padding: "8px 12px",
-        gap: 6,
-        opacity: disabled ? 0.7 : 1,
-      }}
-    >
-      {prefix && (
-        <span style={{ fontSize: 13, color: "var(--ink-faint)" }}>
-          {prefix}
-        </span>
-      )}
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        type={type}
-        step={step}
-        min={min}
-        disabled={disabled}
-        style={{
-          flex: 1,
-          minWidth: 0,
-          border: "none",
-          outline: "none",
-          background: "transparent",
-          font: "inherit",
-          fontFamily: mono
-            ? "var(--font-mono), monospace"
-            : "var(--font-sans), sans-serif",
-          fontSize: 13.5,
-          color: disabled ? "var(--ink-soft)" : "var(--ink)",
-          cursor: disabled ? "not-allowed" : "text",
-        }}
-      />
-      {suffix && (
-        <span
-          className="mono"
-          style={{
-            fontSize: 10,
-            color: "var(--ink-faint)",
-            letterSpacing: ".06em",
-            textTransform: "uppercase",
-          }}
-        >
-          {suffix}
-        </span>
-      )}
-    </div>
-  )
-}
-
-function Select({
-  value,
-  onChange,
-  children,
-}: {
-  value: string
-  onChange: (v: string) => void
-  children: React.ReactNode
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      style={{
-        width: "100%",
-        background: "var(--paper)",
-        border: "1px solid var(--line)",
-        borderRadius: "var(--r-2)",
-        padding: "8px 12px",
-        font: "inherit",
-        fontSize: 13.5,
-        color: "var(--ink)",
-        outline: "none",
-      }}
-    >
-      {children}
-    </select>
-  )
-}
-
-function ReadOnlyBox({ text }: { text: string }) {
-  return (
-    <div
-      style={{
-        background: "var(--linen-soft)",
-        border: "1px solid var(--line-soft)",
-        borderRadius: "var(--r-2)",
-        padding: "8px 12px",
-        fontSize: 12,
-        color: "var(--ink-faint)",
-        fontStyle: "italic",
-      }}
-    >
-      {text}
-    </div>
-  )
-}
